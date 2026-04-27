@@ -1,0 +1,70 @@
+# --- 前端 (Vue / Node.js) ---
+node_modules/
+dist/
+.vite/
+.vite-temp/
+*.local
+
+# --- 后端 (Go) ---
+# 编译输出
+*.exe
+*.dll
+*.dylib
+*.test
+*.out
+
+# Go workspace
+/go.work
+/go.work.sum
+
+# Vendor 目录 (若使用)
+/vendor/
+
+# 运行时临时文件
+*.pid
+GoServer/**/jar
+
+# --- 后端 (Python) ---
+# 虚拟环境
+.venv/
+venv/
+
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+*.so
+*.egg
+*.egg-info/
+build/
+*.log
+.coverage
+
+# 数据库
+*.sqlite3
+*.db
+*.db-journal
+*.db-wal
+*.db-shm
+
+# 环境变量文件
+.env
+.env.*
+!.env.example
+
+# IDE 配置
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# 系统文件
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Claude
+.claude/
+~$*
