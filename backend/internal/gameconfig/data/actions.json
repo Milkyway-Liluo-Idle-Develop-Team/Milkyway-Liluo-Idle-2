@@ -1,0 +1,3302 @@
+{
+  "items": [
+    {
+      "id": "oak_logs",
+      "name": "橡木原木",
+      "tool": false,
+      "equipment": false,
+      "upgradable": false,
+      "classification": "resources"
+    },
+    {
+      "id": "oak_plank",
+      "name": "橡木木板",
+      "tool": false,
+      "equipment": false,
+      "upgradable": false,
+      "classification": "resources"
+    },
+    {
+      "id": "wooden_stick",
+      "name": "木棍",
+      "tool": false,
+      "equipment": false,
+      "upgradable": false,
+      "classification": "resources"
+    },
+    {
+      "id": "wooden_sword",
+      "name": "木剑",
+      "tool": false,
+      "equipment": true,
+      "equipment_details": {
+        "type": "weapon",
+        "equipment_position_requirements": [
+          {
+            "position": "main_hand",
+            "value": 1
+          }
+        ],
+        "element": "physical",
+        "battle_skills": [
+          {
+            "id": "basic_attack",
+            "name": "基础攻击",
+            "description": "作为剑最基础的用法.",
+            "target_type": "single",
+            "damage": {
+              "type": "physical",
+              "flat": 0,
+              "multiplier": 1
+            },
+            "is_basic": true
+          }
+        ],
+        "equipment_basic_data": {
+          "attack_interval": 2
+        },
+        "equipment_upgrade_data": {
+          "physical_power": 10,
+          "accuracy": 10
+        }
+      },
+      "upgradable": true,
+      "upgrade_details": {
+        "max_upgrade": 30,
+        "enhance_slot": 1,
+        "forge_slot": 1,
+        "upgrade_curve": [
+          {
+            "level": 0,
+            "recommend_level": 20,
+            "basic_success_rate": 0.52,
+            "ability_multiplier": 1
+          },
+          {
+            "level": 5,
+            "recommend_level": 30,
+            "basic_success_rate": 0.37,
+            "ability_multiplier": 1.5
+          },
+          {
+            "level": 10,
+            "recommend_level": 45,
+            "basic_success_rate": 0.28,
+            "ability_multiplier": 2.5
+          },
+          {
+            "level": 15,
+            "recommend_level": 70,
+            "basic_success_rate": 0.2,
+            "ability_multiplier": 4
+          },
+          {
+            "level": 20,
+            "recommend_level": 95,
+            "basic_success_rate": 0.15,
+            "ability_multiplier": 6
+          },
+          {
+            "level": 25,
+            "recommend_level": 130,
+            "basic_success_rate": 0.125,
+            "ability_multiplier": 9
+          },
+          {
+            "level": 30,
+            "recommend_level": 170,
+            "basic_success_rate": 0.1,
+            "ability_multiplier": 13
+          }
+        ]
+      },
+      "classification": "equipment"
+    },
+    {
+      "id": "wooden_staff",
+      "name": "木杖",
+      "tool": false,
+      "equipment": true,
+      "equipment_details": {
+        "type": "weapon",
+        "equipment_position_requirements": [
+          {
+            "position": "main_hand",
+            "value": 1
+          }
+        ],
+        "element": "magic",
+        "battle_skills": [
+          {
+            "id": "basic_attack",
+            "name": "魔法飞弹",
+            "description": "作为法杖最基础的用法.",
+            "target_type": "single",
+            "damage": {
+              "type": "magic",
+              "flat": 0,
+              "multiplier": 1
+            },
+            "is_basic": true
+          }
+        ],
+        "equipment_basic_data": {
+          "attack_interval": 3
+        },
+        "equipment_upgrade_data": {
+          "magic_damage": 20,
+          "accuracy": 10
+        }
+      },
+      "upgradable": true,
+      "upgrade_details": {
+        "max_upgrade": 30,
+        "enhance_slot": 1,
+        "forge_slot": 1,
+        "upgrade_curve": [
+          {
+            "level": 0,
+            "recommend_level": 20,
+            "basic_success_rate": 0.52,
+            "ability_multiplier": 1
+          },
+          {
+            "level": 5,
+            "recommend_level": 30,
+            "basic_success_rate": 0.37,
+            "ability_multiplier": 1.5
+          },
+          {
+            "level": 10,
+            "recommend_level": 45,
+            "basic_success_rate": 0.28,
+            "ability_multiplier": 2.5
+          },
+          {
+            "level": 15,
+            "recommend_level": 70,
+            "basic_success_rate": 0.2,
+            "ability_multiplier": 4
+          },
+          {
+            "level": 20,
+            "recommend_level": 95,
+            "basic_success_rate": 0.15,
+            "ability_multiplier": 6
+          },
+          {
+            "level": 25,
+            "recommend_level": 130,
+            "basic_success_rate": 0.125,
+            "ability_multiplier": 9
+          },
+          {
+            "level": 30,
+            "recommend_level": 170,
+            "basic_success_rate": 0.1,
+            "ability_multiplier": 13
+          }
+        ]
+      },
+      "classification": "equipment"
+    },
+    {
+      "id": "wooden_axe",
+      "name": "木斧",
+      "tool": true,
+      "tool_details": {
+        "tool_position_requirement": [
+          {
+            "tool_position": "felling",
+            "value": 1
+          }
+        ],
+        "tool_basic_data": {},
+        "tool_type": "axe",
+        "tool_upgrade_data": {
+          "felling_production_multiplier": 0.1
+        }
+      },
+      "equipment": false,
+      "upgradable": true,
+      "upgrade_details": {
+        "max_upgrade": 30,
+        "enhance_slot": 1,
+        "forge_slot": 1,
+        "upgrade_curve": [
+          {
+            "level": 0,
+            "recommend_level": 20,
+            "basic_success_rate": 0.52,
+            "ability_multiplier": 1
+          },
+          {
+            "level": 5,
+            "recommend_level": 30,
+            "basic_success_rate": 0.37,
+            "ability_multiplier": 1.5
+          },
+          {
+            "level": 10,
+            "recommend_level": 45,
+            "basic_success_rate": 0.28,
+            "ability_multiplier": 2.5
+          },
+          {
+            "level": 15,
+            "recommend_level": 70,
+            "basic_success_rate": 0.2,
+            "ability_multiplier": 4
+          },
+          {
+            "level": 20,
+            "recommend_level": 95,
+            "basic_success_rate": 0.15,
+            "ability_multiplier": 6
+          },
+          {
+            "level": 25,
+            "recommend_level": 130,
+            "basic_success_rate": 0.125,
+            "ability_multiplier": 9
+          },
+          {
+            "level": 30,
+            "recommend_level": 170,
+            "basic_success_rate": 0.1,
+            "ability_multiplier": 13
+          }
+        ]
+      },
+      "classification": "tool"
+    },
+    {
+      "id": "wooden_pickaxe",
+      "name": "木镐",
+      "tool": true,
+      "tool_details": {
+        "tool_position_requirement": [
+          {
+            "tool_position": "mining",
+            "value": 1
+          }
+        ],
+        "tool_basic_data": {},
+        "tool_type": "pickaxe",
+        "tool_upgrade_data": {
+          "mining_production_multiplier": 0.1
+        }
+      },
+      "equipment": false,
+      "upgradable": true,
+      "upgrade_details": {
+        "max_upgrade": 30,
+        "enhance_slot": 1,
+        "forge_slot": 1,
+        "upgrade_curve": [
+          {
+            "level": 0,
+            "recommend_level": 20,
+            "basic_success_rate": 0.52,
+            "ability_multiplier": 1
+          },
+          {
+            "level": 5,
+            "recommend_level": 30,
+            "basic_success_rate": 0.37,
+            "ability_multiplier": 1.5
+          },
+          {
+            "level": 10,
+            "recommend_level": 45,
+            "basic_success_rate": 0.28,
+            "ability_multiplier": 2.5
+          },
+          {
+            "level": 15,
+            "recommend_level": 70,
+            "basic_success_rate": 0.2,
+            "ability_multiplier": 4
+          },
+          {
+            "level": 20,
+            "recommend_level": 95,
+            "basic_success_rate": 0.15,
+            "ability_multiplier": 6
+          },
+          {
+            "level": 25,
+            "recommend_level": 130,
+            "basic_success_rate": 0.125,
+            "ability_multiplier": 9
+          },
+          {
+            "level": 30,
+            "recommend_level": 170,
+            "basic_success_rate": 0.1,
+            "ability_multiplier": 13
+          }
+        ]
+      },
+      "classification": "tool"
+    },
+    {
+      "id": "wooden_crafting_table",
+      "name": "木工作台",
+      "tool": true,
+      "tool_details": {
+        "tool_position_requirement": [
+          {
+            "tool_position": "crafting",
+            "value": 1
+          }
+        ],
+        "tool_basic_data": {},
+        "tool_type": "crafting_table",
+        "tool_upgrade_data": {
+          "crafting_production_multiplier": 0.1
+        }
+      },
+      "equipment": false,
+      "upgradable": true,
+      "upgrade_details": {
+        "max_upgrade": 30,
+        "enhance_slot": 1,
+        "forge_slot": 1,
+        "upgrade_curve": [
+          {
+            "level": 0,
+            "recommend_level": 20,
+            "basic_success_rate": 0.52,
+            "ability_multiplier": 1
+          },
+          {
+            "level": 5,
+            "recommend_level": 30,
+            "basic_success_rate": 0.37,
+            "ability_multiplier": 1.5
+          },
+          {
+            "level": 10,
+            "recommend_level": 45,
+            "basic_success_rate": 0.28,
+            "ability_multiplier": 2.5
+          },
+          {
+            "level": 15,
+            "recommend_level": 70,
+            "basic_success_rate": 0.2,
+            "ability_multiplier": 4
+          },
+          {
+            "level": 20,
+            "recommend_level": 95,
+            "basic_success_rate": 0.15,
+            "ability_multiplier": 6
+          },
+          {
+            "level": 25,
+            "recommend_level": 130,
+            "basic_success_rate": 0.125,
+            "ability_multiplier": 9
+          },
+          {
+            "level": 30,
+            "recommend_level": 170,
+            "basic_success_rate": 0.1,
+            "ability_multiplier": 13
+          }
+        ]
+      },
+      "classification": "tool"
+    },
+    {
+      "id": "dirt",
+      "name": "泥土",
+      "tool": false,
+      "equipment": false,
+      "upgradable": false,
+      "classification": "resources"
+    },
+    {
+      "id": "stone",
+      "name": "石头",
+      "tool": false,
+      "equipment": false,
+      "upgradable": false,
+      "classification": "ores"
+    },
+    {
+      "id": "iron_ore",
+      "name": "铁矿石",
+      "tool": false,
+      "equipment": false,
+      "upgradable": false,
+      "classification": "ores"
+    },
+    {
+      "id": "space",
+      "name": "空间",
+      "tool": false,
+      "equipment": false,
+      "upgradable": false,
+      "classification": "important"
+    },
+    {
+      "id": "emerald",
+      "name": "绿宝石",
+      "tool": false,
+      "equipment": false,
+      "upgradable": false,
+      "classification": "important"
+    },
+    {
+      "id": "coal",
+      "name": "煤炭",
+      "tool": false,
+      "equipment": false,
+      "upgradable": false,
+      "classification": "fuel",
+      "extra": [
+        {
+          "id": "heat",
+          "value": 8
+        }
+      ]
+    },
+    {
+      "id": "black_stone",
+      "name": "黑石",
+      "tool": false,
+      "equipment": false,
+      "upgradable": false,
+      "classification": "ores"
+    },
+    {
+      "id": "iron_ingot",
+      "name": "铁锭",
+      "tool": false,
+      "equipment": false,
+      "upgradable": false,
+      "classification": "ores"
+    },
+    {
+      "id": "cthulhu_statue",
+      "name": "克苏鲁木雕",
+      "tool": false,
+      "equipment": true,
+      "equipment_details": {
+        "type": "relics",
+        "equipment_position_requirements": [
+          {
+            "position": "nothing",
+            "value": 1
+          }
+        ],
+        "element": "mystery",
+        "equipment_basic_data": {},
+        "equipment_upgrade_data": {
+          "exp_gain_multiplier": 0.1
+        }
+      },
+      "upgradable": true,
+      "upgrade_details": {
+        "max_upgrade": 5,
+        "enhance_slot": 1,
+        "forge_slot": 1,
+        "upgrade_curve": [
+          {
+            "level": 0,
+            "recommend_level": 1000,
+            "basic_success_rate": 0.1,
+            "ability_multiplier": 1
+          },
+          {
+            "level": 5,
+            "recommend_level": 1000,
+            "basic_success_rate": 0.1,
+            "ability_multiplier": 3
+          }
+        ]
+      },
+      "classification": "equipment"
+    },
+    {
+      "id": "stone_sword",
+      "name": "石剑",
+      "tool": false,
+      "equipment": true,
+      "equipment_details": {
+        "type": "weapon",
+        "equipment_position_requirements": [
+          {
+            "position": "main_hand",
+            "value": 1
+          }
+        ],
+        "element": "physical",
+        "battle_skills": [
+          {
+            "id": "basic_attack",
+            "name": "基础攻击",
+            "description": "作为剑最基础的用法.",
+            "target_type": "single",
+            "damage": {
+              "type": "physical",
+              "flat": 0,
+              "multiplier": 1
+            },
+            "is_basic": true
+          }
+        ],
+        "equipment_basic_data": {
+          "attack_interval": 2.1
+        },
+        "requirements": [
+          {
+            "type": "skill",
+            "id": "strength",
+            "comparison_types": "bigger_or_equal",
+            "value": 30
+          }
+        ],
+        "equipment_upgrade_data": {
+          "physical_power": 20,
+          "accuracy": 20
+        }
+      },
+      "upgradable": true,
+      "upgrade_details": {
+        "max_upgrade": 30,
+        "enhance_slot": 1,
+        "forge_slot": 1,
+        "upgrade_curve": [
+          {
+            "level": 0,
+            "recommend_level": 40,
+            "basic_success_rate": 0.52,
+            "ability_multiplier": 1
+          },
+          {
+            "level": 5,
+            "recommend_level": 55,
+            "basic_success_rate": 0.37,
+            "ability_multiplier": 1.5
+          },
+          {
+            "level": 10,
+            "recommend_level": 85,
+            "basic_success_rate": 0.28,
+            "ability_multiplier": 2.5
+          },
+          {
+            "level": 15,
+            "recommend_level": 120,
+            "basic_success_rate": 0.2,
+            "ability_multiplier": 4
+          },
+          {
+            "level": 20,
+            "recommend_level": 160,
+            "basic_success_rate": 0.15,
+            "ability_multiplier": 6
+          },
+          {
+            "level": 25,
+            "recommend_level": 210,
+            "basic_success_rate": 0.125,
+            "ability_multiplier": 9
+          },
+          {
+            "level": 30,
+            "recommend_level": 260,
+            "basic_success_rate": 0.1,
+            "ability_multiplier": 13
+          }
+        ]
+      },
+      "classification": "equipment"
+    },
+    {
+      "id": "stone_axe",
+      "name": "石斧",
+      "tool": true,
+      "tool_details": {
+        "tool_position_requirement": [
+          {
+            "tool_position": "felling",
+            "value": 1
+          }
+        ],
+        "tool_basic_data": {},
+        "tool_type": "axe",
+        "requirements": [
+          {
+            "type": "skill",
+            "id": "felling",
+            "comparison_types": "bigger_or_equal",
+            "value": 30
+          }
+        ],
+        "tool_upgrade_data": {
+          "felling_production_multiplier": 0.2
+        }
+      },
+      "equipment": false,
+      "upgradable": true,
+      "upgrade_details": {
+        "max_upgrade": 30,
+        "enhance_slot": 1,
+        "forge_slot": 1,
+        "upgrade_curve": [
+          {
+            "level": 0,
+            "recommend_level": 40,
+            "basic_success_rate": 0.52,
+            "ability_multiplier": 1
+          },
+          {
+            "level": 5,
+            "recommend_level": 55,
+            "basic_success_rate": 0.37,
+            "ability_multiplier": 1.5
+          },
+          {
+            "level": 10,
+            "recommend_level": 85,
+            "basic_success_rate": 0.28,
+            "ability_multiplier": 2.5
+          },
+          {
+            "level": 15,
+            "recommend_level": 120,
+            "basic_success_rate": 0.2,
+            "ability_multiplier": 4
+          },
+          {
+            "level": 20,
+            "recommend_level": 160,
+            "basic_success_rate": 0.15,
+            "ability_multiplier": 6
+          },
+          {
+            "level": 25,
+            "recommend_level": 210,
+            "basic_success_rate": 0.125,
+            "ability_multiplier": 9
+          },
+          {
+            "level": 30,
+            "recommend_level": 260,
+            "basic_success_rate": 0.1,
+            "ability_multiplier": 13
+          }
+        ]
+      },
+      "classification": "tool"
+    },
+    {
+      "id": "stone_pickaxe",
+      "name": "石镐",
+      "tool": true,
+      "tool_details": {
+        "tool_position_requirement": [
+          {
+            "tool_position": "mining",
+            "value": 1
+          }
+        ],
+        "tool_basic_data": {},
+        "tool_type": "pickaxe",
+        "requirements": [
+          {
+            "type": "skill",
+            "id": "mining",
+            "comparison_types": "bigger_or_equal",
+            "value": 30
+          }
+        ],
+        "tool_upgrade_data": {
+          "mining_production_multiplier": 0.2
+        }
+      },
+      "equipment": false,
+      "upgradable": true,
+      "upgrade_details": {
+        "max_upgrade": 30,
+        "enhance_slot": 1,
+        "forge_slot": 1,
+        "upgrade_curve": [
+          {
+            "level": 0,
+            "recommend_level": 40,
+            "basic_success_rate": 0.52,
+            "ability_multiplier": 1
+          },
+          {
+            "level": 5,
+            "recommend_level": 55,
+            "basic_success_rate": 0.37,
+            "ability_multiplier": 1.5
+          },
+          {
+            "level": 10,
+            "recommend_level": 85,
+            "basic_success_rate": 0.28,
+            "ability_multiplier": 2.5
+          },
+          {
+            "level": 15,
+            "recommend_level": 120,
+            "basic_success_rate": 0.2,
+            "ability_multiplier": 4
+          },
+          {
+            "level": 20,
+            "recommend_level": 160,
+            "basic_success_rate": 0.15,
+            "ability_multiplier": 6
+          },
+          {
+            "level": 25,
+            "recommend_level": 210,
+            "basic_success_rate": 0.125,
+            "ability_multiplier": 9
+          },
+          {
+            "level": 30,
+            "recommend_level": 260,
+            "basic_success_rate": 0.1,
+            "ability_multiplier": 13
+          }
+        ]
+      },
+      "classification": "tool"
+    },
+    {
+      "id": "stone_crafting_table",
+      "name": "石工作台",
+      "tool": true,
+      "tool_details": {
+        "tool_position_requirement": [
+          {
+            "tool_position": "crafting",
+            "value": 1
+          }
+        ],
+        "tool_basic_data": {},
+        "tool_type": "crafting_table",
+        "requirements": [
+          {
+            "type": "skill",
+            "id": "crafting",
+            "comparison_types": "bigger_or_equal",
+            "value": 30
+          }
+        ],
+        "tool_upgrade_data": {
+          "crafting_production_multiplier": 0.2
+        }
+      },
+      "equipment": false,
+      "upgradable": true,
+      "upgrade_details": {
+        "max_upgrade": 30,
+        "enhance_slot": 1,
+        "forge_slot": 1,
+        "upgrade_curve": [
+          {
+            "level": 0,
+            "recommend_level": 40,
+            "basic_success_rate": 0.52,
+            "ability_multiplier": 1
+          },
+          {
+            "level": 5,
+            "recommend_level": 55,
+            "basic_success_rate": 0.37,
+            "ability_multiplier": 1.5
+          },
+          {
+            "level": 10,
+            "recommend_level": 85,
+            "basic_success_rate": 0.28,
+            "ability_multiplier": 2.5
+          },
+          {
+            "level": 15,
+            "recommend_level": 120,
+            "basic_success_rate": 0.2,
+            "ability_multiplier": 4
+          },
+          {
+            "level": 20,
+            "recommend_level": 160,
+            "basic_success_rate": 0.15,
+            "ability_multiplier": 6
+          },
+          {
+            "level": 25,
+            "recommend_level": 210,
+            "basic_success_rate": 0.125,
+            "ability_multiplier": 9
+          },
+          {
+            "level": 30,
+            "recommend_level": 260,
+            "basic_success_rate": 0.1,
+            "ability_multiplier": 13
+          }
+        ]
+      },
+      "classification": "tool"
+    },
+    {
+      "id": "fur",
+      "name": "毛皮",
+      "tool": false,
+      "equipment": false,
+      "upgradable": false,
+      "classification": "animal_materials"
+    },
+    {
+      "id": "leather",
+      "name": "皮革",
+      "tool": false,
+      "equipment": false,
+      "upgradable": false,
+      "classification": "animal_materials"
+    },
+    {
+      "id": "raw_beef",
+      "name": "生牛肉",
+      "tool": false,
+      "equipment": false,
+      "upgradable": false,
+      "classification": "animal_materials"
+    },
+    {
+      "id": "raw_chicken",
+      "name": "生鸡肉",
+      "tool": false,
+      "equipment": false,
+      "upgradable": false,
+      "classification": "animal_materials"
+    },
+    {
+      "id": "raw_pork",
+      "name": "生猪肉",
+      "tool": false,
+      "equipment": false,
+      "upgradable": false,
+      "classification": "animal_materials"
+    },
+    {
+      "id": "egg",
+      "name": "鸡蛋",
+      "tool": false,
+      "equipment": false,
+      "upgradable": false,
+      "classification": "animal_materials"
+    },
+    {
+      "id": "leather_helmet",
+      "name": "皮革头盔",
+      "tool": false,
+      "equipment": true,
+      "equipment_details": {
+        "type": "wear",
+        "equipment_position_requirements": [
+          {
+            "position": "head",
+            "value": 1
+          }
+        ],
+        "equipment_basic_data": {},
+        "requirements": null,
+        "equipment_upgrade_data": {
+          "defense": 5
+        }
+      },
+      "upgradable": true,
+      "upgrade_details": {
+        "max_upgrade": 30,
+        "enhance_slot": 1,
+        "forge_slot": 1,
+        "upgrade_curve": [
+          {
+            "level": 0,
+            "recommend_level": 40,
+            "basic_success_rate": 0.52,
+            "ability_multiplier": 1
+          },
+          {
+            "level": 5,
+            "recommend_level": 55,
+            "basic_success_rate": 0.37,
+            "ability_multiplier": 1.5
+          },
+          {
+            "level": 10,
+            "recommend_level": 85,
+            "basic_success_rate": 0.28,
+            "ability_multiplier": 2.5
+          },
+          {
+            "level": 15,
+            "recommend_level": 120,
+            "basic_success_rate": 0.2,
+            "ability_multiplier": 4
+          },
+          {
+            "level": 20,
+            "recommend_level": 160,
+            "basic_success_rate": 0.15,
+            "ability_multiplier": 6
+          },
+          {
+            "level": 25,
+            "recommend_level": 210,
+            "basic_success_rate": 0.125,
+            "ability_multiplier": 9
+          },
+          {
+            "level": 30,
+            "recommend_level": 260,
+            "basic_success_rate": 0.1,
+            "ability_multiplier": 13
+          }
+        ]
+      },
+      "classification": "equipment"
+    },
+    {
+      "id": "leather_breastplate",
+      "name": "皮革胸甲",
+      "tool": false,
+      "equipment": true,
+      "equipment_details": {
+        "type": "wear",
+        "equipment_position_requirements": [
+          {
+            "position": "chest",
+            "value": 1
+          }
+        ],
+        "equipment_basic_data": {},
+        "requirements": null,
+        "equipment_upgrade_data": {
+          "defense": 8
+        }
+      },
+      "upgradable": true,
+      "upgrade_details": {
+        "max_upgrade": 30,
+        "enhance_slot": 1,
+        "forge_slot": 1,
+        "upgrade_curve": [
+          {
+            "level": 0,
+            "recommend_level": 40,
+            "basic_success_rate": 0.52,
+            "ability_multiplier": 1
+          },
+          {
+            "level": 5,
+            "recommend_level": 55,
+            "basic_success_rate": 0.37,
+            "ability_multiplier": 1.5
+          },
+          {
+            "level": 10,
+            "recommend_level": 85,
+            "basic_success_rate": 0.28,
+            "ability_multiplier": 2.5
+          },
+          {
+            "level": 15,
+            "recommend_level": 120,
+            "basic_success_rate": 0.2,
+            "ability_multiplier": 4
+          },
+          {
+            "level": 20,
+            "recommend_level": 160,
+            "basic_success_rate": 0.15,
+            "ability_multiplier": 6
+          },
+          {
+            "level": 25,
+            "recommend_level": 210,
+            "basic_success_rate": 0.125,
+            "ability_multiplier": 9
+          },
+          {
+            "level": 30,
+            "recommend_level": 260,
+            "basic_success_rate": 0.1,
+            "ability_multiplier": 13
+          }
+        ]
+      },
+      "classification": "equipment"
+    },
+    {
+      "id": "leather_legarmor",
+      "name": "皮革腿甲",
+      "tool": false,
+      "equipment": true,
+      "equipment_details": {
+        "type": "wear",
+        "equipment_position_requirements": [
+          {
+            "position": "leg",
+            "value": 1
+          }
+        ],
+        "equipment_basic_data": {},
+        "requirements": null,
+        "equipment_upgrade_data": {
+          "defense": 7
+        }
+      },
+      "upgradable": true,
+      "upgrade_details": {
+        "max_upgrade": 30,
+        "enhance_slot": 1,
+        "forge_slot": 1,
+        "upgrade_curve": [
+          {
+            "level": 0,
+            "recommend_level": 40,
+            "basic_success_rate": 0.52,
+            "ability_multiplier": 1
+          },
+          {
+            "level": 5,
+            "recommend_level": 55,
+            "basic_success_rate": 0.37,
+            "ability_multiplier": 1.5
+          },
+          {
+            "level": 10,
+            "recommend_level": 85,
+            "basic_success_rate": 0.28,
+            "ability_multiplier": 2.5
+          },
+          {
+            "level": 15,
+            "recommend_level": 120,
+            "basic_success_rate": 0.2,
+            "ability_multiplier": 4
+          },
+          {
+            "level": 20,
+            "recommend_level": 160,
+            "basic_success_rate": 0.15,
+            "ability_multiplier": 6
+          },
+          {
+            "level": 25,
+            "recommend_level": 210,
+            "basic_success_rate": 0.125,
+            "ability_multiplier": 9
+          },
+          {
+            "level": 30,
+            "recommend_level": 260,
+            "basic_success_rate": 0.1,
+            "ability_multiplier": 13
+          }
+        ]
+      },
+      "classification": "equipment"
+    },
+    {
+      "id": "leather_boots",
+      "name": "皮革靴子",
+      "tool": false,
+      "equipment": true,
+      "equipment_details": {
+        "type": "wear",
+        "equipment_position_requirements": [
+          {
+            "position": "feet",
+            "value": 1
+          }
+        ],
+        "equipment_basic_data": {},
+        "requirements": null,
+        "equipment_upgrade_data": {
+          "defense": 4
+        }
+      },
+      "upgradable": true,
+      "upgrade_details": {
+        "max_upgrade": 30,
+        "enhance_slot": 1,
+        "forge_slot": 1,
+        "upgrade_curve": [
+          {
+            "level": 0,
+            "recommend_level": 40,
+            "basic_success_rate": 0.52,
+            "ability_multiplier": 1
+          },
+          {
+            "level": 5,
+            "recommend_level": 55,
+            "basic_success_rate": 0.37,
+            "ability_multiplier": 1.5
+          },
+          {
+            "level": 10,
+            "recommend_level": 85,
+            "basic_success_rate": 0.28,
+            "ability_multiplier": 2.5
+          },
+          {
+            "level": 15,
+            "recommend_level": 120,
+            "basic_success_rate": 0.2,
+            "ability_multiplier": 4
+          },
+          {
+            "level": 20,
+            "recommend_level": 160,
+            "basic_success_rate": 0.15,
+            "ability_multiplier": 6
+          },
+          {
+            "level": 25,
+            "recommend_level": 210,
+            "basic_success_rate": 0.125,
+            "ability_multiplier": 9
+          },
+          {
+            "level": 30,
+            "recommend_level": 260,
+            "basic_success_rate": 0.1,
+            "ability_multiplier": 13
+          }
+        ]
+      },
+      "classification": "equipment"
+    },
+    {
+      "id": "wool",
+      "name": "羊毛",
+      "tool": false,
+      "equipment": false,
+      "upgradable": false,
+      "classification": "animal_materials"
+    },
+    {
+      "id": "wool_white_pantyhose",
+      "name": "棉制白丝",
+      "tool": false,
+      "equipment": true,
+      "equipment_details": {
+        "type": "wear",
+        "equipment_position_requirements": [
+          {
+            "position": "nothing",
+            "value": 1
+          }
+        ],
+        "equipment_basic_data": {},
+        "equipment_upgrade_data": {
+          "hatred_multiplier": -0.2
+        }
+      },
+      "upgradable": true,
+      "upgrade_details": {
+        "max_upgrade": 5,
+        "enhance_slot": 1,
+        "forge_slot": 1,
+        "upgrade_curve": [
+          {
+            "level": 0,
+            "recommend_level": 1000,
+            "basic_success_rate": 0.1,
+            "ability_multiplier": 1
+          },
+          {
+            "level": 5,
+            "recommend_level": 1000,
+            "basic_success_rate": 0.1,
+            "ability_multiplier": 3
+          }
+        ]
+      },
+      "classification": "equipment"
+    },
+    {
+      "id": "kongkong_stone",
+      "name": "铿铿石",
+      "tool": false,
+      "equipment": false,
+      "upgradable": false,
+      "classification": "ores"
+    },
+    {
+      "id": "kakka_leather",
+      "name": "咔咔羽毛",
+      "tool": false,
+      "equipment": false,
+      "upgradable": false,
+      "classification": "animal_materials"
+    },
+    {
+      "id": "goblin_heart",
+      "name": "戈布之心",
+      "tool": false,
+      "equipment": false,
+      "upgradable": false,
+      "classification": "animal_materials"
+    },
+    {
+      "id": "basic_life_stone",
+      "name": "基础生命之石",
+      "tool": false,
+      "equipment": true,
+      "equipment_details": {
+        "type": "wear",
+        "equipment_position_requirements": [
+          {
+            "position": "treasure",
+            "value": 1
+          }
+        ],
+        "equipment_basic_data": {},
+        "requirements": null,
+        "equipment_upgrade_data": {
+          "hp_recovery": 1
+        }
+      },
+      "upgradable": true,
+      "upgrade_details": {
+        "max_upgrade": 10,
+        "enhance_slot": 1,
+        "forge_slot": 1,
+        "upgrade_curve": [
+          {
+            "level": 0,
+            "recommend_level": 30,
+            "basic_success_rate": 0.2,
+            "ability_multiplier": 1
+          },
+          {
+            "level": 5,
+            "recommend_level": 60,
+            "basic_success_rate": 0.15,
+            "ability_multiplier": 2
+          },
+          {
+            "level": 10,
+            "recommend_level": 100,
+            "basic_success_rate": 0.1,
+            "ability_multiplier": 4
+          }
+        ]
+      },
+      "classification": "equipment"
+    }
+  ],
+  "events": [
+    {
+      "id": "starting_dialog_1",
+      "type": "upgrade",
+      "name": "与神秘人对话1",
+      "description": "你说的对, 但是 \"银河莉萝放置\" 是一款由 雪乃そら 和 Iblcya 联合开发的一款放置增量游戏. 故事发生在一个还没想好的大陆, 你将扮演一名名为小萝莉的神秘角色, 导引时间之力. 前面忘了后面忘了.",
+      "need_skill": "none",
+      "requirements": [],
+      "map": "village"
+    },
+    {
+      "id": "starting_dialog_2",
+      "type": "upgrade",
+      "name": "与神秘人对话2",
+      "description": "咳咳, 按道理来说我应该有个名字或者是幕后黑手? 哈哈不过我不是, 开发者也没告诉我叫什么名字, 要不你叫我 \"妈妈\" 吧, 不也对你们这些似宅男的幻想吗.",
+      "need_skill": "none",
+      "requirements": [
+        {
+          "type": "event",
+          "id": "starting_dialog_1"
+        }
+      ],
+      "map": "village"
+    },
+    {
+      "id": "starting_dialog_3",
+      "type": "upgrade",
+      "name": "与妈妈对话1",
+      "description": "总而言之, 本游戏和大多数放置游戏不尽相同, 本放置游戏参考了 Your Chronicle 这款游戏的设计思路 (当然不利于放置和服务器的内容都会砍掉), 将所有行动归类为了 \"循环行动\"、\"即时行动\"、\"升级行动\", 并且和该游戏一样引入了剧情系统. ",
+      "need_skill": "none",
+      "requirements": [
+        {
+          "type": "event",
+          "id": "starting_dialog_2"
+        }
+      ],
+      "map": "village"
+    },
+    {
+      "id": "starting_dialog_4",
+      "type": "upgrade",
+      "name": "与妈妈对话2",
+      "description": "本游戏在数值设计上较为大胆, 但是不至于导致数值崩坏; 我们致力于给玩家带来相对放置的环境的同时给足玩家的正反馈. 同时将会引入一系列系统以至于不让玩家之间的数值过于割裂.",
+      "need_skill": "none",
+      "requirements": [
+        {
+          "type": "event",
+          "id": "starting_dialog_3"
+        }
+      ],
+      "map": "village"
+    },
+    {
+      "id": "starting_dialog_5",
+      "type": "upgrade",
+      "name": "与妈妈对话3",
+      "description": "总之, 如果你在游玩中遇到任何问题, 欢迎咨询开发者 (大家都是群友不是么), 也希望大家支持 Your Chronicle 这款游戏.",
+      "need_skill": "none",
+      "requirements": [
+        {
+          "type": "event",
+          "id": "starting_dialog_4"
+        }
+      ],
+      "map": "village"
+    },
+    {
+      "id": "felling_oak_tree",
+      "type": "loop",
+      "name": "砍伐橡木",
+      "description": "要致富, 先撸树——不对, 这里不是银河 MC 放置.",
+      "need_skill": "felling",
+      "requirements": [
+        {
+          "type": "skill",
+          "id": "felling",
+          "comparison_types": "bigger_or_equal",
+          "value": 1
+        },
+        {
+          "type": "event",
+          "id": "starting_dialog_5"
+        }
+      ],
+      "loop_time": 2,
+      "rewards": [
+        {
+          "type": "experience",
+          "value": 20.0,
+          "skill_id": "felling"
+        },
+        {
+          "id": "oak_logs",
+          "num": 1
+        }
+      ],
+      "map": "village"
+    },
+    {
+      "id": "making_oak_plank",
+      "type": "loop",
+      "name": "制作橡木木板",
+      "description": "玩过 MC 的人似乎已经知道后面要做什么了.",
+      "need_skill": "crafting",
+      "requirements": [
+        {
+          "type": "skill",
+          "id": "crafting",
+          "comparison_types": "bigger_or_equal",
+          "value": 1
+        },
+        {
+          "type": "item",
+          "id": "oak_logs",
+          "value": 1
+        }
+      ],
+      "loop_time": 2,
+      "rewards": [
+        {
+          "type": "experience",
+          "value": 20.0,
+          "skill_id": "crafting"
+        },
+        {
+          "id": "oak_plank",
+          "num": 4
+        }
+      ],
+      "map": "village"
+    },
+    {
+      "id": "making_wooden_stick",
+      "type": "loop",
+      "name": "制作木棍",
+      "description": "据说 100% 下矿的人缺的不是木板, 而是木棍.",
+      "need_skill": "crafting",
+      "requirements": [
+        {
+          "type": "skill",
+          "id": "crafting",
+          "comparison_types": "bigger_or_equal",
+          "value": 5
+        },
+        {
+          "type": "item",
+          "id": "oak_plank",
+          "value": 2
+        }
+      ],
+      "loop_time": 1,
+      "rewards": [
+        {
+          "type": "experience",
+          "value": 10.0,
+          "skill_id": "crafting"
+        },
+        {
+          "id": "wooden_stick",
+          "num": 4
+        }
+      ],
+      "map": "village"
+    },
+    {
+      "id": "making_wooden_sword",
+      "type": "loop",
+      "name": "制作木剑",
+      "description": "明明和桃木剑只差了一个字, 强度却天差地别, 这就是我们网络游戏.",
+      "need_skill": "crafting",
+      "requirements": [
+        {
+          "type": "skill",
+          "id": "crafting",
+          "comparison_types": "bigger_or_equal",
+          "value": 20
+        },
+        {
+          "type": "item",
+          "id": "oak_plank",
+          "value": 20
+        },
+        {
+          "type": "item",
+          "id": "wooden_stick",
+          "value": 10
+        }
+      ],
+      "loop_time": 30,
+      "rewards": [
+        {
+          "type": "experience",
+          "value": 320.0,
+          "skill_id": "crafting"
+        },
+        {
+          "id": "wooden_sword",
+          "num": 1
+        }
+      ],
+      "map": "village"
+    },
+    {
+      "id": "making_wooden_axe",
+      "type": "loop",
+      "name": "制作木斧",
+      "description": "你知道吗, 我更喜欢先造木斧再造木镐.",
+      "need_skill": "crafting",
+      "requirements": [
+        {
+          "type": "skill",
+          "id": "crafting",
+          "comparison_types": "bigger_or_equal",
+          "value": 20
+        },
+        {
+          "type": "item",
+          "id": "oak_plank",
+          "value": 30
+        },
+        {
+          "type": "item",
+          "id": "wooden_stick",
+          "value": 20
+        }
+      ],
+      "loop_time": 30,
+      "rewards": [
+        {
+          "type": "experience",
+          "value": 320.0,
+          "skill_id": "crafting"
+        },
+        {
+          "id": "wooden_axe",
+          "num": 1
+        }
+      ],
+      "map": "village"
+    },
+    {
+      "id": "making_wooden_pickaxe",
+      "type": "loop",
+      "name": "制作木镐",
+      "description": "在这里耐久可不止 3.",
+      "need_skill": "crafting",
+      "requirements": [
+        {
+          "type": "skill",
+          "id": "crafting",
+          "comparison_types": "bigger_or_equal",
+          "value": 20
+        },
+        {
+          "type": "item",
+          "id": "oak_plank",
+          "value": 30
+        },
+        {
+          "type": "item",
+          "id": "wooden_stick",
+          "value": 20
+        }
+      ],
+      "loop_time": 30,
+      "rewards": [
+        {
+          "type": "experience",
+          "value": 320.0,
+          "skill_id": "crafting"
+        },
+        {
+          "id": "wooden_pickaxe",
+          "num": 1
+        }
+      ],
+      "map": "village"
+    },
+    {
+      "id": "making_wooden_crafting_table",
+      "type": "loop",
+      "name": "制作木工作台",
+      "need_skill": "crafting",
+      "description": "什么叫做你不提供 3*3 配方只增加制造速度.",
+      "requirements": [
+        {
+          "type": "skill",
+          "id": "crafting",
+          "comparison_types": "bigger_or_equal",
+          "value": 20
+        },
+        {
+          "type": "item",
+          "id": "oak_plank",
+          "value": 40
+        }
+      ],
+      "loop_time": 30,
+      "rewards": [
+        {
+          "type": "experience",
+          "value": 320.0,
+          "skill_id": "crafting"
+        },
+        {
+          "id": "wooden_crafting_table",
+          "num": 1
+        }
+      ],
+      "map": "village"
+    },
+    {
+      "id": "mining_dirt",
+      "type": "loop",
+      "name": "挖掘泥土",
+      "description": "是夯实的建筑材料和种地材料, 更多时候还是被当成了搭路工具.",
+      "need_skill": "mining",
+      "requirements": [
+        {
+          "type": "skill",
+          "id": "mining",
+          "comparison_types": "bigger_or_equal",
+          "value": 1
+        },
+        {
+          "type": "event",
+          "id": "starting_dialog_5"
+        }
+      ],
+      "loop_time": 1,
+      "rewards": [
+        {
+          "type": "experience",
+          "value": 10.0,
+          "skill_id": "mining"
+        },
+        {
+          "id": "dirt",
+          "num": 1
+        }
+      ],
+      "map": "village"
+    },
+    {
+      "id": "mining_stone",
+      "type": "loop",
+      "name": "挖掘石头",
+      "description": "是夯实的建筑材料, 也是大多数人搭建火柴盒的前三选择.",
+      "need_skill": "mining",
+      "requirements": [
+        {
+          "type": "skill",
+          "id": "mining",
+          "comparison_types": "bigger_or_equal",
+          "value": 10
+        }
+      ],
+      "loop_time": 2,
+      "rewards": [
+        {
+          "type": "experience",
+          "value": 20.0,
+          "skill_id": "mining"
+        },
+        {
+          "id": "stone",
+          "num": 1
+        }
+      ],
+      "map": "village"
+    },
+    {
+      "id": "mining_iron",
+      "type": "loop",
+      "name": "寻找铁矿",
+      "description": "有人能看到露天的铁矿, 而有人发现钻石了都没找到一块铁.",
+      "need_skill": "mining",
+      "requirements": [
+        {
+          "type": "skill",
+          "id": "mining",
+          "comparison_types": "bigger_or_equal",
+          "value": 30
+        }
+      ],
+      "loop_time": 20,
+      "rewards": [
+        {
+          "type": "experience",
+          "value": 210.0,
+          "skill_id": "mining"
+        },
+        {
+          "id": "stone",
+          "num": 5
+        },
+        {
+          "id": "iron_ore",
+          "num": 1
+        }
+      ],
+      "map": "village"
+    },
+    {
+      "id": "home_expanding",
+      "type": "upgrade",
+      "name": "家园扩建",
+      "description": "怎么从隔壁学坏了, 弄了个家园扩建系统??",
+      "need_skill": "none",
+      "requirements": [
+        {
+          "type": "event",
+          "id": "starting_dialog_5"
+        },
+        {
+          "type": "item",
+          "id": "dirt",
+          "value": 2000
+        },
+        {
+          "type": "item",
+          "id": "oak_plank",
+          "value": 3000
+        },
+        {
+          "type": "item",
+          "id": "oak_logs",
+          "value": 1000
+        }
+      ],
+      "rewards": [
+        {
+          "id": "space",
+          "num": 10
+        }
+      ],
+      "map": "village",
+      "repeat_time": 10
+    },
+    {
+      "id": "building_farm",
+      "type": "upgrade",
+      "name": "建设农田",
+      "description": "建设自己的农田……坏了好像在哪看过这个功能.",
+      "need_skill": "none",
+      "requirements": [
+        {
+          "type": "event",
+          "id": "home_expanding"
+        },
+        {
+          "type": "item",
+          "id": "space",
+          "value": 50
+        },
+        {
+          "type": "item",
+          "id": "dirt",
+          "value": 1000
+        }
+      ],
+      "map": "village"
+    },
+    {
+      "id": "building_furnace",
+      "type": "upgrade",
+      "name": "建造熔炉",
+      "description": "开发者喜欢玩匠魂, 这是他小巧思的第一步.",
+      "need_skill": "none",
+      "requirements": [
+        {
+          "type": "event",
+          "id": "home_expanding"
+        },
+        {
+          "type": "item",
+          "id": "space",
+          "value": 50
+        },
+        {
+          "type": "item",
+          "id": "stone",
+          "value": 1000
+        }
+      ],
+      "map": "village"
+    },
+    {
+      "id": "building_forgesoul_furnace",
+      "type": "upgrade",
+      "name": "建造匠魂熔炉",
+      "description": "开发者喜欢玩匠魂, 这是他小巧思的第二步.",
+      "need_skill": "none",
+      "requirements": [
+        {
+          "type": "event",
+          "id": "home_expanding"
+        },
+        {
+          "type": "item",
+          "id": "coal",
+          "value": 2000
+        },
+        {
+          "type": "item",
+          "id": "black_stone",
+          "value": 1000
+        },
+        {
+          "type": "skill",
+          "id": "forging",
+          "comparison_types": "bigger_or_equal",
+          "value": 20
+        }
+      ],
+      "map": "village"
+    },
+    {
+      "id": "making_coal",
+      "type": "loop",
+      "name": "制作木炭",
+      "description": "本游戏里木炭和煤炭是一个东西, 放心使用!",
+      "need_skill": "forging",
+      "requirements": [
+        {
+          "type": "event",
+          "id": "building_furnace"
+        },
+        {
+          "type": "item",
+          "id": "oak_logs",
+          "value": 2
+        },
+        {
+          "type": "skill",
+          "id": "forging",
+          "comparison_types": "bigger_or_equal",
+          "value": 1
+        }
+      ],
+      "loop_time": 6,
+      "rewards": [
+        {
+          "type": "experience",
+          "value": 60.0,
+          "skill_id": "forging"
+        },
+        {
+          "id": "coal",
+          "num": 1
+        }
+      ],
+      "map": "village"
+    },
+    {
+      "id": "making_black_stone",
+      "type": "loop",
+      "name": "熔炼黑石",
+      "description": "什么, 这不是石头, 这是压缩黑石!",
+      "need_skill": "forging",
+      "requirements": [
+        {
+          "type": "event",
+          "id": "building_furnace"
+        },
+        {
+          "type": "event",
+          "id": "building_forgesoul_furnace",
+          "comparison_types": "smaller_or_equal",
+          "value": 0
+        },
+        {
+          "type": "item",
+          "id": "stone",
+          "value": 9
+        },
+        {
+          "type": "item",
+          "id": "coal",
+          "value": 2
+        },
+        {
+          "type": "skill",
+          "id": "forging",
+          "comparison_types": "bigger_or_equal",
+          "value": 20
+        }
+      ],
+      "loop_time": 18,
+      "rewards": [
+        {
+          "type": "experience",
+          "value": 200.0,
+          "skill_id": "forging"
+        },
+        {
+          "id": "black_stone",
+          "num": 1
+        }
+      ],
+      "map": "village"
+    },
+    {
+      "id": "condensing_black_stone",
+      "type": "loop",
+      "name": "凝结黑石",
+      "description": "更高效的凝结黑石……你问我原来的配方去哪了? 我不知道!",
+      "need_skill": "forging",
+      "requirements": [
+        {
+          "type": "event",
+          "id": "building_forgesoul_furnace"
+        },
+        {
+          "type": "fluid",
+          "id": "stone_fluid",
+          "value": 1296
+        },
+        {
+          "type": "fluid",
+          "id": "heat",
+          "value": 16
+        },
+        {
+          "type": "skill",
+          "id": "forging",
+          "comparison_types": "bigger_or_equal",
+          "value": 20
+        }
+      ],
+      "loop_time": 9,
+      "rewards": [
+        {
+          "type": "experience",
+          "value": 100.0,
+          "skill_id": "forging"
+        },
+        {
+          "id": "black_stone",
+          "num": 1
+        }
+      ],
+      "map": "village"
+    },
+    {
+      "id": "condensing_iron",
+      "type": "loop",
+      "name": "凝结铁锭",
+      "description": "别问为什么普通熔炉不能烧铁, 这是设定啊设定.",
+      "need_skill": "forging",
+      "requirements": [
+        {
+          "type": "event",
+          "id": "building_forgesoul_furnace"
+        },
+        {
+          "type": "fluid",
+          "id": "iron_fluid",
+          "value": 144
+        },
+        {
+          "type": "fluid",
+          "id": "heat",
+          "value": 8
+        },
+        {
+          "type": "skill",
+          "id": "forging",
+          "comparison_types": "bigger_or_equal",
+          "value": 30
+        }
+      ],
+      "loop_time": 12,
+      "rewards": [
+        {
+          "type": "experience",
+          "value": 130.0,
+          "skill_id": "forging"
+        },
+        {
+          "id": "iron_ingot",
+          "num": 1
+        }
+      ],
+      "map": "village"
+    },
+    {
+      "id": "xgs_sidestory_1_1",
+      "type": "upgrade",
+      "name": "与修格斯的对话1",
+      "description": "我是修格斯, 听说这里招弱智文案, 我是弱智, 我写.",
+      "need_skill": "none",
+      "requirements": [
+        {
+          "type": "event",
+          "id": "starting_dialog_5"
+        }
+      ],
+      "map": "village"
+    },
+    {
+      "id": "xgs_sidestory_1_2",
+      "type": "upgrade",
+      "name": "与修格斯的对话2",
+      "description": "在这个危机重重又缺少安全感的世界里, 你总得信仰些什么, 那就做一个伟大者的木雕吧 (请上交10木材) \"开发者注: 这个10木材是文案写的, 我爱填多少填多少\" ",
+      "need_skill": "none",
+      "requirements": [
+        {
+          "type": "event",
+          "id": "xgs_sidestory_1_1"
+        }
+      ],
+      "map": "village"
+    },
+    {
+      "id": "xgs_sidestory_1_3",
+      "type": "upgrade",
+      "name": "与修格斯的对话3",
+      "description": "前面忘了，中间忘了，后面忘了，总之你要交材料.",
+      "need_skill": "none",
+      "requirements": [
+        {
+          "type": "event",
+          "id": "xgs_sidestory_1_2"
+        },
+        {
+          "type": "item",
+          "id": "oak_plank",
+          "value": 10000
+        }
+      ],
+      "map": "village",
+      "rewards": [
+        {
+          "type": "experience",
+          "value": 1000.0,
+          "skill_id": "none"
+        }
+      ]
+    },
+    {
+      "id": "making_cthulhu_statue",
+      "type": "loop",
+      "name": "制作克苏鲁木雕",
+      "description": "我说这信仰真的是数数又值值啊.",
+      "need_skill": "crafting",
+      "requirements": [
+        {
+          "type": "skill",
+          "id": "crafting",
+          "comparison_types": "bigger_or_equal",
+          "value": 30
+        },
+        {
+          "type": "item",
+          "id": "oak_plank",
+          "value": 600
+        }
+      ],
+      "loop_time": 600,
+      "rewards": [
+        {
+          "type": "experience",
+          "value": 7200.0,
+          "skill_id": "crafting"
+        },
+        {
+          "id": "cthulhu_statue",
+          "num": 1
+        }
+      ],
+      "map": "village"
+    },
+    {
+      "id": "main_story_1_1",
+      "type": "upgrade",
+      "name": "与少女交谈1",
+      "description": "什么? 你问我主线在哪里? 这你得自己去找, 毕竟 ●的世界 里主线也是很难找的嘛∅",
+      "need_skill": "none",
+      "requirements": [
+        {
+          "type": "skill",
+          "id": "forging",
+          "comparison_types": "bigger_or_equal",
+          "value": 5
+        }
+      ],
+      "map": "village"
+    },
+    {
+      "id": "main_story_1_2",
+      "type": "upgrade",
+      "name": "与少女交谈2",
+      "description": "嗯……你可能会想, 为什么明明你有了铁, 但是并不能制造铁制装备?",
+      "need_skill": "none",
+      "requirements": [
+        {
+          "type": "skill",
+          "id": "forging",
+          "comparison_types": "bigger_or_equal",
+          "value": 20
+        },
+        {
+          "type": "event",
+          "id": "building_forgesoul_furnace"
+        },
+        {
+          "type": "event",
+          "id": "main_story_1_1"
+        }
+      ],
+      "map": "village"
+    },
+    {
+      "id": "main_story_1_3",
+      "type": "upgrade",
+      "name": "与少女交谈3",
+      "description": "这很简单, 因为这里和 ●魂 是一个世界, 所以你得制造各种部位才能合成 —— 开玩笑的, 没有那种功能, 但是显而易见, 在这里锻造装备可不是简单的事情哦∅",
+      "need_skill": "none",
+      "requirements": [
+        {
+          "type": "event",
+          "id": "main_story_1_2"
+        }
+      ],
+      "map": "village"
+    },
+    {
+      "id": "main_story_1_4",
+      "type": "upgrade",
+      "name": "与少女交谈4",
+      "description": "现在你建造了这么大的熔炉了, 应该可以用来强化装备或者附魔装备了, 不过你可能对这些东西不了解, 所以我来跟你说明一下∅",
+      "need_skill": "none",
+      "requirements": [
+        {
+          "type": "event",
+          "id": "main_story_1_3"
+        }
+      ],
+      "map": "village"
+    },
+    {
+      "id": "main_story_1_5",
+      "type": "upgrade",
+      "name": "与少女交谈5",
+      "description": "现在你建造了这么大的熔炉了, 应该可以用来强化装备或者附魔装备了, 不过你可能对这些东西不了解, 所以我来跟你说明一下∅",
+      "need_skill": "none",
+      "requirements": [
+        {
+          "type": "event",
+          "id": "main_story_1_4"
+        }
+      ],
+      "map": "village"
+    },
+    {
+      "id": "main_story_1_6",
+      "type": "upgrade",
+      "name": "与少女交谈6",
+      "description": "这里的装备可以进行三种操作, 一种是附魔, 另一种是强化, 而最后一种则是最高级的赋能∅",
+      "need_skill": "none",
+      "requirements": [
+        {
+          "type": "skill",
+          "id": "forging",
+          "comparison_types": "bigger_or_equal",
+          "value": 20
+        },
+        {
+          "type": "event",
+          "id": "main_story_1_5"
+        }
+      ],
+      "map": "village"
+    },
+    {
+      "id": "main_story_1_7",
+      "type": "upgrade",
+      "name": "与少女交谈7",
+      "description": "所谓的附魔就是和 ●的世界 的附魔一样, 会给你随机的词条, 不过呢和 ●的世界 一样, 不会直接对装备附魔, 而是会有附魔书, 将附魔词条打在附魔书上∅",
+      "need_skill": "none",
+      "requirements": [
+        {
+          "type": "event",
+          "id": "main_story_1_6"
+        }
+      ],
+      "map": "village"
+    },
+    {
+      "id": "main_story_1_8",
+      "type": "upgrade",
+      "name": "与少女交谈8",
+      "description": "然后就可以通过叠加词条到装备上, 怎么样方便吧 ~ 而且在这里两个相同附魔就可以升级为下一级的附魔了, 是没有上限的哦∅",
+      "need_skill": "none",
+      "requirements": [
+        {
+          "type": "event",
+          "id": "main_story_1_7"
+        }
+      ],
+      "map": "village"
+    },
+    {
+      "id": "main_story_1_9",
+      "type": "upgrade",
+      "name": "与少女交谈9",
+      "description": "所谓强化就是把装备根据所需材料进行升级, 这里升级的效果较为强力, 所以大家都觉得木制工具就够了呢~",
+      "need_skill": "none",
+      "requirements": [
+        {
+          "type": "event",
+          "id": "main_story_1_8"
+        }
+      ],
+      "map": "village"
+    },
+    {
+      "id": "main_story_1_10",
+      "type": "upgrade",
+      "name": "与少女交谈10",
+      "description": "当你强化到 20 级之后, 可以对装备进行分解, 可以获得 木附魔宝珠, 它不仅仅是装备升级到 30 级的必备材料, 还是给其他装备赋能的条件∅",
+      "need_skill": "none",
+      "requirements": [
+        {
+          "type": "event",
+          "id": "main_story_1_9"
+        }
+      ],
+      "map": "village"
+    },
+    {
+      "id": "main_story_1_11",
+      "type": "upgrade",
+      "name": "与少女交谈11",
+      "description": "所谓赋能就是给装备上额外的技能啦, 不同的材质可以有不同的技能, 比如说木强化可以增加伐木效率这样子∅",
+      "need_skill": "none",
+      "requirements": [
+        {
+          "type": "event",
+          "id": "main_story_1_10"
+        }
+      ],
+      "map": "village"
+    },
+    {
+      "id": "main_story_1_12",
+      "type": "upgrade",
+      "name": "与少女交谈12",
+      "description": "什么? 你问我为什么知道这些? 因为我可是村里的图书管理员哦, 知道点外面的东西很正常吧∅",
+      "need_skill": "none",
+      "requirements": [
+        {
+          "type": "event",
+          "id": "main_story_1_11"
+        }
+      ],
+      "map": "village"
+    },
+    {
+      "id": "main_story_1_13",
+      "type": "upgrade",
+      "name": "与阿萝娅交谈13",
+      "description": "重新认识一下吧, 我叫阿萝娅, 总之, 现在就进行这些操作还是太早啦, 建议找大家打磨工具什么的练练手比较好哦∅",
+      "need_skill": "none",
+      "requirements": [
+        {
+          "type": "event",
+          "id": "main_story_1_12"
+        }
+      ],
+      "map": "village"
+    },
+    {
+      "id": "polish_objects_for_villager",
+      "type": "loop",
+      "name": "帮助村民打磨物品",
+      "description": "总是会收到奇怪的请求, 正常的比如说菜刀, 离谱一点的可能是嫌弃桌角太锋利了会伤身体, 甚至还会有小女孩问我你是不是修脚的……",
+      "need_skill": "enhancing",
+      "requirements": [
+        {
+          "type": "event",
+          "id": "main_story_1_13"
+        },
+        {
+          "type": "skill",
+          "id": "enhancing",
+          "comparison_types": "bigger_or_equal",
+          "value": 1
+        }
+      ],
+      "loop_time": 100,
+      "rewards": [
+        {
+          "type": "experience",
+          "value": 1000.0,
+          "skill_id": "enhancing"
+        },
+        {
+          "id": "emerald",
+          "num": 2
+        }
+      ],
+      "map": "village"
+    },
+    {
+      "id": "making_stone_sword",
+      "type": "loop",
+      "name": "制作石剑",
+      "description": "为什么大家喜欢更喜欢用石斧进行攻击而不是石剑呢？忘了你的 ●的世界 吧!",
+      "need_skill": "crafting",
+      "requirements": [
+        {
+          "type": "skill",
+          "id": "crafting",
+          "comparison_types": "bigger_or_equal",
+          "value": 40
+        },
+        {
+          "type": "item",
+          "id": "stone",
+          "value": 40
+        },
+        {
+          "type": "item",
+          "id": "wooden_stick",
+          "value": 20
+        }
+      ],
+      "loop_time": 30,
+      "rewards": [
+        {
+          "type": "experience",
+          "value": 350.0,
+          "skill_id": "crafting"
+        },
+        {
+          "id": "stone_sword",
+          "num": 1
+        }
+      ],
+      "map": "village"
+    },
+    {
+      "id": "making_stone_axe",
+      "type": "loop",
+      "name": "制作石斧",
+      "description": "获得升级!……不好意思走错工具了.",
+      "need_skill": "crafting",
+      "requirements": [
+        {
+          "type": "skill",
+          "id": "crafting",
+          "comparison_types": "bigger_or_equal",
+          "value": 40
+        },
+        {
+          "type": "item",
+          "id": "stone",
+          "value": 60
+        },
+        {
+          "type": "item",
+          "id": "wooden_stick",
+          "value": 40
+        }
+      ],
+      "loop_time": 30,
+      "rewards": [
+        {
+          "type": "experience",
+          "value": 350.0,
+          "skill_id": "crafting"
+        },
+        {
+          "id": "stone_axe",
+          "num": 1
+        }
+      ],
+      "map": "village"
+    },
+    {
+      "id": "making_stone_pickaxe",
+      "type": "loop",
+      "name": "制作石镐",
+      "description": "不对不对, 你应该先制作木镐, 然后再拿木镐合成石镐, 放置游戏不是这样的, 我不接受!",
+      "need_skill": "crafting",
+      "requirements": [
+        {
+          "type": "skill",
+          "id": "crafting",
+          "comparison_types": "bigger_or_equal",
+          "value": 40
+        },
+        {
+          "type": "item",
+          "id": "stone",
+          "value": 60
+        },
+        {
+          "type": "item",
+          "id": "wooden_stick",
+          "value": 40
+        }
+      ],
+      "loop_time": 30,
+      "rewards": [
+        {
+          "type": "experience",
+          "value": 350.0,
+          "skill_id": "crafting"
+        },
+        {
+          "id": "stone_pickaxe",
+          "num": 1
+        }
+      ],
+      "map": "village"
+    },
+    {
+      "id": "making_stone_crafting_table",
+      "type": "loop",
+      "name": "制作石工作台",
+      "need_skill": "crafting",
+      "description": "石头工作台是什么东西……",
+      "requirements": [
+        {
+          "type": "skill",
+          "id": "crafting",
+          "comparison_types": "bigger_or_equal",
+          "value": 40
+        },
+        {
+          "type": "item",
+          "id": "stone",
+          "value": 80
+        }
+      ],
+      "loop_time": 30,
+      "rewards": [
+        {
+          "type": "experience",
+          "value": 350.0,
+          "skill_id": "crafting"
+        },
+        {
+          "id": "stone_crafting_table",
+          "num": 1
+        }
+      ],
+      "map": "village"
+    },
+    {
+      "id": "making_leather",
+      "type": "loop",
+      "name": "制作皮革",
+      "need_skill": "crafting",
+      "description": "别问为什么不直接掉落皮革, 这也是计划的一部分",
+      "requirements": [
+        {
+          "type": "skill",
+          "id": "crafting",
+          "comparison_types": "bigger_or_equal",
+          "value": 40
+        },
+        {
+          "type": "item",
+          "id": "fur",
+          "value": 2
+        }
+      ],
+      "loop_time": 10,
+      "rewards": [
+        {
+          "type": "experience",
+          "value": 120.0,
+          "skill_id": "crafting"
+        },
+        {
+          "id": "leather",
+          "num": 1
+        }
+      ],
+      "map": "village"
+    },
+    {
+      "id": "making_leather_helmet",
+      "type": "loop",
+      "name": "制作皮革头盔",
+      "need_skill": "crafting",
+      "description": "头盔其实是最重要的, 但是不知道为什么提供的防御值还没这么高.",
+      "requirements": [
+        {
+          "type": "skill",
+          "id": "crafting",
+          "comparison_types": "bigger_or_equal",
+          "value": 20
+        },
+        {
+          "type": "item",
+          "id": "leather",
+          "value": 5
+        }
+      ],
+      "loop_time": 20,
+      "rewards": [
+        {
+          "type": "experience",
+          "value": 400.0,
+          "skill_id": "crafting"
+        },
+        {
+          "id": "leather_helmet",
+          "num": 1
+        }
+      ],
+      "map": "village"
+    },
+    {
+      "id": "making_leather_breastplate",
+      "type": "loop",
+      "name": "制作皮革胸甲",
+      "need_skill": "crafting",
+      "description": "温馨提醒: 对于女性来说, 胸甲耗材不会随着胸部的大小的改变而跟着改变.",
+      "requirements": [
+        {
+          "type": "skill",
+          "id": "crafting",
+          "comparison_types": "bigger_or_equal",
+          "value": 20
+        },
+        {
+          "type": "item",
+          "id": "leather",
+          "value": 8
+        }
+      ],
+      "loop_time": 32,
+      "rewards": [
+        {
+          "type": "experience",
+          "value": 640.0,
+          "skill_id": "crafting"
+        },
+        {
+          "id": "leather_breastplate",
+          "num": 1
+        }
+      ],
+      "map": "village"
+    },
+    {
+      "id": "making_leather_legarmor",
+      "type": "loop",
+      "name": "制作皮革腿甲",
+      "need_skill": "crafting",
+      "description": "温馨提醒: 不穿裤子不代表你是 gay.",
+      "requirements": [
+        {
+          "type": "skill",
+          "id": "crafting",
+          "comparison_types": "bigger_or_equal",
+          "value": 20
+        },
+        {
+          "type": "item",
+          "id": "leather",
+          "value": 7
+        }
+      ],
+      "loop_time": 28,
+      "rewards": [
+        {
+          "type": "experience",
+          "value": 560.0,
+          "skill_id": "crafting"
+        },
+        {
+          "id": "leather_legarmor",
+          "num": 1
+        }
+      ],
+      "map": "village"
+    },
+    {
+      "id": "making_leather_boots",
+      "type": "loop",
+      "name": "制作皮革护靴",
+      "need_skill": "crafting",
+      "description": "温馨提醒: 穿久了不会发臭, 请不要偷偷闻靴子.",
+      "requirements": [
+        {
+          "type": "skill",
+          "id": "crafting",
+          "comparison_types": "bigger_or_equal",
+          "value": 20
+        },
+        {
+          "type": "item",
+          "id": "leather",
+          "value": 4
+        }
+      ],
+      "loop_time": 16,
+      "rewards": [
+        {
+          "type": "experience",
+          "value": 320.0,
+          "skill_id": "crafting"
+        },
+        {
+          "id": "leather_boots",
+          "num": 1
+        }
+      ],
+      "map": "village"
+    },
+    {
+      "id": "main_story_2_1",
+      "type": "upgrade",
+      "name": "与老人的对话1",
+      "need_skill": "none",
+      "description": "啊, 我认得你! 你是 ${username}$ 吧! 我看你刚弄了把木剑. 怎么, 想拿点东西练手么?",
+      "requirements": [
+        {
+          "type": "event",
+          "id": "main_story_1_13"
+        },
+        {
+          "type": "item",
+          "id": "wooden_sword",
+          "comparison_types": "smaller_or_equal",
+          "value": 0
+        }
+      ],
+      "map": "village"
+    },
+    {
+      "id": "main_story_2_2",
+      "type": "upgrade",
+      "name": "与老人的对话2",
+      "need_skill": "none",
+      "description": "这样吧, 我正在经营一个屠宰场, 诶可惜我这把老骨头怕是不能再工作太多了, 要不你帮我宰杀那些动物吧……",
+      "requirements": [
+        {
+          "type": "event",
+          "id": "main_story_2_1"
+        }
+      ],
+      "map": "village"
+    },
+    {
+      "id": "main_story_2_3",
+      "type": "upgrade",
+      "name": "与老人的对话3",
+      "need_skill": "none",
+      "description": "呵呵……没事, 我的屠宰场很大, 你可能杀一辈子都杀不完……呵呵呵……",
+      "requirements": [
+        {
+          "type": "event",
+          "id": "main_story_2_2"
+        }
+      ],
+      "map": "village"
+    },
+    {
+      "id": "double_body",
+      "type": "upgrade",
+      "name": "搭建二重身魔法仪式",
+      "need_skill": "none",
+      "description": "二重身是每个在这个世界的魔法师必须学习的魔法……也就是说, 可以同时进行生产和战斗了, 不过这需要大量的铁来支持假人.",
+      "requirements": [
+        {
+          "type": "item",
+          "id": "iron_ingot",
+          "value": 2000
+        },
+        {
+          "type": "item",
+          "id": "dirt",
+          "value": 10000
+        },
+        {
+          "type": "skill",
+          "id": "magic",
+          "comparison_types": "bigger_or_equal",
+          "value": 30
+        }
+      ],
+      "map": "village"
+    },
+    {
+      "id": "main_story_3_1",
+      "type": "upgrade",
+      "name": "与老人的对话1",
+      "need_skill": "none",
+      "description": "看来你在这里干的挺熟练的嘛……",
+      "requirements": [
+        {
+          "type": "skill",
+          "id": "strength",
+          "comparison_types": "bigger_or_equal",
+          "value": 30
+        },
+        {
+          "type": "event",
+          "id": "main_story_2_3"
+        }
+      ],
+      "map": "village"
+    },
+    {
+      "id": "main_story_3_2",
+      "type": "upgrade",
+      "name": "与老人的对话2",
+      "need_skill": "none",
+      "description": "你问我得到的物品要不要交给我……? 呵呵……没事的, 都是一家人, 自己拿走便是……",
+      "requirements": [
+        {
+          "type": "event",
+          "id": "main_story_3_1"
+        }
+      ],
+      "map": "village"
+    },
+    {
+      "id": "main_story_3_3",
+      "type": "upgrade",
+      "name": "与老人的对话3",
+      "need_skill": "none",
+      "description": "如果你实在过意不去的话……就去村外的地方清理一下周遭的怪物吧……呵呵",
+      "requirements": [
+        {
+          "type": "event",
+          "id": "main_story_3_2"
+        }
+      ],
+      "map": "village"
+    },
+    {
+      "id": "main_story_3_4",
+      "type": "upgrade",
+      "name": "与老人的对话4",
+      "need_skill": "none",
+      "description": "哦也是呢, 你刚长大, 可能还没有人跟你说过这些东西……",
+      "requirements": [
+        {
+          "type": "event",
+          "id": "main_story_3_3"
+        }
+      ],
+      "map": "village"
+    },
+    {
+      "id": "main_story_3_5",
+      "type": "upgrade",
+      "name": "与老人的对话5",
+      "need_skill": "none",
+      "description": "啊……简而言之就是…… 因为这里的地方非常特殊, 外面的人物到了这里就会失去力量, 所以这里的怪物顶多是一些用蛮力取胜的家伙……",
+      "requirements": [
+        {
+          "type": "event",
+          "id": "main_story_3_4"
+        }
+      ],
+      "map": "village"
+    },
+    {
+      "id": "main_story_3_6",
+      "type": "upgrade",
+      "name": "与老人的对话6",
+      "need_skill": "none",
+      "description": "反正呢……如果你想要出去闯闯, 先和外面的家伙碰碰手腕吧……呵呵……",
+      "requirements": [
+        {
+          "type": "event",
+          "id": "main_story_3_5"
+        }
+      ],
+      "map": "village"
+    },
+    {
+      "id": "forging_basic_life_stone",
+      "type": "loop",
+      "name": "锻造基础生命之石",
+      "need_skill": "forging",
+      "description": "使用铿铿石制作的宝石……虽然铿铿可以自己长出坚硬的外壳, 但是感觉这一套逻辑在人类上行不通……不过倒是觉得自己变得更耐打了",
+      "requirements": [
+        {
+          "type": "skill",
+          "id": "forging",
+          "comparison_types": "bigger_or_equal",
+          "value": 40
+        },
+        {
+          "type": "item",
+          "id": "kongkong_stone",
+          "value": 10
+        },
+        {
+          "type": "item",
+          "id": "oak_plank",
+          "value": 200
+        }
+      ],
+      "loop_time": 10,
+      "rewards": [
+        {
+          "type": "experience",
+          "value": 300.0,
+          "skill_id": "forging"
+        },
+        {
+          "id": "basic_life_stone",
+          "num": 1
+        }
+      ],
+      "map": "village"
+    }
+  ],
+  "enemies": [
+    {
+      "id": "pig",
+      "name": "猪",
+      "enemy_battle_data": {
+        "hp": 50,
+        "physical_power": 0,
+        "magic_power": 0,
+        "defense": 20,
+        "magic_instance": 0.3
+      },
+      "basic_damage_type": "physical",
+      "rewards": [
+        {
+          "id": "raw_pork",
+          "num": 1.5
+        },
+        {
+          "type": "experience",
+          "id": "intelligence",
+          "num": 50
+        }
+      ]
+    },
+    {
+      "id": "ox",
+      "name": "牛",
+      "enemy_battle_data": {
+        "hp": 100,
+        "physical_power": 0,
+        "magic_power": 0,
+        "defense": 30,
+        "magic_instance": 0
+      },
+      "basic_damage_type": "physical",
+      "rewards": [
+        {
+          "id": "raw_beef",
+          "num": 1.5
+        },
+        {
+          "id": "fur",
+          "num": 2
+        },
+        {
+          "type": "experience",
+          "id": "strength",
+          "num": 80
+        }
+      ]
+    },
+    {
+      "id": "chicken",
+      "name": "鸡",
+      "enemy_battle_data": {
+        "hp": 30,
+        "physical_power": 0,
+        "magic_power": 0,
+        "defense": 10,
+        "magic_instance": 0.5
+      },
+      "basic_damage_type": "physical",
+      "rewards": [
+        {
+          "id": "raw_chicken",
+          "num": 1.5
+        },
+        {
+          "type": "experience",
+          "id": "magic",
+          "num": 30
+        }
+      ]
+    },
+    {
+      "id": "goblin",
+      "name": "戈布",
+      "enemy_battle_data": {
+        "hp": 200,
+        "physical_power": 60,
+        "magic_power": 0,
+        "defense": 30,
+        "accuracy": 30,
+        "magic_instance": 0
+      },
+      "basic_damage_type": "physical",
+      "rewards": [
+        {
+          "id": "leather",
+          "num": 0.5
+        },
+        {
+          "type": "experience",
+          "id": "resilience",
+          "num": 300
+        }
+      ]
+    },
+    {
+      "id": "kongkong",
+      "name": "铿铿",
+      "enemy_battle_data": {
+        "hp": 400,
+        "physical_power": 20,
+        "magic_power": 0,
+        "defense": 50,
+        "accuracy": 60,
+        "magic_instance": 0
+      },
+      "basic_damage_type": "physical",
+      "rewards": [
+        {
+          "id": "kongkong_stone",
+          "num": 1
+        },
+        {
+          "type": "experience",
+          "id": "defense",
+          "num": 400
+        }
+      ]
+    },
+    {
+      "id": "kakka",
+      "name": "咔咔",
+      "enemy_battle_data": {
+        "hp": 50,
+        "physical_power": 400,
+        "attack_interval": 15,
+        "defense": 0,
+        "magic_instance": 0,
+        "accuracy": 200
+      },
+      "basic_damage_type": "physical",
+      "rewards": [
+        {
+          "id": "kakka_leather",
+          "num": 1
+        },
+        {
+          "type": "experience",
+          "id": "stamina",
+          "num": 300
+        }
+      ]
+    },
+    {
+      "id": "goblin_leader",
+      "name": "戈布首领",
+      "enemy_battle_data": {
+        "hp": 500,
+        "physical_power": 30,
+        "magic_power": 30,
+        "defense": 50,
+        "magic_instance": 0.2,
+        "accuracy": 100
+      },
+      "basic_damage_type": "physical",
+      "rewards": [
+        {
+          "id": "goblin_heart",
+          "num": 0.1
+        },
+        {
+          "type": "experience",
+          "id": "ranging",
+          "num": 800
+        }
+      ]
+    },
+    {
+      "id": "old_geometric_stone_statue",
+      "name": "旧日几何石像",
+      "enemy_battle_data": {
+        "hp": 1000,
+        "physical_power": 0,
+        "magic_power": 50,
+        "defense": 200,
+        "magic_instance": 0.5,
+        "accuracy": 100,
+        "attack_interval": 10
+      },
+      "basic_damage_type": "magic",
+      "battle_skill": [
+        {
+          "battle_skill": {
+            "id": "alert_bullet",
+            "name": "警戒飞弹",
+            "description": "威力巨大的魔法飞弹, 伤害高频率快, 唯一的缺点是需要蓄能",
+            "target_type": "single",
+            "damage": {
+              "type": "magic",
+              "flat": 10,
+              "multiplier": 0
+            },
+            "cooldown": 0,
+            "cast_time": 0.5,
+            "is_basic": false
+          },
+          "priority": 100
+        }
+      ],
+      "rewards": [
+        {
+          "type": "experience",
+          "id": "magic",
+          "num": 1600
+        }
+      ]
+    },
+    {
+      "id": "forgotten_orcs",
+      "name": "被遗忘的兽人",
+      "enemy_battle_data": {
+        "hp": 1000,
+        "physical_power": 20,
+        "defense": 20,
+        "magic_instance": 1.0,
+        "attack_interval": 2,
+        "accuracy": 100
+      },
+      "basic_damage_type": "physical",
+      "rewards": [
+        {
+          "id": "raw_pork",
+          "num": 5
+        },
+        {
+          "type": "experience",
+          "id": "strength",
+          "num": 1200
+        }
+      ],
+      "battle_skill": [
+        {
+          "battle_skill": {
+            "id": "orcs_taunt",
+            "name": "挑衅",
+            "description": "发出挑衅怒吼，强化自身近战能力",
+            "target_type": "single",
+            "is_support": true,
+            "cooldown": 0.5,
+            "cast_time": 2,
+            "effects": [
+              {
+                "target": "self",
+                "attribute": "defense",
+                "mode": "flat",
+                "value": 20
+              },
+              {
+                "target": "self",
+                "attribute": "physical_power",
+                "mode": "flat",
+                "value": 20
+              }
+            ]
+          },
+          "condition": {
+            "logic_type": "and",
+            "normal_condition": [
+              {
+                "key": "self_hp_ratio",
+                "comparison_type": "bigger_or_equal",
+                "value": 0.5
+              }
+            ]
+          },
+          "priority": 100
+        }
+      ]
+    }
+  ],
+  "battles": [
+    {
+      "id": "pasture",
+      "name": "牧场",
+      "interval": 3,
+      "week_enemy_combinations": [
+        {
+          "enemies": [
+            "pig",
+            "pig"
+          ],
+          "weight": 40
+        },
+        {
+          "enemies": [
+            "pig",
+            "chicken"
+          ],
+          "weight": 30
+        },
+        {
+          "enemies": [
+            "ox"
+          ],
+          "weight": 30
+        }
+      ],
+      "strong_enemy_combinations": [
+        {
+          "enemies": [
+            "pig",
+            "pig",
+            "pig"
+          ],
+          "weight": 40
+        },
+        {
+          "enemies": [
+            "pig",
+            "chicken",
+            "ox"
+          ],
+          "weight": 30
+        },
+        {
+          "enemies": [
+            "ox",
+            "ox"
+          ],
+          "weight": 30
+        }
+      ],
+      "boss_enemy_combinations": [
+        {
+          "enemies": [
+            "pig",
+            "pig",
+            "pig",
+            "pig",
+            "pig"
+          ],
+          "weight": 100
+        }
+      ],
+      "combination_loop": [
+        "weak",
+        "strong",
+        "weak",
+        "strong",
+        "weak",
+        "boss"
+      ],
+      "map": "village"
+    },
+    {
+      "id": "outskirts_of_village",
+      "name": "村庄郊外",
+      "interval": 4,
+      "week_enemy_combinations": [
+        {
+          "enemies": [
+            "goblin",
+            "goblin"
+          ],
+          "weight": 30
+        },
+        {
+          "enemies": [
+            "kakka",
+            "kakka",
+            "kakka"
+          ],
+          "weight": 30
+        },
+        {
+          "enemies": [
+            "kongkong",
+            "kongkong"
+          ],
+          "weight": 40
+        }
+      ],
+      "strong_enemy_combinations": [
+        {
+          "enemies": [
+            "kongkong",
+            "kakka",
+            "goblin"
+          ],
+          "weight": 30
+        },
+        {
+          "enemies": [
+            "kongkong",
+            "kongkong",
+            "goblin"
+          ],
+          "weight": 30
+        },
+        {
+          "enemies": [
+            "goblin",
+            "goblin",
+            "goblin",
+            "goblin"
+          ],
+          "weight": 30
+        },
+        {
+          "enemies": [
+            "kongkong",
+            "kakka",
+            "kakka",
+            "kakka"
+          ],
+          "weight": 10
+        }
+      ],
+      "boss_enemy_combinations": [
+        {
+          "enemies": [
+            "goblin_leader",
+            "goblin",
+            "goblin",
+            "kakka"
+          ],
+          "weight": 50
+        },
+        {
+          "enemies": [
+            "kongkong",
+            "kongkong",
+            "kakka",
+            "kakka",
+            "goblin"
+          ],
+          "weight": 50
+        },
+        {
+          "enemies": [
+            "kongkong",
+            "kongkong",
+            "kongkong",
+            "goblin_leader"
+          ],
+          "weight": 20
+        }
+      ],
+      "combination_loop": [
+        "weak",
+        "weak",
+        "strong",
+        "weak",
+        "weak",
+        "strong",
+        "weak",
+        "weak",
+        "weak",
+        "boss"
+      ],
+      "map": "village"
+    },
+    {
+      "id": "cave",
+      "name": "山洞",
+      "interval": 10,
+      "week_enemy_combinations": [],
+      "strong_enemy_combinations": [],
+      "boss_enemy_combinations": [
+        {
+          "enemies": [
+            "forgotten_orcs",
+            "old_geometric_stone_statue"
+          ],
+          "weight": 100
+        }
+      ],
+      "combination_loop": [
+        "boss"
+      ],
+      "map": "village"
+    }
+  ]
+}

@@ -19,6 +19,7 @@ business logic yet.
 | Session token       | 256-bit random, SHA-256 in DB                 |
 | Config              | env vars (`.env` supported)                   |
 | Logger              | `log/slog`                                    |
+| Game data           | `actions.json` embedded, loaded at startup    |
 
 The whole thing builds without CGO. A single `go run ./cmd/server` brings up
 the server with the database file auto-created and migrations applied.
@@ -33,6 +34,8 @@ backend/
 │   ├── auth/               # user system: service, HTTP handlers, middleware, WS handlers
 │   ├── config/             # env-driven config struct
 │   ├── db/
+│   ├── gameconfig/         # actions.json loader, models, indexes
+│   │   └── data/           # embedded copy of actions.json
 │   │   ├── migrations/     # goose-style *.sql, embedded
 │   │   ├── queries/        # sqlc query files
 │   │   ├── gen/            # sqlc generated code (DO NOT EDIT)
@@ -137,6 +140,25 @@ A few rules of thumb the framework relies on:
 - **Auth in WebSocket:** the connection's `UserID` is set at upgrade time. Anonymous connections have `UserID == 0` only when `WS_ALLOW_ANONYMOUS=true`.
 - **Lifecycle:** background workers spawn from `main.run` so they share the root context and shut down cleanly.
 - **Transactions:** for multi-statement writes, use `db.InTx(ctx, func(q *dbgen.Queries) error { ... })`.
+
+## Game config (`internal/gameconfig`)
+
+`actions.json` (items, events, requirements, rewards) is parsed at startup via
+`gameconfig.Load()`. The file is embedded into the binary with `//go:embed`
+so the server has no external file dependency for game data.
+
+Accessors:
+- `gameconfig.GetItem(id)` / `GetEvent(id)` — O(1) lookup
+- `gameconfig.AllItems()` / `AllEvents()` — full lists, deterministic order
+- `gameconfig.EventsBySkill(skillID)` / `EventsByMap(mapID)` — pre-built indexes
+- `gameconfig.ItemsByClassification(class)` — by classification
+
+Validation happens once at load time: duplicate ids, dangling item/event
+references in requirements/rewards, missing mandatory fields, etc. Failures
+are fatal so bad data is caught immediately on deploy.
+
+When `actions.json` changes, copy the new file into
+`internal/gameconfig/data/actions.json` and rebuild.
 
 ## SQLite-specific gotchas to keep in mind as you add tables
 

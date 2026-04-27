@@ -16,6 +16,7 @@ import (
 	"github.com/edrowsluo/new-mli/backend/internal/auth"
 	"github.com/edrowsluo/new-mli/backend/internal/config"
 	"github.com/edrowsluo/new-mli/backend/internal/db"
+	"github.com/edrowsluo/new-mli/backend/internal/gameconfig"
 	"github.com/edrowsluo/new-mli/backend/internal/logging"
 	"github.com/edrowsluo/new-mli/backend/internal/server"
 	"github.com/edrowsluo/new-mli/backend/internal/wsx"
@@ -42,6 +43,16 @@ func run() error {
 	logger := logging.New(cfg.Log.Level, cfg.Log.Format, os.Stdout)
 	slog.SetDefault(logger)
 	logger.Info("starting", "env", cfg.Env)
+
+	// --- Game config ---
+	if err := gameconfig.Load(); err != nil {
+		logger.Error("load game config", "err", err)
+		return errExitLogged
+	}
+	logger.Info("game config loaded",
+		"items", gameconfig.ItemCount(),
+		"events", gameconfig.EventCount(),
+	)
 
 	rootCtx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
