@@ -9,8 +9,8 @@ func TestLoadAndAccessors(t *testing.T) {
 		t.Fatalf("Load() = %v", err)
 	}
 
-	if ItemCount() != 37 {
-		t.Errorf("ItemCount() = %d, want 37", ItemCount())
+	if ItemCount() != 40 { // 37 regular items + 3 fluids
+		t.Errorf("ItemCount() = %d, want 40", ItemCount())
 	}
 	if EventCount() != 61 {
 		t.Errorf("EventCount() = %d, want 61", EventCount())

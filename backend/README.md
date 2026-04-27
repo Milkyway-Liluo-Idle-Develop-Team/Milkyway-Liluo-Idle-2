@@ -141,24 +141,76 @@ A few rules of thumb the framework relies on:
 - **Lifecycle:** background workers spawn from `main.run` so they share the root context and shut down cleanly.
 - **Transactions:** for multi-statement writes, use `db.InTx(ctx, func(q *dbgen.Queries) error { ... })`.
 
-## Game config (`internal/gameconfig`)
+## 游戏配置 (`internal/gameconfig`)
 
-`actions.json` (items, events, requirements, rewards) is parsed at startup via
-`gameconfig.Load()`. The file is embedded into the binary with `//go:embed`
-so the server has no external file dependency for game data.
+`actions.json`（物品、事件、需求、奖励等）在启动时通过
+`gameconfig.Load()` 解析。该文件通过 `//go:embed` 嵌入二进制，因此服
+务器对游戏数据没有外部文件依赖。
 
-Accessors:
-- `gameconfig.GetItem(id)` / `GetEvent(id)` — O(1) lookup
-- `gameconfig.AllItems()` / `AllEvents()` — full lists, deterministic order
-- `gameconfig.EventsBySkill(skillID)` / `EventsByMap(mapID)` — pre-built indexes
-- `gameconfig.ItemsByClassification(class)` — by classification
+访问接口：
+- `gameconfig.GetItem(id)` / `GetEvent(id)` — O(1) 查询
+- `gameconfig.AllItems()` / `AllEvents()` — 完整列表，顺序确定
+- `gameconfig.EventsBySkill(skillID)` / `EventsByMap(mapID)` — 预构建索引
+- `gameconfig.ItemsByClassification(class)` — 按分类筛选
 
-Validation happens once at load time: duplicate ids, dangling item/event
-references in requirements/rewards, missing mandatory fields, etc. Failures
-are fatal so bad data is caught immediately on deploy.
+校验在启动时一次性完成：重复 ID、需求/奖励中悬空的物品/事件引用、缺失
+必填字段等。校验失败是致命的，确保部署时立即发现坏数据。
 
-When `actions.json` changes, copy the new file into
-`internal/gameconfig/data/actions.json` and rebuild.
+### 稳定数字 ID 注册表 (`id_registry.json`)
+
+内部代码和数据库使用数字 ID 而非字符串进行存储和计算。字符串 ID → 数
+字 ID 的映射定义在 `internal/gameconfig/data/id_registry.json` 中，该文
+件同样被嵌入并纳入版本控制。
+
+**为什么需要它：** 如果数字 ID 按 `actions.json` 的出现顺序分配，那么调
+整条目顺序或插入新条目都会导致所有 ID 偏移，从而破坏已有存档 / 数据库
+记录。注册表保证：
+- ID **稳定** — 一旦分配，永不改变。
+- ID **单调递增** — 新条目获得 `max(已有) + 1`，已删除 ID 不会被复用，
+  因此旧数据库行不会产生歧义。
+
+#### `actions.json` 变更时的操作流程
+
+1. 将更新后的 `actions.json` 拷贝到
+   `internal/gameconfig/data/actions.json`。
+2. 重新生成注册表，为新增的字符串 ID 分配数字 ID：
+   ```bash
+   go run ./cmd/genregistry
+   ```
+   该命令保留所有已有映射，仅追加新映射。
+3. 重新编译服务器。启动时 `gameconfig.Load()` 会：
+   - 解析 `actions.json`
+   - 加载 `id_registry.json`
+   - 校验 `actions.json` 中的**每一个**字符串 ID 在注册表中都有对应项
+   - 构建查询索引
+   如果有任何 ID 缺失，服务器会直接退出并提示你回到第 2 步。
+
+#### 在代码中使用数字 ID
+
+```go
+// 字符串 → 数字（用于存储 / 数据库）
+id, ok := gameconfig.StringToItemID("oak_logs")
+
+// 数字 → 字符串（用于展示 / 日志）
+s, ok := gameconfig.ItemIDToString(id)
+
+// 直接用数字 ID 查询
+it, ok := gameconfig.GetItemByID(id)
+```
+
+`EventID`、`SkillID`、`MapID`、`BattleSkillID` 都有类似的辅助
+函数。每个类型 ID 都实现了 `.String()` 方法，便于打印调试。
+
+#### 新增实体类型
+
+如果 `actions.json` 后续引入了新的类别（例如 `monsters`），你需要：
+1. 在 `internal/gameconfig/models.go` 的 `IDRegistry` 中新增字段。
+2. 在 `internal/gameconfig/generate.go` 的 `GenerateRegistry` 中处理该类别。
+3. 在 `internal/gameconfig/registry.go` 中补充 `checkDup` 和
+   `checkConsistency` 校验逻辑。
+4. 在 `internal/gameconfig/id.go` 和 `loader.go` 中新增类型 ID
+   （如 `MonsterID`）和对应的访问函数。
+5. 运行 `go run ./cmd/genregistry` 生成初始映射。
 
 ## SQLite-specific gotchas to keep in mind as you add tables
 

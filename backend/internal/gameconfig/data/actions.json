@@ -1301,6 +1301,30 @@
         ]
       },
       "classification": "equipment"
+    },
+    {
+      "id": "heat",
+      "name": "热量",
+      "tool": false,
+      "equipment": false,
+      "upgradable": false,
+      "classification": "fluid"
+    },
+    {
+      "id": "iron_fluid",
+      "name": "铁流体",
+      "tool": false,
+      "equipment": false,
+      "upgradable": false,
+      "classification": "fluid"
+    },
+    {
+      "id": "stone_fluid",
+      "name": "石流体",
+      "tool": false,
+      "equipment": false,
+      "upgradable": false,
+      "classification": "fluid"
     }
   ],
   "events": [

@@ -52,6 +52,9 @@ func run() error {
 	logger.Info("game config loaded",
 		"items", gameconfig.ItemCount(),
 		"events", gameconfig.EventCount(),
+		"skills", gameconfig.SkillCount(),
+		"maps", gameconfig.MapCount(),
+		"battle_skills", gameconfig.BattleSkillCount(),
 	)
 
 	rootCtx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
