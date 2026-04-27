@@ -41,15 +41,17 @@ CREATE TABLE IF NOT EXISTS player_unlocked_events (
     PRIMARY KEY (user_id, event_id)
 );
 
--- Active loop events (the event queue). event_id is a gameconfig.EventID.
--- progress tracks fractional seconds within the current loop cycle.
+-- Active event queues. Serial queue per queue_id; events execute in order
+-- of position. progress tracks accumulated seconds for the current head event.
+-- target_cycles: -1 = infinite loop (default), >0 = execute N times then remove.
 CREATE TABLE IF NOT EXISTS player_active_events (
-    user_id     INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-    event_id    INTEGER NOT NULL,
-    slot        INTEGER NOT NULL DEFAULT 0,
-    started_at  DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    progress    REAL    NOT NULL DEFAULT 0,
-    PRIMARY KEY (user_id, slot)
+    user_id       INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    queue_id      INTEGER NOT NULL DEFAULT 0,
+    event_id      INTEGER NOT NULL,
+    position      INTEGER NOT NULL,
+    target_cycles INTEGER NOT NULL DEFAULT -1,
+    progress      REAL    NOT NULL DEFAULT 0,
+    PRIMARY KEY (user_id, queue_id, position)
 );
 
 CREATE INDEX IF NOT EXISTS active_events_user_idx ON player_active_events (user_id);
