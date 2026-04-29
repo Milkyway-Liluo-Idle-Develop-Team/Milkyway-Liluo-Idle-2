@@ -10,10 +10,12 @@ import (
 
 	"github.com/edrowsluo/new-mli/backend/internal/attribute"
 	dbgen "github.com/edrowsluo/new-mli/backend/internal/db/gen"
+	"github.com/edrowsluo/new-mli/backend/internal/gameconfig"
 	"github.com/edrowsluo/new-mli/backend/internal/inventory"
 	"github.com/edrowsluo/new-mli/backend/internal/item"
 	"github.com/edrowsluo/new-mli/backend/internal/record"
 	"github.com/edrowsluo/new-mli/backend/internal/session"
+	"github.com/edrowsluo/new-mli/backend/internal/skill"
 	"github.com/google/uuid"
 	_ "modernc.org/sqlite"
 )
@@ -556,5 +558,107 @@ func TestInventoryFlushInCycle(t *testing.T) {
 	}
 	if got := invSt2.Get(item.Item{ID: 10, State: 0}); got != 7 {
 		t.Errorf("after flush+reload: want 7, got %v", got)
+	}
+}
+
+// --- three-system integration test ---
+
+func openSkillDB(t *testing.T) (*sql.DB, *dbgen.Queries) {
+	t.Helper()
+	db, err := sql.Open("sqlite", ":memory:?_pragma=foreign_keys(1)")
+	if err != nil {
+		t.Fatalf("open db: %v", err)
+	}
+	t.Cleanup(func() { db.Close() })
+
+	_, err = db.ExecContext(context.Background(), `
+		CREATE TABLE IF NOT EXISTS player_skills (
+			user_id INTEGER NOT NULL, skill_id INTEGER NOT NULL,
+			level REAL NOT NULL DEFAULT 0, xp REAL NOT NULL DEFAULT 0,
+			updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+			PRIMARY KEY (user_id, skill_id)
+		)
+	`)
+	if err != nil {
+		t.Fatalf("schema: %v", err)
+	}
+	return db, dbgen.New(db)
+}
+
+// TestFullCycleAllSystems runs a tick with attribute, inventory, and skill
+// changes, then verifies all three appear in the diff packet.
+func TestFullCycleAllSystems(t *testing.T) {
+	reg := record.NewRegistry()
+	reg.Register(attribute.Provider)
+	reg.Register(inventory.Provider)
+	reg.Register(skill.Provider)
+	mgr := session.NewManager(reg)
+
+	// Load inventory.
+	_, invQ := openInvDB(t)
+	invSt, err := inventory.Load(context.Background(), invQ, 1)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Load skill curve and state.
+	curve, err := skill.LoadCurve()
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, skillQ := openSkillDB(t)
+	skillSt, err := skill.Load(context.Background(), skillQ, 1, curve)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Build session.
+	s := session.New(uuid.New(), 1, testLogger())
+	s.SetInv(invSt)
+	s.SetSkill(skillSt)
+	mgr.Add(s)
+
+	locked, ok := mgr.LockSession(s.ID)
+	if !ok {
+		t.Fatal("lock failed")
+	}
+	defer mgr.UnlockSession(locked)
+
+	r := attribute.Get()
+	physID, _ := r.AttrID("physical_power")
+
+	rec := mgr.NewRecorder()
+	locked.SetRecorder(rec)
+	rec.PushNamespace("tick")
+
+	// Attribute: equip sword.
+	locked.Attr().AddModifiers("equipment:sword", []attribute.Modifier{
+		{AttrID: physID, Op: attribute.OpAdd, Value: 15, Display: attribute.DisplayFixed, Source: "equipment:sword"},
+	})
+	// Inventory: produce logs, consume planks.
+	locked.Inv().Add(item.Item{ID: 1, State: 0}, 5)
+	locked.Inv().Add(item.Item{ID: 2, State: 0}, -2)
+	// Skill: gain XP.
+	locked.Skill().AddXP(gameconfig.SkillID(3), 200) // felling
+
+	rec.PopNamespace()
+	locked.ClearRecorder()
+
+	diff, err := reg.BuildDiff(rec)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	var m map[string]json.RawMessage
+	json.Unmarshal(diff, &m)
+
+	if _, ok := m["attribute_changes"]; !ok {
+		t.Error("missing attribute_changes")
+	}
+	if _, ok := m["inventory_changes"]; !ok {
+		t.Error("missing inventory_changes")
+	}
+	if _, ok := m["skill_xp_changes"]; !ok {
+		t.Error("missing skill_xp_changes")
 	}
 }

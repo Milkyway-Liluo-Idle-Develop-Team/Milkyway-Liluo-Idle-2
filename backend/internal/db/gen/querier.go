@@ -16,11 +16,13 @@ type Querier interface {
 	GetUserByID(ctx context.Context, id int64) (User, error)
 	GetUserByUsername(ctx context.Context, username string) (User, error)
 	LoadInventory(ctx context.Context, userID int64) ([]LoadInventoryRow, error)
+	LoadSkills(ctx context.Context, userID int64) ([]LoadSkillsRow, error)
 	RevokeAllSessionsForUser(ctx context.Context, userID int64) error
 	RevokeSession(ctx context.Context, id string) error
 	TouchSession(ctx context.Context, id string) error
 	UpdateUserPassword(ctx context.Context, arg UpdateUserPasswordParams) error
 	UpsertInventory(ctx context.Context, arg UpsertInventoryParams) error
+	UpsertSkill(ctx context.Context, arg UpsertSkillParams) error
 }
 
 var _ Querier = (*Queries)(nil)

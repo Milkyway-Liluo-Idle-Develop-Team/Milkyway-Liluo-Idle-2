@@ -14,6 +14,7 @@ import (
 	"github.com/edrowsluo/new-mli/backend/internal/attribute"
 	"github.com/edrowsluo/new-mli/backend/internal/inventory"
 	"github.com/edrowsluo/new-mli/backend/internal/record"
+	"github.com/edrowsluo/new-mli/backend/internal/skill"
 	"github.com/google/uuid"
 )
 
@@ -25,8 +26,9 @@ import (
 type PlayerSession struct {
 	ID     uuid.UUID
 	UserID int64
-	attr   *attribute.Instance
-	inv    *inventory.State
+	attr  *attribute.Instance
+	inv   *inventory.State
+	skill *skill.State
 
 	logger *slog.Logger
 
@@ -62,12 +64,21 @@ func (s *PlayerSession) Inv() *inventory.State { return s.inv }
 // SetInv attaches an inventory state (called after DB load).
 func (s *PlayerSession) SetInv(st *inventory.State) { s.inv = st }
 
+// Skill returns the skill state, or nil if not yet loaded.
+func (s *PlayerSession) Skill() *skill.State { return s.skill }
+
+// SetSkill attaches a skill state (called after DB load).
+func (s *PlayerSession) SetSkill(st *skill.State) { s.skill = st }
+
 // SetRecorder attaches a Recorder for the current execution cycle.
 func (s *PlayerSession) SetRecorder(rec *record.Recorder) {
 	s.recorder = rec
 	s.attr.SetRecorder(rec)
 	if s.inv != nil {
 		s.inv.SetRecorder(rec)
+	}
+	if s.skill != nil {
+		s.skill.SetRecorder(rec)
 	}
 }
 
@@ -76,6 +87,9 @@ func (s *PlayerSession) ClearRecorder() *record.Recorder {
 	s.attr.ClearRecorder()
 	if s.inv != nil {
 		s.inv.ClearRecorder()
+	}
+	if s.skill != nil {
+		s.skill.ClearRecorder()
 	}
 	rec := s.recorder
 	s.recorder = nil

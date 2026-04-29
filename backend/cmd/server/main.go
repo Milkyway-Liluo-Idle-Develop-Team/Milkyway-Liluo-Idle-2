@@ -23,6 +23,7 @@ import (
 	"github.com/edrowsluo/new-mli/backend/internal/record"
 	"github.com/edrowsluo/new-mli/backend/internal/server"
 	"github.com/edrowsluo/new-mli/backend/internal/session"
+	"github.com/edrowsluo/new-mli/backend/internal/skill"
 	"github.com/edrowsluo/new-mli/backend/internal/wsx"
 )
 
@@ -74,6 +75,7 @@ func run() error {
 	recordReg := record.NewRegistry()
 	recordReg.Register(attribute.Provider)
 	recordReg.Register(inventory.Provider)
+	recordReg.Register(skill.Provider)
 
 	rootCtx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
