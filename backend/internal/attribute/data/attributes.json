@@ -1,0 +1,16 @@
+{
+  "version": "1",
+  "attributes": [
+    {"id": "physical_power",  "name": "物理攻击力",    "default_value": 10, "min_value": 0,   "direction": "positive", "group": "combat",     "desc": "角色基础物理攻击力"},
+    {"id": "magic_damage",    "name": "魔法伤害",      "default_value": 0,  "min_value": 0,   "direction": "positive", "group": "combat",     "desc": "角色魔法伤害值"},
+    {"id": "accuracy",        "name": "命中率",        "default_value": 0,  "min_value": 0,   "direction": "positive", "group": "combat",     "desc": "影响攻击命中概率"},
+    {"id": "attack_interval", "name": "攻击间隔",      "default_value": 2,  "min_value": 0.1, "direction": "negative", "group": "combat",     "desc": "每次攻击之间的间隔秒数，越小越快"},
+    {"id": "defense",         "name": "防御",           "default_value": 0,  "min_value": 0,   "direction": "positive", "group": "combat",     "desc": "减少受到的物理伤害"},
+    {"id": "hatred_multiplier", "name": "暴击倍率",     "default_value": 0,  "min_value": 0,   "direction": "positive", "group": "combat",     "desc": "暴击时的伤害倍率加成"},
+    {"id": "hp_recovery",     "name": "生命恢复",      "default_value": 0,  "min_value": 0,   "direction": "positive", "group": "combat",     "desc": "每秒恢复的生命值"},
+    {"id": "exp_gain_multiplier", "name": "经验获取倍率", "default_value": 0, "min_value": 0,   "direction": "positive", "group": "production", "desc": "所有经验获取的百分比加成"},
+    {"id": "felling_production_multiplier",  "name": "伐木产出倍率",  "default_value": 0, "min_value": 0, "direction": "positive", "group": "production", "desc": "伐木类事件的产出百分比加成"},
+    {"id": "mining_production_multiplier",   "name": "采矿产出倍率",  "default_value": 0, "min_value": 0, "direction": "positive", "group": "production", "desc": "采矿类事件的产出百分比加成"},
+    {"id": "crafting_production_multiplier", "name": "制作产出倍率",  "default_value": 0, "min_value": 0, "direction": "positive", "group": "production", "desc": "制作类事件的产出百分比加成"}
+  ]
+}

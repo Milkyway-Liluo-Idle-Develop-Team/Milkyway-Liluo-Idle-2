@@ -1,0 +1,16 @@
+{
+  "version": "",
+  "attributes": {
+    "accuracy": 3,
+    "attack_interval": 4,
+    "crafting_production_multiplier": 11,
+    "defense": 5,
+    "exp_gain_multiplier": 8,
+    "felling_production_multiplier": 9,
+    "hatred_multiplier": 6,
+    "hp_recovery": 7,
+    "magic_damage": 2,
+    "mining_production_multiplier": 10,
+    "physical_power": 1
+  }
+}
