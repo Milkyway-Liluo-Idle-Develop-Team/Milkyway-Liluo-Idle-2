@@ -8,10 +8,14 @@
 package session
 
 import (
+	"context"
 	"log/slog"
 	"sync"
 
 	"github.com/edrowsluo/new-mli/backend/internal/attribute"
+	"github.com/edrowsluo/new-mli/backend/internal/bestiary"
+	"github.com/edrowsluo/new-mli/backend/internal/db"
+	"github.com/edrowsluo/new-mli/backend/internal/gameconfig"
 	"github.com/edrowsluo/new-mli/backend/internal/inventory"
 	"github.com/edrowsluo/new-mli/backend/internal/record"
 	"github.com/edrowsluo/new-mli/backend/internal/skill"
@@ -29,6 +33,7 @@ type PlayerSession struct {
 	attr  *attribute.Instance
 	inv   *inventory.State
 	skill *skill.State
+	best  *bestiary.State
 
 	logger *slog.Logger
 
@@ -70,6 +75,12 @@ func (s *PlayerSession) Skill() *skill.State { return s.skill }
 // SetSkill attaches a skill state (called after DB load).
 func (s *PlayerSession) SetSkill(st *skill.State) { s.skill = st }
 
+// Bestiary returns the bestiary state.
+func (s *PlayerSession) Bestiary() *bestiary.State { return s.best }
+
+// SetBestiary attaches a bestiary state.
+func (s *PlayerSession) SetBestiary(st *bestiary.State) { s.best = st }
+
 // SetRecorder attaches a Recorder for the current execution cycle.
 func (s *PlayerSession) SetRecorder(rec *record.Recorder) {
 	s.recorder = rec
@@ -79,6 +90,9 @@ func (s *PlayerSession) SetRecorder(rec *record.Recorder) {
 	}
 	if s.skill != nil {
 		s.skill.SetRecorder(rec)
+	}
+	if s.best != nil {
+		s.best.SetRecorder(rec)
 	}
 }
 
@@ -90,6 +104,9 @@ func (s *PlayerSession) ClearRecorder() *record.Recorder {
 	}
 	if s.skill != nil {
 		s.skill.ClearRecorder()
+	}
+	if s.best != nil {
+		s.best.ClearRecorder()
 	}
 	rec := s.recorder
 	s.recorder = nil
@@ -178,4 +195,45 @@ func (m *Manager) Count() int {
 // Registry returns the record Registry owned by this Manager.
 func (m *Manager) Registry() *record.Registry {
 	return m.reg
+}
+
+// CreateSession builds a fully-loaded PlayerSession from the database.
+// All subsystems (inventory, skill, bestiary) are loaded and attached.
+// The session is not added to the Manager — caller must call Add.
+func (m *Manager) CreateSession(ctx context.Context, connID uuid.UUID, userID int64, database *db.DB, logger *slog.Logger) (*PlayerSession, error) {
+	q := database.Queries
+
+	// Inventory.
+	invSt, err := inventory.Load(ctx, q, userID)
+	if err != nil {
+		return nil, err
+	}
+
+	// Skills.
+	curve, err := skill.LoadCurve()
+	if err != nil {
+		return nil, err
+	}
+	skillSt, err := skill.Load(ctx, q, userID, curve)
+	if err != nil {
+		return nil, err
+	}
+
+	// Bestiary from unlocked events.
+	best := bestiary.New(userID)
+	eventRows, err := q.LoadUnlockedEvents(ctx, userID)
+	if err != nil {
+		return nil, err
+	}
+	ids := make([]gameconfig.EventID, len(eventRows))
+	for i, r := range eventRows {
+		ids[i] = gameconfig.EventID(r.EventID)
+	}
+	best.LoadEvents(ids)
+
+	sess := New(connID, userID, logger)
+	sess.SetInv(invSt)
+	sess.SetSkill(skillSt)
+	sess.SetBestiary(best)
+	return sess, nil
 }

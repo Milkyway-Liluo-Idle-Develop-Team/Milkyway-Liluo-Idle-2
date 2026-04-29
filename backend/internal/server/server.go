@@ -60,7 +60,7 @@ func New(d Deps) *Server {
 
 	// WebSocket endpoint. Auth is enforced inside the handler so we can
 	// emit a clean JSON error instead of upgrading then closing.
-	r.Handle("/ws", wsHandler(d.Hub, d.AuthMW, d.Config.HTTP, d.Config.WS, d.SessMgr))
+	r.Handle("/ws", wsHandler(d.Hub, d.AuthMW, d.Config.HTTP, d.Config.WS, d.SessMgr, d.DB))
 
 	httpSrv := &http.Server{
 		Addr:         d.Config.HTTP.Addr,

@@ -15,6 +15,7 @@ import (
 
 	"github.com/edrowsluo/new-mli/backend/internal/attribute"
 	"github.com/edrowsluo/new-mli/backend/internal/auth"
+	"github.com/edrowsluo/new-mli/backend/internal/bestiary"
 	"github.com/edrowsluo/new-mli/backend/internal/config"
 	"github.com/edrowsluo/new-mli/backend/internal/db"
 	"github.com/edrowsluo/new-mli/backend/internal/gameconfig"
@@ -76,6 +77,7 @@ func run() error {
 	recordReg.Register(attribute.Provider)
 	recordReg.Register(inventory.Provider)
 	recordReg.Register(skill.Provider)
+	recordReg.Register(bestiary.Provider)
 
 	rootCtx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()

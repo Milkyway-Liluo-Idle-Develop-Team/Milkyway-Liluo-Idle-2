@@ -38,6 +38,18 @@ type Item struct {
 	State State
 }
 
+// String returns a compact representation like "19/0" or "19/10".
+func (it Item) String() string {
+	return it.ID.String() + "/" + stateStr(it.State)
+}
+
+func stateStr(s State) string {
+	if s == 0 {
+		return "0"
+	}
+	return fmt.Sprintf("%d", s)
+}
+
 // --- item definition ---
 
 // ItemDef is a read-only item definition loaded from actions.json.
