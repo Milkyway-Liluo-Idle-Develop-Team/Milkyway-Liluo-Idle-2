@@ -12,6 +12,7 @@ import (
 	"log/slog"
 	"sync"
 
+	"github.com/edrowsluo/new-mli/backend/internal/apperror"
 	"github.com/edrowsluo/new-mli/backend/internal/attribute"
 	"github.com/edrowsluo/new-mli/backend/internal/bestiary"
 	"github.com/edrowsluo/new-mli/backend/internal/db"
@@ -19,6 +20,7 @@ import (
 	"github.com/edrowsluo/new-mli/backend/internal/inventory"
 	"github.com/edrowsluo/new-mli/backend/internal/record"
 	"github.com/edrowsluo/new-mli/backend/internal/skill"
+	"github.com/edrowsluo/new-mli/backend/internal/wsx"
 	"github.com/google/uuid"
 )
 
@@ -195,6 +197,23 @@ func (m *Manager) Count() int {
 // Registry returns the record Registry owned by this Manager.
 func (m *Manager) Registry() *record.Registry {
 	return m.reg
+}
+
+// SessionHandler is a WS message handler that receives a pre-locked session.
+type SessionHandler func(ctx context.Context, c *wsx.Conn, sess *PlayerSession, in wsx.Inbound) error
+
+// HandleSession registers a WS message type that requires a locked session.
+// The session is locked before fn is called and unlocked afterwards.
+func (m *Manager) HandleSession(hub *wsx.Hub, typ string, fn SessionHandler) {
+	hub.Handle(typ, func(ctx context.Context, c *wsx.Conn, in wsx.Inbound) error {
+		s, ok := m.LockSession(c.ID)
+		if !ok {
+			c.ReplyError(in, apperror.NotFound("session not found"))
+			return nil
+		}
+		defer m.UnlockSession(s)
+		return fn(ctx, c, s, in)
+	})
 }
 
 // CreateSession builds a fully-loaded PlayerSession from the database.
