@@ -2,6 +2,10 @@
 // connection. Each session holds the per-player game state (attribute
 // instance, inventory, etc.) and provides the recorder lifecycle for
 // execution cycles.
+//
+// Concurrency: game-state access is gated by Manager.LockSession /
+// Manager.UnlockSession. The session's mutex is not exposed — the Manager
+// is the sole choke point for locking.
 package session
 
 import (
@@ -15,10 +19,13 @@ import (
 
 // PlayerSession is the in-memory game state for one connected player.
 // Created on WebSocket connect, destroyed on disconnect.
+//
+// All game-state methods (Attr, SetRecorder, etc.) require the caller to
+// hold the session lock, obtained via Manager.LockSession.
 type PlayerSession struct {
-	ID     uuid.UUID // equals wsx.Conn.ID
+	ID     uuid.UUID
 	UserID int64
-	Attr   *attribute.Instance
+	attr   *attribute.Instance
 
 	logger *slog.Logger
 
@@ -26,61 +33,74 @@ type PlayerSession struct {
 	recorder *record.Recorder
 }
 
-// New creates a PlayerSession. The attribute instance is constructed bare
-// (with static modifiers from the registry); player-specific modifiers
-// (equipment, skills, buffs) are loaded and applied by the caller after
-// creation once the corresponding systems are available.
+// New creates a PlayerSession. The attribute instance is constructed bare;
+// player-specific modifiers are applied later when the relevant systems exist.
 func New(connID uuid.UUID, userID int64, logger *slog.Logger) *PlayerSession {
 	return &PlayerSession{
 		ID:     connID,
 		UserID: userID,
-		Attr:   attribute.NewInstance(),
+		attr:   attribute.NewInstance(),
 		logger: logger,
 	}
 }
 
+// ---- lock (unexported — only Manager touches these) ----
+
+func (s *PlayerSession) lock()   { s.mu.Lock() }
+func (s *PlayerSession) unlock() { s.mu.Unlock() }
+
+// ---- game state (caller must hold lock) ----
+
+// Attr returns the attribute instance.
+func (s *PlayerSession) Attr() *attribute.Instance { return s.attr }
+
 // SetRecorder attaches a Recorder for the current execution cycle.
-// Subsequent markDirty / inventory change / skill XP writes will flow
-// into this recorder.
 func (s *PlayerSession) SetRecorder(rec *record.Recorder) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
 	s.recorder = rec
-	s.Attr.SetRecorder(rec)
+	s.attr.SetRecorder(rec)
 }
 
 // ClearRecorder detaches and returns the current Recorder, if any.
 func (s *PlayerSession) ClearRecorder() *record.Recorder {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	s.Attr.ClearRecorder()
+	s.attr.ClearRecorder()
 	rec := s.recorder
 	s.recorder = nil
 	return rec
 }
 
-// Recorder returns the current recorder without detaching it.
-func (s *PlayerSession) Recorder() *record.Recorder {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	return s.recorder
-}
-
 // Manager is the thread-safe registry of all active PlayerSessions,
-// keyed by WebSocket connection ID.
+// keyed by WebSocket connection ID. It owns all session locking.
 type Manager struct {
 	mu       sync.RWMutex
 	sessions map[uuid.UUID]*PlayerSession
 	reg      *record.Registry
 }
 
-// NewManager creates a Manager backed by the given record Registry,
-// which is used when creating Recorders for execution cycles.
+// NewManager creates a Manager backed by the given record Registry.
 func NewManager(reg *record.Registry) *Manager {
 	return &Manager{
 		sessions: make(map[uuid.UUID]*PlayerSession),
 		reg:      reg,
 	}
+}
+
+// LockSession returns the session for connID, already locked for exclusive
+// access. Call UnlockSession after the operation. Returns nil, false if
+// not found.
+func (m *Manager) LockSession(id uuid.UUID) (*PlayerSession, bool) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	s, ok := m.sessions[id]
+	if !ok {
+		return nil, false
+	}
+	s.lock()
+	return s, true
+}
+
+// UnlockSession releases the lock acquired by LockSession.
+func (m *Manager) UnlockSession(s *PlayerSession) {
+	s.unlock()
 }
 
 // Add registers a new PlayerSession. Called on WebSocket connect.
@@ -97,7 +117,9 @@ func (m *Manager) Remove(id uuid.UUID) {
 	delete(m.sessions, id)
 }
 
-// Get returns the PlayerSession for the given connection ID.
+// Get returns the session without locking. The caller must use
+// LockSession / UnlockSession to obtain exclusive access before
+// touching game state.
 func (m *Manager) Get(id uuid.UUID) (*PlayerSession, bool) {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
@@ -105,8 +127,7 @@ func (m *Manager) Get(id uuid.UUID) (*PlayerSession, bool) {
 	return s, ok
 }
 
-// GetByUser returns all sessions belonging to a user. A user may have
-// multiple connections (e.g. browser + mobile).
+// GetByUser returns all sessions belonging to a user.
 func (m *Manager) GetByUser(userID int64) []*PlayerSession {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
@@ -120,7 +141,6 @@ func (m *Manager) GetByUser(userID int64) []*PlayerSession {
 }
 
 // NewRecorder creates a Recorder backed by this manager's Registry.
-// Convenience for execution cycles that need a fresh recorder.
 func (m *Manager) NewRecorder() *record.Recorder {
 	return record.NewRecorder(m.reg)
 }

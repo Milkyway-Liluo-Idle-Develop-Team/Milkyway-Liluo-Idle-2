@@ -1,7 +1,6 @@
 package server
 
 import (
-	"log/slog"
 	"net/http"
 
 	"github.com/edrowsluo/new-mli/backend/internal/auth"
@@ -39,7 +38,7 @@ func wsHandler(hub *wsx.Hub, mw *auth.Middleware, httpCfg config.HTTP, wsCfg con
 			UserID:         userID,
 			OriginPatterns: originPatterns,
 			OnConnect: func(c *wsx.Conn) {
-				sess := session.New(c.ID, userID, slog.Default())
+				sess := session.New(c.ID, userID, logger)
 				sessMgr.Add(sess)
 				logger.Info("player session created",
 					"conn", c.ID,
@@ -48,6 +47,10 @@ func wsHandler(hub *wsx.Hub, mw *auth.Middleware, httpCfg config.HTTP, wsCfg con
 				)
 			},
 			OnDisconnect: func(c *wsx.Conn) {
+				if s, ok := sessMgr.LockSession(c.ID); ok {
+					s.ClearRecorder()
+					sessMgr.UnlockSession(s)
+				}
 				sessMgr.Remove(c.ID)
 				logger.Info("player session removed",
 					"conn", c.ID,
