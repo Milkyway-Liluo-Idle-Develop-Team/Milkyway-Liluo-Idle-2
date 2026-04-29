@@ -9,6 +9,37 @@ import (
 	"time"
 )
 
+type PlayerActiveEvent struct {
+	UserID       int64   `json:"user_id"`
+	QueueID      int64   `json:"queue_id"`
+	EventID      int64   `json:"event_id"`
+	Position     int64   `json:"position"`
+	TargetCycles int64   `json:"target_cycles"`
+	Progress     float64 `json:"progress"`
+}
+
+type PlayerInventory struct {
+	UserID    int64     `json:"user_id"`
+	ItemID    int64     `json:"item_id"`
+	ItemState int64     `json:"item_state"`
+	Quantity  float64   `json:"quantity"`
+	UpdatedAt time.Time `json:"updated_at"`
+}
+
+type PlayerSkill struct {
+	UserID    int64     `json:"user_id"`
+	SkillID   int64     `json:"skill_id"`
+	Level     float64   `json:"level"`
+	Xp        float64   `json:"xp"`
+	UpdatedAt time.Time `json:"updated_at"`
+}
+
+type PlayerUnlockedEvent struct {
+	UserID     int64     `json:"user_id"`
+	EventID    int64     `json:"event_id"`
+	UnlockedAt time.Time `json:"unlocked_at"`
+}
+
 type Session struct {
 	ID         string       `json:"id"`
 	UserID     int64        `json:"user_id"`

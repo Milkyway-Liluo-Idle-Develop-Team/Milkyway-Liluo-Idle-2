@@ -1,15 +1,21 @@
 package session_test
 
 import (
+	"context"
+	"database/sql"
 	"encoding/json"
 	"log/slog"
 	"sync"
 	"testing"
 
 	"github.com/edrowsluo/new-mli/backend/internal/attribute"
+	dbgen "github.com/edrowsluo/new-mli/backend/internal/db/gen"
+	"github.com/edrowsluo/new-mli/backend/internal/inventory"
+	"github.com/edrowsluo/new-mli/backend/internal/item"
 	"github.com/edrowsluo/new-mli/backend/internal/record"
 	"github.com/edrowsluo/new-mli/backend/internal/session"
 	"github.com/google/uuid"
+	_ "modernc.org/sqlite"
 )
 
 func testLogger() *slog.Logger { return slog.Default() }
@@ -427,5 +433,128 @@ func TestLockSessionNotFound(t *testing.T) {
 	_, ok := mgr.LockSession(uuid.New())
 	if ok {
 		t.Fatal("LockSession should return false for unknown id")
+	}
+}
+
+// --- Integration tests with inventory ---
+
+func openInvDB(t *testing.T) (*sql.DB, *dbgen.Queries) {
+	t.Helper()
+	db, err := sql.Open("sqlite", ":memory:?_pragma=foreign_keys(1)")
+	if err != nil {
+		t.Fatalf("open db: %v", err)
+	}
+	t.Cleanup(func() { db.Close() })
+
+	_, err = db.ExecContext(context.Background(), `
+		CREATE TABLE IF NOT EXISTS player_inventory (
+			user_id INTEGER NOT NULL, item_id INTEGER NOT NULL,
+			item_state INTEGER NOT NULL DEFAULT 0,
+			quantity REAL NOT NULL DEFAULT 0,
+			updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+			PRIMARY KEY (user_id, item_id, item_state)
+		)
+	`)
+	if err != nil {
+		t.Fatalf("schema: %v", err)
+	}
+	return db, dbgen.New(db)
+}
+
+// TestSessionWithInventory runs a full tick with attribute and inventory
+// changes, then verifies both systems appear in the diff packet.
+func TestSessionWithInventory(t *testing.T) {
+	reg := record.NewRegistry()
+	reg.Register(attribute.Provider)
+	reg.Register(inventory.Provider)
+	mgr := session.NewManager(reg)
+
+	_, q := openInvDB(t)
+	invSt, err := inventory.Load(context.Background(), q, 1)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	s := session.New(uuid.New(), 1, testLogger())
+	s.SetInv(invSt)
+	mgr.Add(s)
+
+	r := attribute.Get()
+	physID, _ := r.AttrID("physical_power")
+
+	// Lock and operate.
+	locked, ok := mgr.LockSession(s.ID)
+	if !ok {
+		t.Fatal("lock failed")
+	}
+	defer mgr.UnlockSession(locked)
+
+	rec := mgr.NewRecorder()
+	locked.SetRecorder(rec)
+	rec.PushNamespace("tick")
+
+	// Equip sword → attribute change.
+	locked.Attr().AddModifiers("equipment:sword", []attribute.Modifier{
+		{AttrID: physID, Op: attribute.OpAdd, Value: 15, Display: attribute.DisplayFixed, Source: "equipment:sword"},
+	})
+	// Produce some items.
+	locked.Inv().Add(item.Item{ID: 1, State: 0}, 5)
+	locked.Inv().Add(item.Item{ID: 2, State: 0}, 3.5)
+
+	rec.PopNamespace()
+	locked.ClearRecorder()
+
+	diff, err := reg.BuildDiff(rec)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	var m map[string]json.RawMessage
+	json.Unmarshal(diff, &m)
+
+	if _, ok := m["attribute_changes"]; !ok {
+		t.Error("missing attribute_changes")
+	}
+	if _, ok := m["inventory_changes"]; !ok {
+		t.Error("missing inventory_changes")
+	}
+}
+
+// TestInventoryFlushInCycle tests that dirty inventory can be flushed.
+func TestInventoryFlushInCycle(t *testing.T) {
+	reg := record.NewRegistry()
+	reg.Register(inventory.Provider)
+	mgr := session.NewManager(reg)
+
+	_, q := openInvDB(t)
+	invSt, err := inventory.Load(context.Background(), q, 1)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	s := session.New(uuid.New(), 1, testLogger())
+	s.SetInv(invSt)
+	mgr.Add(s)
+
+	locked, ok := mgr.LockSession(s.ID)
+	if !ok {
+		t.Fatal("lock failed")
+	}
+	defer mgr.UnlockSession(locked)
+
+	locked.Inv().Add(item.Item{ID: 10, State: 0}, 7)
+
+	// Flush dirty items.
+	if err := locked.Inv().Flush(context.Background(), q); err != nil {
+		t.Fatal(err)
+	}
+
+	// Reload and verify.
+	invSt2, err := inventory.Load(context.Background(), q, 1)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := invSt2.Get(item.Item{ID: 10, State: 0}); got != 7 {
+		t.Errorf("after flush+reload: want 7, got %v", got)
 	}
 }

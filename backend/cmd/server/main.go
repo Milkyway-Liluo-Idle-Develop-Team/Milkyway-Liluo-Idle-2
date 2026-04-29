@@ -18,6 +18,7 @@ import (
 	"github.com/edrowsluo/new-mli/backend/internal/config"
 	"github.com/edrowsluo/new-mli/backend/internal/db"
 	"github.com/edrowsluo/new-mli/backend/internal/gameconfig"
+	"github.com/edrowsluo/new-mli/backend/internal/inventory"
 	"github.com/edrowsluo/new-mli/backend/internal/logging"
 	"github.com/edrowsluo/new-mli/backend/internal/record"
 	"github.com/edrowsluo/new-mli/backend/internal/server"
@@ -72,6 +73,7 @@ func run() error {
 	// --- Data record registry ---
 	recordReg := record.NewRegistry()
 	recordReg.Register(attribute.Provider)
+	recordReg.Register(inventory.Provider)
 
 	rootCtx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
