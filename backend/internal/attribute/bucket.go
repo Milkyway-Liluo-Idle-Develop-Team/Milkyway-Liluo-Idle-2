@@ -13,7 +13,6 @@ type Bucket struct {
 	dirty    map[AttributeID]bool
 }
 
-// Ensure Bucket implements record.RecordBucket.
 var _ record.RecordBucket = (*Bucket)(nil)
 
 // NewBucket creates an empty Bucket. The Instance reference is set lazily
@@ -25,8 +24,7 @@ func NewBucket(inst *Instance) *Bucket {
 	}
 }
 
-// setInstance binds the bucket to an Instance. Called lazily from markDirty
-// when a bucket is created via the Recorder (which doesn't know about the Instance).
+// setInstance binds the bucket to an Instance.
 func (b *Bucket) setInstance(inst *Instance) {
 	b.instance = inst
 }
@@ -58,6 +56,7 @@ func (b *Bucket) SerializeDiff() (json.RawMessage, error) {
 		Source  string  `json:"source"`
 		Op      string  `json:"op"`
 		Value   float64 `json:"value,omitempty"`
+		RefAttr string  `json:"ref_attr,omitempty"`
 		Display string  `json:"display,omitempty"`
 	}
 
@@ -81,7 +80,7 @@ func (b *Bucket) SerializeDiff() (json.RawMessage, error) {
 			}
 			if m.IsRef() {
 				if s, ok := b.instance.reg.AttrString(m.RefAttr); ok {
-					_ = s
+					wm.RefAttr = s
 				}
 			} else {
 				wm.Value = m.Value

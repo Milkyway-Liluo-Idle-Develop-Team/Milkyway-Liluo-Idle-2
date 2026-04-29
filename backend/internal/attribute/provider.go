@@ -2,7 +2,6 @@ package attribute
 
 import (
 	"encoding/json"
-	"sort"
 
 	"github.com/edrowsluo/new-mli/backend/internal/record"
 )
@@ -27,6 +26,7 @@ func (p *provider) SerializeFull(state any) (json.RawMessage, error) {
 		Source  string  `json:"source"`
 		Op      string  `json:"op"`
 		Value   float64 `json:"value,omitempty"`
+		RefAttr string  `json:"ref_attr,omitempty"`
 		Display string  `json:"display,omitempty"`
 	}
 
@@ -54,7 +54,11 @@ func (p *provider) SerializeFull(state any) (json.RawMessage, error) {
 				Op:      string(m.Op),
 				Display: string(m.Display),
 			}
-			if !m.IsRef() {
+			if m.IsRef() {
+				if s, ok := inst.reg.AttrString(m.RefAttr); ok {
+					mf.RefAttr = s
+				}
+			} else {
 				mf.Value = m.Value
 			}
 			wmods = append(wmods, mf)
@@ -71,8 +75,6 @@ func (p *provider) SerializeFull(state any) (json.RawMessage, error) {
 		})
 	}
 
-	// Deterministic output by attribute ID.
-	sort.Slice(out, func(i, j int) bool { return out[i].AttrID < out[j].AttrID })
-
+	// AllIDs is already sorted by numeric ID — no need to re-sort by string.
 	return json.Marshal(out)
 }

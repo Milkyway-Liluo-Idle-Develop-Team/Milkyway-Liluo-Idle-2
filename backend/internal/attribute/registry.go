@@ -39,14 +39,16 @@ type Registry struct {
 	byID     map[AttributeID]AttrDef
 	byString map[string]AttrDef
 
-	// string → numeric mapping.
-	attrIDs map[string]AttributeID
+	// Bidirectional string ↔ numeric mapping.
+	attrIDs    map[string]AttributeID
+	idToString map[AttributeID]string
 
 	// Static modifiers applied to every player on creation.
 	staticMods []Modifier
 
 	// Dependency graph: forward[attrID] = list of attrIDs that attrID depends on.
 	// reverse[attrID] = list of attrIDs that depend on attrID.
+	// Slices are immutable after construction via newRegistry.
 	forward map[AttributeID][]AttributeID
 	reverse map[AttributeID][]AttributeID
 }
@@ -54,11 +56,17 @@ type Registry struct {
 // newRegistry builds a Registry from parsed config and numeric ID mapping.
 func newRegistry(cfg attrsConfig, attrIDs map[string]AttributeID) (*Registry, error) {
 	r := &Registry{
-		byID:     make(map[AttributeID]AttrDef, len(cfg.Attributes)),
-		byString: make(map[string]AttrDef, len(cfg.Attributes)),
-		attrIDs:  attrIDs,
-		forward:  make(map[AttributeID][]AttributeID),
-		reverse:  make(map[AttributeID][]AttributeID),
+		byID:       make(map[AttributeID]AttrDef, len(cfg.Attributes)),
+		byString:   make(map[string]AttrDef, len(cfg.Attributes)),
+		attrIDs:    attrIDs,
+		idToString: make(map[AttributeID]string, len(attrIDs)),
+		forward:    make(map[AttributeID][]AttributeID),
+		reverse:    make(map[AttributeID][]AttributeID),
+	}
+
+	// Build reverse index string → numeric.
+	for s, id := range attrIDs {
+		r.idToString[id] = s
 	}
 
 	for _, def := range cfg.Attributes {
@@ -175,14 +183,10 @@ func (r *Registry) AttrID(s string) (AttributeID, bool) {
 	return id, ok
 }
 
-// AttrString returns the string id for the given numeric id.
+// AttrString returns the string id for the given numeric id. O(1).
 func (r *Registry) AttrString(id AttributeID) (string, bool) {
-	for s, v := range r.attrIDs {
-		if v == id {
-			return s, true
-		}
-	}
-	return "", false
+	s, ok := r.idToString[id]
+	return s, ok
 }
 
 // AllIDs returns all attribute numeric ids in ascending order.
@@ -204,13 +208,14 @@ func (r *Registry) StaticMods() []Modifier {
 }
 
 // ReverseDeps returns the IDs of attributes that depend on the given attrID.
+// The returned slice is read-only (Registry is immutable after load).
 func (r *Registry) ReverseDeps(attrID AttributeID) []AttributeID {
-	return append([]AttributeID(nil), r.reverse[attrID]...)
+	return r.reverse[attrID]
 }
 
 // ForwardDeps returns the IDs of attributes that attrID depends on.
 func (r *Registry) ForwardDeps(attrID AttributeID) []AttributeID {
-	return append([]AttributeID(nil), r.forward[attrID]...)
+	return r.forward[attrID]
 }
 
 // --- Error types ---
