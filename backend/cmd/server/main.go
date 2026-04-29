@@ -13,12 +13,15 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/edrowsluo/new-mli/backend/internal/attribute"
 	"github.com/edrowsluo/new-mli/backend/internal/auth"
 	"github.com/edrowsluo/new-mli/backend/internal/config"
 	"github.com/edrowsluo/new-mli/backend/internal/db"
 	"github.com/edrowsluo/new-mli/backend/internal/gameconfig"
 	"github.com/edrowsluo/new-mli/backend/internal/logging"
+	"github.com/edrowsluo/new-mli/backend/internal/record"
 	"github.com/edrowsluo/new-mli/backend/internal/server"
+	"github.com/edrowsluo/new-mli/backend/internal/session"
 	"github.com/edrowsluo/new-mli/backend/internal/wsx"
 )
 
@@ -57,6 +60,19 @@ func run() error {
 		"battle_skills", gameconfig.BattleSkillCount(),
 	)
 
+	// --- Attribute system ---
+	if err := attribute.Load(); err != nil {
+		logger.Error("load attribute system", "err", err)
+		return errExitLogged
+	}
+	logger.Info("attribute system loaded",
+		"attrs", attribute.Get().Count(),
+	)
+
+	// --- Data record registry ---
+	recordReg := record.NewRegistry()
+	recordReg.Register(attribute.Provider)
+
 	rootCtx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 
@@ -80,6 +96,9 @@ func run() error {
 	authH := auth.NewHandler(authSvc, cfg.Auth)
 	auth.RegisterWS(hub, authSvc)
 
+	// --- Session manager ---
+	sessMgr := session.NewManager(recordReg)
+
 	// --- Background workers ---
 	go runSessionCleanup(rootCtx, logger, authSvc)
 
@@ -92,6 +111,7 @@ func run() error {
 		AuthSvc: authSvc,
 		AuthMW:  authMW,
 		AuthH:   authH,
+		SessMgr: sessMgr,
 	})
 
 	serverErrCh := make(chan error, 1)

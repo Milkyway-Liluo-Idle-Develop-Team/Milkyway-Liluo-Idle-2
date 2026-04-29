@@ -13,6 +13,7 @@ import (
 	"github.com/edrowsluo/new-mli/backend/internal/config"
 	"github.com/edrowsluo/new-mli/backend/internal/db"
 	"github.com/edrowsluo/new-mli/backend/internal/httpx"
+	"github.com/edrowsluo/new-mli/backend/internal/session"
 	"github.com/edrowsluo/new-mli/backend/internal/wsx"
 	"github.com/go-chi/chi/v5"
 )
@@ -24,9 +25,10 @@ type Deps struct {
 	Logger *slog.Logger
 	Hub    *wsx.Hub
 
-	AuthSvc *auth.Service
-	AuthMW  *auth.Middleware
-	AuthH   *auth.Handler
+	AuthSvc   *auth.Service
+	AuthMW    *auth.Middleware
+	AuthH     *auth.Handler
+	SessMgr   *session.Manager
 }
 
 // Server is the HTTP server with its background goroutines.
@@ -58,7 +60,7 @@ func New(d Deps) *Server {
 
 	// WebSocket endpoint. Auth is enforced inside the handler so we can
 	// emit a clean JSON error instead of upgrading then closing.
-	r.Handle("/ws", wsHandler(d.Hub, d.AuthMW, d.Config.HTTP, d.Config.WS))
+	r.Handle("/ws", wsHandler(d.Hub, d.AuthMW, d.Config.HTTP, d.Config.WS, d.SessMgr))
 
 	httpSrv := &http.Server{
 		Addr:         d.Config.HTTP.Addr,
