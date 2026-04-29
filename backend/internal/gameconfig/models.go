@@ -1,7 +1,13 @@
 // Package gameconfig holds the static game data parsed from actions.json.
 // Everything here is read-only after Load(); models use value types so
 // callers can safely copy them without aliasing mutable state.
+//
+// Item identity and runtime definition live in the item package
+// (item.ID, item.Item, item.ItemDef). This file only defines the JSON
+// parsing shape — itemJSON — plus the Event/Reward/Requirement types.
 package gameconfig
+
+import "github.com/edrowsluo/new-mli/backend/internal/item"
 
 // --- enum-like types ---
 
@@ -25,13 +31,51 @@ const (
 // --- raw config ---
 
 type ActionConfig struct {
-	Items  []Item  `json:"items"`
-	Events []Event `json:"events"`
+	Items  []itemJSON `json:"items"`
+	Events []Event    `json:"events"`
 }
 
-// --- Item tree ---
+// --- Item JSON shape ---
 
-type Item struct {
+// toDef converts the parsed JSON into the runtime item.ItemDef.
+// Attribute values in _basic_data / _upgrade_data are expected to be
+// numeric (JSON numbers). Non-numeric values are silently skipped.
+func (ij itemJSON) toDef(id item.ID) item.ItemDef {
+	asFloat := func(m map[string]any) map[string]float64 {
+		if len(m) == 0 {
+			return nil
+		}
+		out := make(map[string]float64, len(m))
+		for k, v := range m {
+			switch n := v.(type) {
+			case float64:
+				out[k] = n
+			case int:
+				out[k] = float64(n)
+			}
+		}
+		return out
+	}
+
+	var eb, eu, tb, tu map[string]float64
+	if ij.EquipmentDetails != nil {
+		eb = asFloat(ij.EquipmentDetails.EquipmentBasicData)
+		eu = asFloat(ij.EquipmentDetails.EquipmentUpgradeData)
+	}
+	if ij.ToolDetails != nil {
+		tb = asFloat(ij.ToolDetails.ToolBasicData)
+		tu = asFloat(ij.ToolDetails.ToolUpgradeData)
+	}
+
+	return item.NewDef(
+		id, ij.ID, ij.Name,
+		ij.Tool, ij.Equipment, ij.Upgradable,
+		ij.Classification,
+		eb, eu, tb, tu,
+	)
+}
+
+type itemJSON struct {
 	ID               string            `json:"id"`
 	Name             string            `json:"name"`
 	Tool             bool              `json:"tool"`

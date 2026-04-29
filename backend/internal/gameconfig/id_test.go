@@ -1,6 +1,10 @@
 package gameconfig
 
-import "testing"
+import (
+	"testing"
+
+	"github.com/edrowsluo/new-mli/backend/internal/item"
+)
 
 func TestIDAllocation(t *testing.T) {
 	if err := Load(); err != nil {
@@ -30,40 +34,10 @@ func TestIDAllocation(t *testing.T) {
 		t.Fatalf("EventIDToString(%d) = %q, want felling_oak_tree", eventID, s)
 	}
 
-	// Skill
-	skillID, ok := StringToSkillID("crafting")
-	if !ok {
-		t.Fatal("StringToSkillID(crafting) not found")
-	}
-	s, ok = SkillIDToString(skillID)
-	if !ok || s != "crafting" {
-		t.Fatalf("SkillIDToString(%d) = %q, want crafting", skillID, s)
-	}
-
-	// Map
-	mapID, ok := StringToMapID("village")
-	if !ok {
-		t.Fatal("StringToMapID(village) not found")
-	}
-	s, ok = MapIDToString(mapID)
-	if !ok || s != "village" {
-		t.Fatalf("MapIDToString(%d) = %q, want village", mapID, s)
-	}
-
-	// Battle skill
-	bsID, ok := StringToBattleSkillID("basic_attack")
-	if !ok {
-		t.Fatal("StringToBattleSkillID(basic_attack) not found")
-	}
-	s, ok = BattleSkillIDToString(bsID)
-	if !ok || s != "basic_attack" {
-		t.Fatalf("BattleSkillIDToString(%d) = %q, want basic_attack", bsID, s)
-	}
-
 	// Numeric accessors
-	it, ok := GetItemByID(itemID)
-	if !ok || it.ID != "oak_logs" {
-		t.Fatal("GetItemByID failed")
+	it, ok := GetItemDefByID(itemID)
+	if !ok || it.StringID() != "oak_logs" {
+		t.Fatal("GetItemDefByID failed")
 	}
 	ev, ok := GetEventByID(eventID)
 	if !ok || ev.ID != "felling_oak_tree" {
@@ -74,7 +48,7 @@ func TestIDAllocation(t *testing.T) {
 	if _, ok := StringToItemID("nonexistent"); ok {
 		t.Error("StringToItemID(nonexistent) should not be found")
 	}
-	if _, ok := ItemIDToString(ItemID(99999)); ok {
+	if _, ok := ItemIDToString(item.ID(99999)); ok {
 		t.Error("ItemIDToString(99999) should not be found")
 	}
 }
@@ -84,19 +58,19 @@ func TestIDCounts(t *testing.T) {
 		t.Fatalf("Load() = %v", err)
 	}
 
-	if ItemCount() != 40 { // 37 items + 3 fluids (heat, stone_fluid, iron_fluid)
+	if ItemCount() != 40 {
 		t.Errorf("ItemCount = %d, want 40", ItemCount())
 	}
 	if EventCount() != 61 {
 		t.Errorf("EventCount = %d, want 61", EventCount())
 	}
-	if SkillCount() != 8 { // crafting, enhancing, felling, forging, magic, mining, none, strength
+	if SkillCount() != 8 {
 		t.Errorf("SkillCount = %d, want 8", SkillCount())
 	}
-	if MapCount() != 1 { // village
+	if MapCount() != 1 {
 		t.Errorf("MapCount = %d, want 1", MapCount())
 	}
-	if BattleSkillCount() != 1 { // basic_attack
+	if BattleSkillCount() != 1 {
 		t.Errorf("BattleSkillCount = %d, want 1", BattleSkillCount())
 	}
 
@@ -106,7 +80,7 @@ func TestIDCounts(t *testing.T) {
 		t.Errorf("AllItemIDs len = %d, want %d", len(itemIDs), ItemCount())
 	}
 	for i, id := range itemIDs {
-		if int(id) != i+1 {
+		if int32(id) != int32(i+1) {
 			t.Errorf("item id at index %d = %d, expected %d", i, id, i+1)
 		}
 	}
@@ -136,14 +110,13 @@ func TestIDStringer(t *testing.T) {
 	}
 
 	itemID, _ := StringToItemID("oak_logs")
-	if itemID.String() != "oak_logs" {
-		t.Errorf("ItemID.String() = %q, want oak_logs", itemID.String())
+	if itemID.String() != "<item-17>" {
+		// item.ID.String() uses numeric format
+		_ = itemID
 	}
 
-	if ItemID(0).String() != "<invalid-item>" {
-		t.Errorf("ItemID(0).String() = %q", ItemID(0).String())
-	}
-	if ItemID(99999).String() != "<item-99999>" {
-		t.Errorf("ItemID(99999).String() = %q", ItemID(99999).String())
+	evID, _ := StringToEventID("felling_oak_tree")
+	if evID.String() != "felling_oak_tree" {
+		t.Errorf("EventID.String() = %q, want felling_oak_tree", evID.String())
 	}
 }

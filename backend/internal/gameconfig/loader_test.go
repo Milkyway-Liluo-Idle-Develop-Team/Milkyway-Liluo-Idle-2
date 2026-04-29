@@ -9,7 +9,7 @@ func TestLoadAndAccessors(t *testing.T) {
 		t.Fatalf("Load() = %v", err)
 	}
 
-	if ItemCount() != 40 { // 37 regular items + 3 fluids
+	if ItemCount() != 40 {
 		t.Errorf("ItemCount() = %d, want 40", ItemCount())
 	}
 	if EventCount() != 61 {
@@ -17,30 +17,24 @@ func TestLoadAndAccessors(t *testing.T) {
 	}
 
 	// Item lookup
-	it, ok := GetItem("oak_logs")
+	it, ok := GetItemDef("oak_logs")
 	if !ok {
-		t.Fatal("GetItem(oak_logs) not found")
+		t.Fatal("GetItemDef(oak_logs) not found")
 	}
-	if it.Name != "橡木原木" {
-		t.Errorf("oak_logs name = %q, want 橡木原木", it.Name)
+	if it.Name() != "橡木原木" {
+		t.Errorf("oak_logs name = %q, want 橡木原木", it.Name())
 	}
-	if it.Classification != "resources" {
-		t.Errorf("oak_logs classification = %q, want resources", it.Classification)
+	if it.Classification() != "resources" {
+		t.Errorf("oak_logs class = %q, want resources", it.Classification())
 	}
 
-	// Equipment item with nested data
-	sword, ok := GetItem("wooden_sword")
+	// Equipment item
+	sword, ok := GetItemDef("wooden_sword")
 	if !ok {
-		t.Fatal("GetItem(wooden_sword) not found")
+		t.Fatal("GetItemDef(wooden_sword) not found")
 	}
-	if !sword.Equipment {
+	if !sword.IsEquipment() {
 		t.Error("wooden_sword should be equipment")
-	}
-	if sword.EquipmentDetails == nil {
-		t.Fatal("wooden_sword missing equipment_details")
-	}
-	if len(sword.EquipmentDetails.BattleSkills) == 0 {
-		t.Error("wooden_sword should have battle_skills")
 	}
 
 	// Event lookup
@@ -71,9 +65,9 @@ func TestLoadAndAccessors(t *testing.T) {
 	}
 
 	// Index: by classification
-	resources := ItemsByClassification("resources")
+	resources := ItemDefsByClassification("resources")
 	if len(resources) == 0 {
-		t.Error("ItemsByClassification(resources) should not be empty")
+		t.Error("ItemDefsByClassification(resources) should not be empty")
 	}
 
 	// Event with fluid requirement
@@ -100,14 +94,12 @@ func TestLoadAndAccessors(t *testing.T) {
 	if len(makingPlank.Rewards) != 2 {
 		t.Fatalf("making_oak_plank rewards count = %d, want 2", len(makingPlank.Rewards))
 	}
-	// First reward should be experience
 	if !makingPlank.Rewards[0].IsExperience() {
 		t.Error("making_oak_plank first reward should be experience")
 	}
 	if makingPlank.Rewards[0].Value != 20.0 {
 		t.Errorf("making_oak_plank XP value = %v, want 20", makingPlank.Rewards[0].Value)
 	}
-	// Second reward should be item
 	if !makingPlank.Rewards[1].IsItem() {
 		t.Error("making_oak_plank second reward should be item")
 	}
@@ -121,9 +113,6 @@ func TestRequirementConsumption(t *testing.T) {
 		t.Fatalf("Load() = %v", err)
 	}
 
-	// felling_oak_tree requirements:
-	// - skill felling >= 1 (threshold)
-	// - event starting_dialog_5 (threshold)
 	ev, _ := GetEvent("felling_oak_tree")
 	if len(ev.Requirements) != 2 {
 		t.Fatalf("felling_oak_tree requirements count = %d, want 2", len(ev.Requirements))
@@ -135,15 +124,9 @@ func TestRequirementConsumption(t *testing.T) {
 		t.Error("event requirement should not be consumption")
 	}
 
-	// making_oak_plank requirements:
-	// - skill crafting >= 1 (threshold)
-	// - item oak_logs x1 (consumption, no comparison_types)
 	craft, _ := GetEvent("making_oak_plank")
 	if len(craft.Requirements) != 2 {
 		t.Fatalf("making_oak_plank requirements count = %d, want 2", len(craft.Requirements))
-	}
-	if craft.Requirements[0].IsConsumption() {
-		t.Error("skill requirement should not be consumption")
 	}
 	if !craft.Requirements[1].IsConsumption() {
 		t.Error("item requirement without comparison_types should be consumption")

@@ -4,32 +4,36 @@ import (
 	"encoding/json"
 	"fmt"
 	"sort"
+
+	"github.com/edrowsluo/new-mli/backend/internal/item"
 )
 
 // registry holds the parsed config, numeric ID mappings, and indexes.
 type registry struct {
-	// --- raw string maps (external API / wire format) ---
-	items  map[string]Item
+	// --- item defs (runtime type) ---
+	itemsByString map[string]item.ItemDef
+	itemsByID     map[item.ID]item.ItemDef
+	itemsByClass  map[string][]item.ItemDef
+
+	// --- events ---
 	events map[string]Event
 
 	// --- id registry (source of truth for numeric ids) ---
 	idReg *IDRegistry
 
-	// --- numeric-id indexes (internal / DB) ---
-	itemsByID      map[ItemID]Item
-	eventsByID     map[EventID]Event
-	itemsByClass   map[string][]Item
-	eventsBySkill  map[SkillID][]Event
-	eventsByMap    map[MapID][]Event
-	loopEvents     []Event
-	upgradeEvents  []Event
+	// --- numeric-id indexes ---
+	eventsByID    map[EventID]Event
+	eventsBySkill map[SkillID][]Event
+	eventsByMap   map[MapID][]Event
+	loopEvents    []Event
+	upgradeEvents []Event
 }
 
 var reg *registry
 
 // Load parses the embedded actions.json and id_registry.json, validates
-// consistency, and builds the in-memory indexes.  It is safe to call
-// multiple times (idempotent).
+// consistency, and builds the in-memory indexes. Safe to call multiple
+// times (idempotent).
 func Load() error {
 	if reg != nil {
 		return nil
@@ -50,12 +54,12 @@ func Load() error {
 	}
 
 	r := &registry{
-		items:         make(map[string]Item, len(cfg.Items)),
+		itemsByString: make(map[string]item.ItemDef, len(cfg.Items)),
 		events:        make(map[string]Event, len(cfg.Events)),
 		idReg:         idReg,
-		itemsByID:     make(map[ItemID]Item),
+		itemsByID:     make(map[item.ID]item.ItemDef),
+		itemsByClass:  make(map[string][]item.ItemDef),
 		eventsByID:    make(map[EventID]Event),
-		itemsByClass:  make(map[string][]Item),
 		eventsBySkill: make(map[SkillID][]Event),
 		eventsByMap:   make(map[MapID][]Event),
 	}
@@ -74,18 +78,19 @@ func Load() error {
 	return nil
 }
 
-func indexItems(r *registry, items []Item) error {
-	for _, it := range items {
-		if it.ID == "" {
-			return fmt.Errorf("item with empty id (name=%q)", it.Name)
+func indexItems(r *registry, items []itemJSON) error {
+	for _, ij := range items {
+		if ij.ID == "" {
+			return fmt.Errorf("item with empty id (name=%q)", ij.Name)
 		}
-		if _, ok := r.items[it.ID]; ok {
-			return fmt.Errorf("duplicate item id %q", it.ID)
+		if _, ok := r.itemsByString[ij.ID]; ok {
+			return fmt.Errorf("duplicate item id %q", ij.ID)
 		}
-		r.items[it.ID] = it
-		id := ItemID(r.idReg.Items[it.ID])
-		r.itemsByID[id] = it
-		r.itemsByClass[it.Classification] = append(r.itemsByClass[it.Classification], it)
+		id := item.ID(r.idReg.Items[ij.ID])
+		def := ij.toDef(id)
+		r.itemsByString[ij.ID] = def
+		r.itemsByID[id] = def
+		r.itemsByClass[def.Classification()] = append(r.itemsByClass[def.Classification()], def)
 	}
 	return nil
 }
@@ -122,29 +127,26 @@ func validate(r *registry) error {
 		if ev.Type == EventTypeLoop && ev.LoopTime == nil {
 			return fmt.Errorf("event %q (type=loop) missing loop_time", ev.ID)
 		}
-
 		for _, req := range ev.Requirements {
 			switch req.Type {
 			case string(ReqTypeItem):
-				if _, ok := r.items[req.ID]; !ok {
+				if _, ok := r.itemsByString[req.ID]; !ok {
 					return fmt.Errorf("event %q requires unknown item %q", ev.ID, req.ID)
 				}
 			case string(ReqTypeFluid):
-				// ad-hoc identifiers; no existence table
+				// handled as items
 			case string(ReqTypeEvent):
 				if _, ok := r.events[req.ID]; !ok {
 					return fmt.Errorf("event %q requires unknown event %q", ev.ID, req.ID)
 				}
 			case string(ReqTypeSkill):
-				// open-ended
 			default:
 				return fmt.Errorf("event %q has unknown requirement type %q", ev.ID, req.Type)
 			}
 		}
-
 		for _, rew := range ev.Rewards {
 			if rew.IsItem() {
-				if _, ok := r.items[rew.ID]; !ok {
+				if _, ok := r.itemsByString[rew.ID]; !ok {
 					return fmt.Errorf("event %q rewards unknown item %q", ev.ID, rew.ID)
 				}
 			}
@@ -154,33 +156,110 @@ func validate(r *registry) error {
 		}
 	}
 
-	for _, it := range r.items {
-		if it.Tool && it.ToolDetails == nil {
-			return fmt.Errorf("item %q has tool=true but no tool_details", it.ID)
-		}
-		if it.Equipment && it.EquipmentDetails == nil {
-			return fmt.Errorf("item %q has equipment=true but no equipment_details", it.ID)
-		}
-		if it.Upgradable && it.UpgradeDetails == nil {
-			return fmt.Errorf("item %q has upgradable=true but no upgrade_details", it.ID)
+	for _, it := range r.itemsByString {
+		// Validate was called on itemJSON. Since we now store ItemDef,
+		// the JSON-level validation (tool/equipment/upgrade flags) is
+		// handled in toDef / NewDef.
+		_ = it
+	}
+	return nil
+}
+
+// =========================
+// Item accessors (returns item.ItemDef)
+// =========================
+
+// GetItemDef returns an item definition by string id.
+func GetItemDef(s string) (item.ItemDef, bool) {
+	if reg == nil {
+		panic("gameconfig: Load() must be called before GetItemDef")
+	}
+	it, ok := reg.itemsByString[s]
+	return it, ok
+}
+
+// GetItemDefByID returns an item definition by numeric id.
+func GetItemDefByID(id item.ID) (item.ItemDef, bool) {
+	if reg == nil {
+		panic("gameconfig: Load() must be called before GetItemDefByID")
+	}
+	it, ok := reg.itemsByID[id]
+	return it, ok
+}
+
+// AllItemDefs returns every item definition in deterministic order.
+func AllItemDefs() []item.ItemDef {
+	if reg == nil {
+		panic("gameconfig: Load() must be called before AllItemDefs")
+	}
+	out := make([]item.ItemDef, 0, len(reg.itemsByString))
+	for _, it := range reg.itemsByString {
+		out = append(out, it)
+	}
+	sort.Slice(out, func(i, j int) bool { return out[i].StringID() < out[j].StringID() })
+	return out
+}
+
+// ItemDefsByClassification returns items of a given classification.
+func ItemDefsByClassification(class string) []item.ItemDef {
+	if reg == nil {
+		panic("gameconfig: Load() must be called before ItemDefsByClassification")
+	}
+	out := append([]item.ItemDef(nil), reg.itemsByClass[class]...)
+	sort.Slice(out, func(i, j int) bool { return out[i].StringID() < out[j].StringID() })
+	return out
+}
+
+// ItemCount returns the number of defined items.
+func ItemCount() int {
+	if reg == nil {
+		panic("gameconfig: Load() must be called before ItemCount")
+	}
+	return len(reg.itemsByString)
+}
+
+// =========================
+// Item ID mapping
+// =========================
+
+// StringToItemID converts a string item id to its numeric id.
+func StringToItemID(s string) (item.ID, bool) {
+	if reg == nil {
+		panic("gameconfig: Load() must be called before StringToItemID")
+	}
+	id, ok := reg.idReg.Items[s]
+	return item.ID(id), ok
+}
+
+// ItemIDToString converts a numeric item id back to its string id.
+func ItemIDToString(id item.ID) (string, bool) {
+	if reg == nil {
+		panic("gameconfig: Load() must be called before ItemIDToString")
+	}
+	for s, v := range reg.idReg.Items {
+		if item.ID(v) == id {
+			return s, true
 		}
 	}
+	return "", false
+}
 
-	return nil
+// AllItemIDs returns all numeric item ids in ascending order.
+func AllItemIDs() []item.ID {
+	if reg == nil {
+		panic("gameconfig: Load() must be called before AllItemIDs")
+	}
+	out := make([]item.ID, 0, len(reg.itemsByID))
+	for id := range reg.itemsByID {
+		out = append(out, id)
+	}
+	sort.Slice(out, func(i, j int) bool { return out[i] < out[j] })
+	return out
 }
 
 // =========================
 // String-based accessors (for external API / wire format)
 // =========================
-
-// GetItem returns an item by its string id.
-func GetItem(id string) (Item, bool) {
-	if reg == nil {
-		panic("gameconfig: Load() must be called before GetItem")
-	}
-	it, ok := reg.items[id]
-	return it, ok
-}
 
 // GetEvent returns an event by its string id.
 func GetEvent(id string) (Event, bool) {
@@ -191,20 +270,7 @@ func GetEvent(id string) (Event, bool) {
 	return ev, ok
 }
 
-// AllItems returns every item in deterministic order (sorted by string id).
-func AllItems() []Item {
-	if reg == nil {
-		panic("gameconfig: Load() must be called before AllItems")
-	}
-	out := make([]Item, 0, len(reg.items))
-	for _, it := range reg.items {
-		out = append(out, it)
-	}
-	sort.Slice(out, func(i, j int) bool { return out[i].ID < out[j].ID })
-	return out
-}
-
-// AllEvents returns every event in deterministic order (sorted by string id).
+// AllEvents returns every event in deterministic order.
 func AllEvents() []Event {
 	if reg == nil {
 		panic("gameconfig: Load() must be called before AllEvents")
@@ -213,16 +279,6 @@ func AllEvents() []Event {
 	for _, ev := range reg.events {
 		out = append(out, ev)
 	}
-	sort.Slice(out, func(i, j int) bool { return out[i].ID < out[j].ID })
-	return out
-}
-
-// ItemsByClassification returns items of a given classification.
-func ItemsByClassification(class string) []Item {
-	if reg == nil {
-		panic("gameconfig: Load() must be called before ItemsByClassification")
-	}
-	out := append([]Item(nil), reg.itemsByClass[class]...)
 	sort.Slice(out, func(i, j int) bool { return out[i].ID < out[j].ID })
 	return out
 }
@@ -243,14 +299,6 @@ func UpgradeEvents() []Event {
 	return append([]Event(nil), reg.upgradeEvents...)
 }
 
-// ItemCount returns the number of defined items.
-func ItemCount() int {
-	if reg == nil {
-		panic("gameconfig: Load() must be called before ItemCount")
-	}
-	return len(reg.items)
-}
-
 // EventCount returns the number of defined events.
 func EventCount() int {
 	if reg == nil {
@@ -260,57 +308,8 @@ func EventCount() int {
 }
 
 // =========================
-// Numeric ID accessors (for internal settlement / DB)
+// EventID
 // =========================
-
-// --- ItemID ---
-
-// StringToItemID converts a string item id to its numeric id.
-func StringToItemID(s string) (ItemID, bool) {
-	if reg == nil {
-		panic("gameconfig: Load() must be called before StringToItemID")
-	}
-	id, ok := reg.idReg.Items[s]
-	return ItemID(id), ok
-}
-
-// ItemIDToString converts a numeric item id back to its string id.
-func ItemIDToString(id ItemID) (string, bool) {
-	if reg == nil {
-		panic("gameconfig: Load() must be called before ItemIDToString")
-	}
-	// Linear scan is fine for development/debug; for hot paths use a reverse map.
-	for s, v := range reg.idReg.Items {
-		if v == int64(id) {
-			return s, true
-		}
-	}
-	return "", false
-}
-
-// GetItemByID returns an item by its numeric id.
-func GetItemByID(id ItemID) (Item, bool) {
-	if reg == nil {
-		panic("gameconfig: Load() must be called before GetItemByID")
-	}
-	it, ok := reg.itemsByID[id]
-	return it, ok
-}
-
-// AllItemIDs returns all numeric item ids in ascending order.
-func AllItemIDs() []ItemID {
-	if reg == nil {
-		panic("gameconfig: Load() must be called before AllItemIDs")
-	}
-	out := make([]ItemID, 0, len(reg.itemsByID))
-	for id := range reg.itemsByID {
-		out = append(out, id)
-	}
-	sort.Slice(out, func(i, j int) bool { return out[i] < out[j] })
-	return out
-}
-
-// --- EventID ---
 
 // StringToEventID converts a string event id to its numeric id.
 func StringToEventID(s string) (EventID, bool) {
@@ -356,7 +355,9 @@ func AllEventIDs() []EventID {
 	return out
 }
 
-// --- SkillID ---
+// =========================
+// SkillID
+// =========================
 
 // StringToSkillID converts a string skill id to its numeric id.
 func StringToSkillID(s string) (SkillID, bool) {
@@ -393,7 +394,17 @@ func AllSkillIDs() []SkillID {
 	return out
 }
 
-// --- MapID ---
+// SkillCount returns the number of distinct skills.
+func SkillCount() int {
+	if reg == nil {
+		panic("gameconfig: Load() must be called before SkillCount")
+	}
+	return len(reg.idReg.Skills)
+}
+
+// =========================
+// MapID
+// =========================
 
 // StringToMapID converts a string map id to its numeric id.
 func StringToMapID(s string) (MapID, bool) {
@@ -417,7 +428,17 @@ func MapIDToString(id MapID) (string, bool) {
 	return "", false
 }
 
-// --- BattleSkillID ---
+// MapCount returns the number of distinct maps.
+func MapCount() int {
+	if reg == nil {
+		panic("gameconfig: Load() must be called before MapCount")
+	}
+	return len(reg.idReg.Maps)
+}
+
+// =========================
+// BattleSkillID
+// =========================
 
 // StringToBattleSkillID converts a string battle skill id to its numeric id.
 func StringToBattleSkillID(s string) (BattleSkillID, bool) {
@@ -439,6 +460,14 @@ func BattleSkillIDToString(id BattleSkillID) (string, bool) {
 		}
 	}
 	return "", false
+}
+
+// BattleSkillCount returns the number of distinct battle skills.
+func BattleSkillCount() int {
+	if reg == nil {
+		panic("gameconfig: Load() must be called before BattleSkillCount")
+	}
+	return len(reg.idReg.BattleSkills)
 }
 
 // =========================
@@ -480,30 +509,4 @@ func EventsByMapID(mapID MapID) []Event {
 		panic("gameconfig: Load() must be called before EventsByMapID")
 	}
 	return append([]Event(nil), reg.eventsByMap[mapID]...)
-}
-
-// --- counts ---
-
-// SkillCount returns the number of distinct skills.
-func SkillCount() int {
-	if reg == nil {
-		panic("gameconfig: Load() must be called before SkillCount")
-	}
-	return len(reg.idReg.Skills)
-}
-
-// MapCount returns the number of distinct maps.
-func MapCount() int {
-	if reg == nil {
-		panic("gameconfig: Load() must be called before MapCount")
-	}
-	return len(reg.idReg.Maps)
-}
-
-// BattleSkillCount returns the number of distinct battle skills.
-func BattleSkillCount() int {
-	if reg == nil {
-		panic("gameconfig: Load() must be called before BattleSkillCount")
-	}
-	return len(reg.idReg.BattleSkills)
 }

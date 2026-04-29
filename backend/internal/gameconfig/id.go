@@ -1,19 +1,18 @@
 // Package gameconfig ID types and allocation.
 //
-// Every string identifier in actions.json (items, events, skills, fluids,
+// Every string identifier in actions.json (events, skills, fluids,
 // maps, battle-skills) is assigned a stable numeric int64 defined in
-// id_registry.json.  Internal code and database schemas should use these
+// id_registry.json. Internal code and database schemas should use these
 // numeric IDs for storage and computation; string IDs are reserved for the
 // wire format (frontend protocols) and human-facing output.
+//
+// Item IDs live in the item package (item.ID) rather than here, because
+// item identity is a domain concept, not a config-layer concern.
 package gameconfig
 
 import "fmt"
 
 // --- typed IDs (prevent accidental mixing) ---
-
-// ItemID is a stable numeric id for an item defined in id_registry.json.
-// Zero means invalid / not found.
-type ItemID int64
 
 // EventID is a stable numeric id for an event.
 type EventID int64
@@ -28,16 +27,6 @@ type MapID int64
 type BattleSkillID int64
 
 // --- String helpers ---
-
-func (id ItemID) String() string {
-	if id == 0 {
-		return "<invalid-item>"
-	}
-	if s, ok := ItemIDToString(id); ok {
-		return s
-	}
-	return fmt.Sprintf("<item-%d>", id)
-}
 
 func (id EventID) String() string {
 	if id == 0 {
