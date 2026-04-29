@@ -1,5 +1,11 @@
 -- +goose Up
 -- +goose StatementBegin
+--
+-- Single migration for the entire current schema.
+-- Fluids are treated as items (classification = "fluid"), stored in
+-- player_inventory alongside all other item types.
+--
+
 CREATE TABLE IF NOT EXISTS users (
     id            INTEGER  PRIMARY KEY AUTOINCREMENT,
     username      TEXT     NOT NULL UNIQUE,
@@ -24,10 +30,61 @@ CREATE TABLE IF NOT EXISTS sessions (
 
 CREATE INDEX IF NOT EXISTS sessions_user_id_idx ON sessions (user_id);
 CREATE INDEX IF NOT EXISTS sessions_expires_at_idx ON sessions (expires_at);
+
+-- Player skill levels. skill_id is a gameconfig.SkillID (1..N).
+CREATE TABLE IF NOT EXISTS player_skills (
+    user_id    INTEGER  NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    skill_id   INTEGER  NOT NULL,
+    level      REAL     NOT NULL DEFAULT 0,
+    xp         REAL     NOT NULL DEFAULT 0,
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (user_id, skill_id)
+);
+
+-- Player inventory. item_id + item_state is the complete item identity.
+-- quantity is stored as REAL so fractional parts survive across settlement
+-- cycles. The player-facing count is floor(quantity).
+CREATE TABLE IF NOT EXISTS player_inventory (
+    user_id    INTEGER  NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    item_id    INTEGER  NOT NULL,
+    item_state INTEGER  NOT NULL DEFAULT 0,
+    quantity   REAL     NOT NULL DEFAULT 0,
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (user_id, item_id, item_state)
+);
+
+CREATE INDEX IF NOT EXISTS inv_user_id_idx ON player_inventory (user_id);
+
+-- Unlocked events (type = "upgrade"). event_id is a gameconfig.EventID (1..N).
+CREATE TABLE IF NOT EXISTS player_unlocked_events (
+    user_id     INTEGER  NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    event_id    INTEGER  NOT NULL,
+    unlocked_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (user_id, event_id)
+);
+
+-- Active event queues. Serial queue per queue_id; events execute in order
+-- of position. progress tracks accumulated seconds for the current head event.
+-- target_cycles: -1 = infinite loop (default), >0 = execute N times then remove.
+CREATE TABLE IF NOT EXISTS player_active_events (
+    user_id       INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    queue_id      INTEGER NOT NULL DEFAULT 0,
+    event_id      INTEGER NOT NULL,
+    position      INTEGER NOT NULL,
+    target_cycles INTEGER NOT NULL DEFAULT -1,
+    progress      REAL    NOT NULL DEFAULT 0,
+    PRIMARY KEY (user_id, queue_id, position)
+);
+
+CREATE INDEX IF NOT EXISTS active_events_user_idx ON player_active_events (user_id);
 -- +goose StatementEnd
 
 -- +goose Down
 -- +goose StatementBegin
+DROP TABLE IF EXISTS player_active_events;
+DROP TABLE IF EXISTS player_unlocked_events;
+DROP TABLE IF EXISTS player_inventory;
+DROP TABLE IF EXISTS player_skills;
 DROP TABLE IF EXISTS sessions;
 DROP TABLE IF EXISTS users;
 -- +goose StatementEnd
