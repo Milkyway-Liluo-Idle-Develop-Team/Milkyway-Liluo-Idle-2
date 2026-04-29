@@ -11,6 +11,7 @@ import (
 	"context"
 	"log/slog"
 	"sync"
+	"time"
 
 	"github.com/edrowsluo/new-mli/backend/internal/apperror"
 	"github.com/edrowsluo/new-mli/backend/internal/attribute"
@@ -41,6 +42,8 @@ type PlayerSession struct {
 
 	mu       sync.Mutex
 	recorder *record.Recorder
+
+	done chan struct{} // closed on session close
 }
 
 // New creates a PlayerSession. The attribute instance is constructed bare;
@@ -52,6 +55,16 @@ func New(connID uuid.UUID, userID int64, logger *slog.Logger) *PlayerSession {
 		UserID: userID,
 		attr:   attribute.NewInstance(),
 		logger: logger,
+		done:   make(chan struct{}),
+	}
+}
+
+// Close shuts down the push loop and releases resources. Idempotent.
+func (s *PlayerSession) Close() {
+	select {
+	case <-s.done:
+	default:
+		close(s.done)
 	}
 }
 
@@ -214,6 +227,49 @@ func (m *Manager) HandleSession(hub *wsx.Hub, typ string, fn SessionHandler) {
 		defer m.UnlockSession(s)
 		return fn(ctx, c, s, in)
 	})
+}
+
+// StartLoop launches the push goroutine for a session. It ticks on a
+// fixed interval (placeholder until the event system provides smart
+// prediction), builds a diff packet, and pushes it to the client.
+// Exits when the session is closed.
+func (m *Manager) StartLoop(sess *PlayerSession, conn *wsx.Conn) {
+	go func() {
+		const tick = 1 * time.Second
+		ticker := time.NewTicker(tick)
+		defer ticker.Stop()
+
+		for {
+			select {
+			case <-sess.done:
+				return
+			case <-ticker.C:
+			}
+
+			s, ok := m.LockSession(sess.ID)
+			if !ok {
+				return
+			}
+
+			func() {
+				defer m.UnlockSession(s)
+
+				rec := m.NewRecorder()
+				s.SetRecorder(rec)
+				// TODO: push namespace + settle event queue
+				s.ClearRecorder()
+
+				diff, err := m.reg.BuildDiff(rec)
+				if err != nil {
+					conn.Send(wsx.Outbound{Type: "error", Error: apperror.Internal("build diff").WithCause(err)})
+					return
+				}
+				if string(diff) != "{}" {
+					conn.Send(wsx.Outbound{Type: "state.diff", Payload: diff})
+				}
+			}()
+		}
+	}()
 }
 
 // CreateSession builds a fully-loaded PlayerSession from the database.

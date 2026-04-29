@@ -40,6 +40,7 @@ func wsHandler(hub *wsx.Hub, mw *auth.Middleware, httpCfg config.HTTP, wsCfg con
 					return
 				}
 				sessMgr.Add(sess)
+				sessMgr.StartLoop(sess, c)
 				logger.Info("player session created",
 					"conn", c.ID,
 					"user_id", userID,
