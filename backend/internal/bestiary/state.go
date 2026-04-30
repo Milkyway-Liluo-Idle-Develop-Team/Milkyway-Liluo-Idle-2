@@ -107,6 +107,9 @@ func (s *State) record(r unlockEntry) {
 	}
 }
 
+// HasEvent reports whether the given event has been unlocked.
+func (s *State) HasEvent(id gameconfig.EventID) bool { return s.events[id] }
+
 // SetRecorder attaches a Recorder for the current execution cycle.
 func (s *State) SetRecorder(rec *record.Recorder) { s.recorder = rec }
 

@@ -9,6 +9,60 @@ import (
 	"context"
 )
 
+const clearTailPositions = `-- name: ClearTailPositions :exec
+UPDATE player_active_events
+SET event_id = 0, target_cycles = 0, progress = 0, updated_at = CURRENT_TIMESTAMP
+WHERE user_id = ? AND queue_id = ? AND position >= ?
+`
+
+type ClearTailPositionsParams struct {
+	UserID   int64 `json:"user_id"`
+	QueueID  int64 `json:"queue_id"`
+	Position int64 `json:"position"`
+}
+
+func (q *Queries) ClearTailPositions(ctx context.Context, arg ClearTailPositionsParams) error {
+	_, err := q.db.ExecContext(ctx, clearTailPositions, arg.UserID, arg.QueueID, arg.Position)
+	return err
+}
+
+const loadActiveEvents = `-- name: LoadActiveEvents :many
+SELECT user_id, queue_id, event_id, position, target_cycles, progress
+FROM player_active_events
+WHERE user_id = ?
+ORDER BY queue_id, position
+`
+
+func (q *Queries) LoadActiveEvents(ctx context.Context, userID int64) ([]PlayerActiveEvent, error) {
+	rows, err := q.db.QueryContext(ctx, loadActiveEvents, userID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []PlayerActiveEvent{}
+	for rows.Next() {
+		var i PlayerActiveEvent
+		if err := rows.Scan(
+			&i.UserID,
+			&i.QueueID,
+			&i.EventID,
+			&i.Position,
+			&i.TargetCycles,
+			&i.Progress,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const loadUnlockedEvents = `-- name: LoadUnlockedEvents :many
 SELECT user_id, event_id, unlocked_at
 FROM player_unlocked_events
@@ -37,6 +91,37 @@ func (q *Queries) LoadUnlockedEvents(ctx context.Context, userID int64) ([]Playe
 		return nil, err
 	}
 	return items, nil
+}
+
+const upsertActiveEvent = `-- name: UpsertActiveEvent :exec
+INSERT INTO player_active_events (user_id, queue_id, event_id, position, target_cycles, progress, updated_at)
+VALUES (?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+ON CONFLICT(user_id, queue_id, position) DO UPDATE SET
+    event_id = excluded.event_id,
+    target_cycles = excluded.target_cycles,
+    progress = excluded.progress,
+    updated_at = CURRENT_TIMESTAMP
+`
+
+type UpsertActiveEventParams struct {
+	UserID       int64   `json:"user_id"`
+	QueueID      int64   `json:"queue_id"`
+	EventID      int64   `json:"event_id"`
+	Position     int64   `json:"position"`
+	TargetCycles int64   `json:"target_cycles"`
+	Progress     float64 `json:"progress"`
+}
+
+func (q *Queries) UpsertActiveEvent(ctx context.Context, arg UpsertActiveEventParams) error {
+	_, err := q.db.ExecContext(ctx, upsertActiveEvent,
+		arg.UserID,
+		arg.QueueID,
+		arg.EventID,
+		arg.Position,
+		arg.TargetCycles,
+		arg.Progress,
+	)
+	return err
 }
 
 const upsertUnlockedEvent = `-- name: UpsertUnlockedEvent :exec

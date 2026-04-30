@@ -17,8 +17,10 @@ import (
 	"github.com/edrowsluo/new-mli/backend/internal/attribute"
 	"github.com/edrowsluo/new-mli/backend/internal/bestiary"
 	"github.com/edrowsluo/new-mli/backend/internal/db"
+	"github.com/edrowsluo/new-mli/backend/internal/event"
 	"github.com/edrowsluo/new-mli/backend/internal/gameconfig"
 	"github.com/edrowsluo/new-mli/backend/internal/inventory"
+	"github.com/edrowsluo/new-mli/backend/internal/item"
 	"github.com/edrowsluo/new-mli/backend/internal/record"
 	"github.com/edrowsluo/new-mli/backend/internal/skill"
 	"github.com/edrowsluo/new-mli/backend/internal/wsx"
@@ -33,10 +35,11 @@ import (
 type PlayerSession struct {
 	ID     uuid.UUID
 	UserID int64
-	attr  *attribute.Instance
-	inv   *inventory.State
-	skill *skill.State
-	best  *bestiary.State
+	attr   *attribute.Instance
+	inv    *inventory.State
+	skill  *skill.State
+	best   *bestiary.State
+	ev     *event.State
 
 	logger *slog.Logger
 
@@ -96,6 +99,27 @@ func (s *PlayerSession) Bestiary() *bestiary.State { return s.best }
 // SetBestiary attaches a bestiary state.
 func (s *PlayerSession) SetBestiary(st *bestiary.State) { s.best = st }
 
+// Events returns the event queue state.
+func (s *PlayerSession) Events() *event.State { return s.ev }
+
+// SetEvents attaches an event state.
+func (s *PlayerSession) SetEvents(st *event.State) { s.ev = st }
+
+// --- SettlementCtx (implements event.SettlementCtx) ---
+
+func (s *PlayerSession) HasItem(it item.Item, qty float64) bool    { return s.inv.Has(it, qty) }
+func (s *PlayerSession) GetItemQty(it item.Item) float64           { return s.inv.Get(it) }
+func (s *PlayerSession) AddItem(it item.Item, qty float64)         { s.inv.Add(it, qty) }
+func (s *PlayerSession) DeductItem(it item.Item, qty float64)      { s.inv.Deduct(it, qty) }
+func (s *PlayerSession) AddXP(sid gameconfig.SkillID, xp float64)  { s.skill.AddXP(sid, xp) }
+func (s *PlayerSession) GetAttr(id attribute.AttributeID) float64  { return s.attr.GetFinal(id) }
+func (s *PlayerSession) GetSkillLevel(sid gameconfig.SkillID) float64 {
+	lvl, _ := s.skill.Get(sid)
+	return lvl
+}
+func (s *PlayerSession) UnlockEvent(id gameconfig.EventID)  { s.best.UnlockEvent(id) }
+func (s *PlayerSession) IsEventUnlocked(id gameconfig.EventID) bool { return s.best.HasEvent(id) }
+
 // SetRecorder attaches a Recorder for the current execution cycle.
 func (s *PlayerSession) SetRecorder(rec *record.Recorder) {
 	s.recorder = rec
@@ -108,6 +132,9 @@ func (s *PlayerSession) SetRecorder(rec *record.Recorder) {
 	}
 	if s.best != nil {
 		s.best.SetRecorder(rec)
+	}
+	if s.ev != nil {
+		s.ev.SetRecorder(rec)
 	}
 }
 
@@ -122,6 +149,9 @@ func (s *PlayerSession) ClearRecorder() *record.Recorder {
 	}
 	if s.best != nil {
 		s.best.ClearRecorder()
+	}
+	if s.ev != nil {
+		s.ev.ClearRecorder()
 	}
 	rec := s.recorder
 	s.recorder = nil
@@ -238,36 +268,41 @@ func (m *Manager) StartLoop(sess *PlayerSession, conn *wsx.Conn) {
 		const tick = 1 * time.Second
 		ticker := time.NewTicker(tick)
 		defer ticker.Stop()
+		lastTick := time.Now()
 
 		for {
 			select {
 			case <-sess.done:
 				return
-			case <-ticker.C:
-			}
+			case now := <-ticker.C:
+				elapsed := now.Sub(lastTick).Seconds()
+				lastTick = now
 
-			s, ok := m.LockSession(sess.ID)
-			if !ok {
-				return
-			}
-
-			func() {
-				defer m.UnlockSession(s)
-
-				rec := m.NewRecorder()
-				s.SetRecorder(rec)
-				// TODO: push namespace + settle event queue
-				s.ClearRecorder()
-
-				diff, err := m.reg.BuildDiff(rec)
-				if err != nil {
-					conn.Send(wsx.Outbound{Type: "error", Error: apperror.Internal("build diff").WithCause(err)})
+				s, ok := m.LockSession(sess.ID)
+				if !ok {
 					return
 				}
-				if string(diff) != "{}" {
-					conn.Send(wsx.Outbound{Type: "state.diff", Payload: diff})
-				}
-			}()
+
+				func() {
+					defer m.UnlockSession(s)
+
+					rec := m.NewRecorder()
+					s.SetRecorder(rec)
+					rec.PushNamespace("action_queue")
+					s.Events().Settle(s, elapsed)
+					rec.PopNamespace()
+					s.ClearRecorder()
+
+					diff, err := m.reg.BuildDiff(rec)
+					if err != nil {
+						conn.Send(wsx.Outbound{Type: "error", Error: apperror.Internal("build diff").WithCause(err)})
+						return
+					}
+					if string(diff) != "{}" {
+						conn.Send(wsx.Outbound{Type: "state.diff", Payload: diff})
+					}
+				}()
+			}
 		}
 	}()
 }
@@ -306,9 +341,16 @@ func (m *Manager) CreateSession(ctx context.Context, connID uuid.UUID, userID in
 	}
 	best.LoadEvents(ids)
 
+	// Active event queues.
+	evSt, err := event.Load(ctx, q, userID)
+	if err != nil {
+		return nil, err
+	}
+
 	sess := New(connID, userID, logger)
 	sess.SetInv(invSt)
 	sess.SetSkill(skillSt)
 	sess.SetBestiary(best)
+	sess.SetEvents(evSt)
 	return sess, nil
 }
