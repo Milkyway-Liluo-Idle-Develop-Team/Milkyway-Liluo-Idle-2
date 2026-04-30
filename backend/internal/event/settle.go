@@ -89,8 +89,7 @@ func (st *State) settleLoop(ctx SettlementCtx, q *Queue, idx int, ev gameconfig.
 		if !req.IsConsumption() || req.Value == nil {
 			continue
 		}
-		it := resolveItem(req)
-		held := ctx.GetItemQty(it)
+		held := ctx.GetItemQty(req.ResolvedItem)
 		maxForThis := int(held / *req.Value)
 		if maxForThis < actual {
 			actual = maxForThis
@@ -103,23 +102,24 @@ func (st *State) settleLoop(ctx SettlementCtx, q *Queue, idx int, ev gameconfig.
 		return delta
 	}
 
-	factor := productionFactor(ctx, ev.NeedSkill)
+	factor := 1.0
+	if attrID, ok := attribute.Get().AttrID(ev.ProductionAttrName); ok {
+		mult := ctx.GetAttr(attrID)
+		factor = 1.0 + mult
+	}
 
 	for _, req := range ev.Requirements {
 		if !req.IsConsumption() || req.Value == nil {
 			continue
 		}
-		ctx.DeductItem(resolveItem(req), *req.Value*float64(actual))
+		ctx.DeductItem(req.ResolvedItem, *req.Value*float64(actual))
 	}
 	for _, rew := range ev.Rewards {
 		switch {
 		case rew.IsItem():
-			it := resolveReward(rew)
-			ctx.AddItem(it, rew.ItemQuantity()*float64(actual)*factor)
+			ctx.AddItem(rew.ResolvedItem, rew.ItemQuantity()*float64(actual)*factor)
 		case rew.IsExperience():
-			xpVal, skillID := rew.Experience()
-			sid, _ := gameconfig.StringToSkillID(skillID)
-			ctx.AddXP(sid, xpVal*float64(actual))
+			ctx.AddXP(rew.ResolvedSkillID, rew.Value*float64(actual))
 		}
 	}
 
@@ -147,11 +147,9 @@ func (st *State) settleInstant(ctx SettlementCtx, q *Queue, idx int, ev gameconf
 	for _, rew := range ev.Rewards {
 		switch {
 		case rew.IsItem():
-			ctx.AddItem(resolveReward(rew), rew.ItemQuantity())
+			ctx.AddItem(rew.ResolvedItem, rew.ItemQuantity())
 		case rew.IsExperience():
-			xpVal, skillID := rew.Experience()
-			sid, _ := gameconfig.StringToSkillID(skillID)
-			ctx.AddXP(sid, xpVal)
+			ctx.AddXP(rew.ResolvedSkillID, rew.Value)
 		}
 	}
 
@@ -167,19 +165,11 @@ func (st *State) checkReqs(ctx SettlementCtx, ev gameconfig.Event) bool {
 		}
 		switch req.Type {
 		case string(gameconfig.ReqTypeSkill):
-			skillID, ok := gameconfig.StringToSkillID(req.ID)
-			if !ok {
-				return false
-			}
-			if req.Value != nil && ctx.GetSkillLevel(skillID) < *req.Value {
+			if req.Value != nil && ctx.GetSkillLevel(gameconfig.SkillID(req.ResolvedID)) < *req.Value {
 				return false
 			}
 		case string(gameconfig.ReqTypeEvent):
-			eid, ok := gameconfig.StringToEventID(req.ID)
-			if !ok {
-				return false
-			}
-			if !ctx.IsEventUnlocked(eid) {
+			if !ctx.IsEventUnlocked(gameconfig.EventID(req.ResolvedID)) {
 				return false
 			}
 		default:
@@ -211,28 +201,4 @@ func (st *State) swapSatisfied(ctx SettlementCtx, q *Queue) bool {
 func derefLoopTime(lt *float64) float64 {
 	if lt == nil { return 0 }
 	return *lt
-}
-
-func resolveItem(req gameconfig.Requirement) item.Item {
-	var id item.ID
-	if req.Type == string(gameconfig.ReqTypeItem) || req.Type == string(gameconfig.ReqTypeFluid) {
-		nid, _ := gameconfig.StringToItemID(req.ID)
-		id = nid
-	}
-	return item.Item{ID: id}
-}
-
-func resolveReward(rew gameconfig.Reward) item.Item {
-	id, _ := gameconfig.StringToItemID(rew.ID)
-	return item.Item{ID: id}
-}
-
-func productionFactor(ctx SettlementCtx, skillID string) float64 {
-	attrName := skillID + "_production_multiplier"
-	attrID, ok := attribute.Get().AttrID(attrName)
-	if !ok {
-		return 1.0
-	}
-	mult := ctx.GetAttr(attrID)
-	return 1.0 + mult
 }

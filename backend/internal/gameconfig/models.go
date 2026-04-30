@@ -165,9 +165,13 @@ type Event struct {
 	NeedSkill    string        `json:"need_skill"` // "none" if no skill required
 	Requirements []Requirement `json:"requirements"`
 	Map          string        `json:"map"`
-	LoopTime     *float64      `json:"loop_time,omitempty"`    // seconds per cycle; set when Type==Loop
-	RepeatTime   *float64      `json:"repeat_time,omitempty"`  // seconds between repeats; set on repeatable upgrades
+	LoopTime     *float64      `json:"loop_time,omitempty"`
+	RepeatTime   *float64      `json:"repeat_time,omitempty"`
 	Rewards      []Reward      `json:"rewards,omitempty"`
+
+	// Pre-resolved at load time — never looked up at runtime.
+	ResolvedSkillID      SkillID
+	ProductionAttrName   string // "{NeedSkill}_production_multiplier", set during Load
 }
 
 // --- Requirement ---
@@ -177,6 +181,10 @@ type Requirement struct {
 	ID              string   `json:"id"`
 	ComparisonTypes *string  `json:"comparison_types,omitempty"`
 	Value           *float64 `json:"value,omitempty"`
+
+	// Pre-resolved at load time.
+	ResolvedID   int64      // skill ID or event ID (from StringToSkillID / StringToEventID)
+	ResolvedItem item.Item  // item identity (from StringToItemID) for item/fluid types
 }
 
 // IsConsumption reports whether this requirement deducts resources on
@@ -195,11 +203,15 @@ func (r Requirement) IsThreshold() bool {
 // --- Reward ---
 
 type Reward struct {
-	Type    string  `json:"type"`    // "" for item, "experience" for XP
-	ID      string  `json:"id"`      // item id when Type=="" ; skill id context when Type=="experience"
-	Num     float64 `json:"num"`     // item quantity (preferred)
-	Value   float64 `json:"value"`   // fallback quantity or XP value
-	SkillID string  `json:"skill_id"`// target skill for XP rewards
+	Type    string  `json:"type"`     // "" for item, "experience" for XP
+	ID      string  `json:"id"`       // item id when Type=="" ; skill id context when Type=="experience"
+	Num     float64 `json:"num"`      // item quantity (preferred)
+	Value   float64 `json:"value"`    // fallback quantity or XP value
+	SkillID string  `json:"skill_id"` // target skill for XP rewards
+
+	// Pre-resolved at load time.
+	ResolvedItem    item.Item // item identity for item rewards
+	ResolvedSkillID SkillID   // from StringToSkillID for XP rewards
 }
 
 // IsExperience reports whether this reward grants skill experience.

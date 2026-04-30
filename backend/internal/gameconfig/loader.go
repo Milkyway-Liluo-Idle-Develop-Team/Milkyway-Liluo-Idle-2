@@ -96,28 +96,53 @@ func indexItems(r *registry, items []itemJSON) error {
 }
 
 func indexEvents(r *registry, events []Event) error {
-	for _, ev := range events {
+	for i := range events {
+		ev := &events[i]
 		if ev.ID == "" {
 			return fmt.Errorf("event with empty id (name=%q)", ev.Name)
 		}
 		if _, ok := r.events[ev.ID]; ok {
 			return fmt.Errorf("duplicate event id %q", ev.ID)
 		}
-		r.events[ev.ID] = ev
-		eid := EventID(r.idReg.Events[ev.ID])
-		r.eventsByID[eid] = ev
 
-		if ev.Type == EventTypeLoop {
-			r.loopEvents = append(r.loopEvents, ev)
-		} else if ev.Type == EventTypeUpgrade {
-			r.upgradeEvents = append(r.upgradeEvents, ev)
+		// Resolve skill/event/item IDs.
+		ev.ResolvedSkillID = SkillID(r.idReg.Skills[ev.NeedSkill])
+		ev.ProductionAttrName = ev.NeedSkill + "_production_multiplier"
+
+		for j := range ev.Requirements {
+			req := &ev.Requirements[j]
+			switch req.Type {
+			case string(ReqTypeSkill):
+				req.ResolvedID = r.idReg.Skills[req.ID]
+			case string(ReqTypeEvent):
+				req.ResolvedID = r.idReg.Events[req.ID]
+			case string(ReqTypeItem), string(ReqTypeFluid):
+				req.ResolvedItem = item.Item{ID: item.ID(r.idReg.Items[req.ID])}
+			}
+		}
+		for j := range ev.Rewards {
+			rew := &ev.Rewards[j]
+			if rew.IsItem() {
+				rew.ResolvedItem = item.Item{ID: item.ID(r.idReg.Items[rew.ID])}
+			} else if rew.IsExperience() {
+				rew.ResolvedSkillID = SkillID(r.idReg.Skills[rew.SkillID])
+			}
 		}
 
-		skill := SkillID(r.idReg.Skills[ev.NeedSkill])
-		r.eventsBySkill[skill] = append(r.eventsBySkill[skill], ev)
+		r.events[ev.ID] = *ev
+		eid := EventID(r.idReg.Events[ev.ID])
+		r.eventsByID[eid] = *ev
+
+		if ev.Type == EventTypeLoop {
+			r.loopEvents = append(r.loopEvents, *ev)
+		} else if ev.Type == EventTypeUpgrade {
+			r.upgradeEvents = append(r.upgradeEvents, *ev)
+		}
+
+		r.eventsBySkill[ev.ResolvedSkillID] = append(r.eventsBySkill[ev.ResolvedSkillID], *ev)
 
 		mid := MapID(r.idReg.Maps[ev.Map])
-		r.eventsByMap[mid] = append(r.eventsByMap[mid], ev)
+		r.eventsByMap[mid] = append(r.eventsByMap[mid], *ev)
 	}
 	return nil
 }
