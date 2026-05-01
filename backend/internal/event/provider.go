@@ -1,10 +1,11 @@
 package event
 
 import (
-	"encoding/json"
 	"sort"
 
+	pb "github.com/edrowsluo/new-mli/backend/internal/pb"
 	"github.com/edrowsluo/new-mli/backend/internal/record"
+	"google.golang.org/protobuf/proto"
 )
 
 // ExecProvider is the SystemProvider for event_execution records.
@@ -15,39 +16,32 @@ type execProvider struct{}
 func (p *execProvider) SystemName() string            { return "event_execution" }
 func (p *execProvider) NewBucket() record.RecordBucket { return newExecBucket() }
 
-func (p *execProvider) SerializeFull(state any) (json.RawMessage, error) {
+func (p *execProvider) SerializeFull(state any) (proto.Message, error) {
 	st, ok := state.(*State)
 	if !ok {
-		return json.RawMessage("null"), nil
+		return nil, nil
 	}
 
-	type entry struct {
-		QueueID      int     `json:"queue_id"`
-		EventID      int64   `json:"event_id"`
-		TargetCycles int     `json:"target_cycles"`
-		Progress     float64 `json:"progress"`
-	}
-
-	var out []entry
+	var out []*pb.EventExecutionFull
 	for _, q := range st.queues {
 		for _, e := range q.Entries {
-			out = append(out, entry{
-				QueueID:      q.ID,
-				EventID:      int64(e.EventID),
-				TargetCycles: e.TargetCycles,
+			out = append(out, &pb.EventExecutionFull{
+				QueueId:      int32(q.ID),
+				EventId:      int64(e.EventID),
+				TargetCycles: int32(e.TargetCycles),
 				Progress:     e.Progress,
 			})
 		}
 	}
 
 	sort.Slice(out, func(i, j int) bool {
-		if out[i].QueueID != out[j].QueueID {
-			return out[i].QueueID < out[j].QueueID
+		if out[i].QueueId != out[j].QueueId {
+			return out[i].QueueId < out[j].QueueId
 		}
-		return out[i].EventID < out[j].EventID
+		return out[i].EventId < out[j].EventId
 	})
 
-	return json.Marshal(out)
+	return &pb.StateFull{EventExecution: out}, nil
 }
 
 // QueueProvider is the SystemProvider for event_queue changes (queue structure).
@@ -58,8 +52,8 @@ type queueProvider struct{}
 func (p *queueProvider) SystemName() string            { return "event_queue" }
 func (p *queueProvider) NewBucket() record.RecordBucket { return newQueueBucket() }
 
-func (p *queueProvider) SerializeFull(state any) (json.RawMessage, error) {
+func (p *queueProvider) SerializeFull(state any) (proto.Message, error) {
 	// Full snapshot for queues is handled by the event_execution provider
 	// which serializes all entries. event_queue only produces diff data.
-	return json.RawMessage("null"), nil
+	return nil, nil
 }

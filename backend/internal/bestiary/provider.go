@@ -1,10 +1,11 @@
 package bestiary
 
 import (
-	"encoding/json"
 	"sort"
 
+	pb "github.com/edrowsluo/new-mli/backend/internal/pb"
 	"github.com/edrowsluo/new-mli/backend/internal/record"
+	"google.golang.org/protobuf/proto"
 )
 
 // Provider implements record.SystemProvider for the bestiary system.
@@ -15,34 +16,29 @@ type provider struct{}
 func (p *provider) SystemName() string            { return "bestiary" }
 func (p *provider) NewBucket() record.RecordBucket { return newBucket() }
 
-func (p *provider) SerializeFull(state any) (json.RawMessage, error) {
+func (p *provider) SerializeFull(state any) (proto.Message, error) {
 	st, ok := state.(*State)
 	if !ok {
-		return json.RawMessage("null"), nil
+		return nil, nil
 	}
 
-	type entry struct {
-		Type string `json:"type"`
-		ID   string `json:"id"`
-	}
-
-	var out []entry
+	var out []*pb.BestiaryFull
 	for eid := range st.events {
-		out = append(out, entry{Type: "event", ID: eid.String()})
+		out = append(out, &pb.BestiaryFull{Type: "event", Id: eid.String()})
 	}
 	for it := range st.items {
-		out = append(out, entry{Type: "item", ID: it.String()})
+		out = append(out, &pb.BestiaryFull{Type: "item", Id: it.String()})
 	}
 	for mid := range st.areas {
-		out = append(out, entry{Type: "area", ID: mid.String()})
+		out = append(out, &pb.BestiaryFull{Type: "area", Id: mid.String()})
 	}
 
 	sort.Slice(out, func(i, j int) bool {
 		if out[i].Type != out[j].Type {
 			return out[i].Type < out[j].Type
 		}
-		return out[i].ID < out[j].ID
+		return out[i].Id < out[j].Id
 	})
 
-	return json.Marshal(out)
+	return &pb.StateFull{Bestiary: out}, nil
 }

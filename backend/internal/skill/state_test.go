@@ -3,7 +3,6 @@ package skill_test
 import (
 	"context"
 	"database/sql"
-	"encoding/json"
 	"testing"
 
 	"github.com/edrowsluo/new-mli/backend/internal/attribute"
@@ -157,25 +156,11 @@ func TestRecordBucket(t *testing.T) {
 	s.ClearRecorder()
 
 	diff, _ := reg.BuildDiff(rec)
-	var m map[string]json.RawMessage
-	json.Unmarshal(diff, &m)
 
-	raw, ok := m["skill_xp_changes"]
-	if !ok {
-		t.Fatal("missing skill_xp_changes")
+	if len(diff.SkillXp) != 1 {
+		t.Fatalf("want 1 merged change, got %d", len(diff.SkillXp))
 	}
-
-	var changes []struct {
-		SkillID  int64   `json:"skill_id"`
-		XpDelta  float64 `json:"xp_delta"`
-		NewLevel float64 `json:"new_level"`
-	}
-	json.Unmarshal(raw, &changes)
-
-	if len(changes) != 1 {
-		t.Fatalf("want 1 merged change, got %d", len(changes))
-	}
-	if changes[0].XpDelta != 150 {
-		t.Errorf("want xp_delta=150, got %v", changes[0].XpDelta)
+	if diff.SkillXp[0].XpDelta != 150 {
+		t.Errorf("want xp_delta=150, got %v", diff.SkillXp[0].XpDelta)
 	}
 }

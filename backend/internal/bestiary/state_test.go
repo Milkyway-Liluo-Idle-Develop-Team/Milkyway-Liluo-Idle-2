@@ -3,7 +3,6 @@ package bestiary_test
 import (
 	"context"
 	"database/sql"
-	"encoding/json"
 	"testing"
 
 	"github.com/edrowsluo/new-mli/backend/internal/attribute"
@@ -69,21 +68,9 @@ func TestRecordBucket(t *testing.T) {
 	s.ClearRecorder()
 
 	diff, _ := reg.BuildDiff(rec)
-	var m map[string]json.RawMessage
-	json.Unmarshal(diff, &m)
 
-	raw, ok := m["bestiary_changes"]
-	if !ok {
-		t.Fatal("missing bestiary_changes")
-	}
-
-	var entries []struct {
-		Type string `json:"type"`
-		ID   string `json:"id"`
-	}
-	json.Unmarshal(raw, &entries)
-	if len(entries) != 3 {
-		t.Fatalf("want 3 unique entries, got %d", len(entries))
+	if len(diff.Bestiary) != 3 {
+		t.Fatalf("want 3 unique entries, got %d", len(diff.Bestiary))
 	}
 }
 
@@ -114,8 +101,8 @@ func TestLoadRebuild(t *testing.T) {
 
 	diff, _ := reg.BuildDiff(rec)
 	// Diff should be empty — no new discoveries.
-	if string(diff) != "{}" {
-		t.Errorf("expected empty diff after loading pre-known data, got %s", diff)
+	if len(diff.Bestiary) != 0 {
+		t.Errorf("expected empty diff after loading pre-known data, got %d entries", len(diff.Bestiary))
 	}
 }
 
@@ -181,12 +168,7 @@ func TestFullSnapshot(t *testing.T) {
 	s.UnlockItem(item.Item{ID: 19, State: 0})
 
 	data, _ := reg.BuildFullSnapshot(map[string]any{"bestiary": s})
-	var m map[string]json.RawMessage
-	json.Unmarshal(data, &m)
-
-	var entries []struct{ Type string }
-	json.Unmarshal(m["bestiary"], &entries)
-	if len(entries) != 2 {
-		t.Fatalf("want 2 entries in full snapshot, got %d", len(entries))
+	if len(data.Bestiary) != 2 {
+		t.Fatalf("want 2 entries in full snapshot, got %d", len(data.Bestiary))
 	}
 }

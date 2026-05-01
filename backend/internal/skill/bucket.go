@@ -1,10 +1,10 @@
 package skill
 
 import (
-	"encoding/json"
-
+	pb "github.com/edrowsluo/new-mli/backend/internal/pb"
 	"github.com/edrowsluo/new-mli/backend/internal/gameconfig"
 	"github.com/edrowsluo/new-mli/backend/internal/record"
+	"google.golang.org/protobuf/proto"
 )
 
 // Bucket collects SkillXpRecords within a single namespace.
@@ -47,25 +47,19 @@ func (b *Bucket) MergeInPlace(other record.RecordBucket) {
 	}
 }
 
-type skillWire struct {
-	SkillID  int64   `json:"skill_id"`
-	XpDelta  float64 `json:"xp_delta"`
-	NewLevel float64 `json:"new_level"`
-}
-
-func (b *Bucket) SerializeDiff() (json.RawMessage, error) {
+func (b *Bucket) SerializeDiff() (proto.Message, error) {
 	if len(b.changes) == 0 {
-		return json.RawMessage("[]"), nil
+		return nil, nil
 	}
-	out := make([]skillWire, 0, len(b.changes))
+	diffs := make([]*pb.SkillXPDiff, 0, len(b.changes))
 	for id, r := range b.changes {
-		out = append(out, skillWire{
-			SkillID:  int64(id),
+		diffs = append(diffs, &pb.SkillXPDiff{
+			SkillId:  int64(id),
 			XpDelta:  r.xpDelta,
 			NewLevel: r.newLevel,
 		})
 	}
-	return json.Marshal(out)
+	return &pb.StateDiff{SkillXp: diffs}, nil
 }
 
 func (b *Bucket) IsEmpty() bool { return len(b.changes) == 0 }

@@ -4,6 +4,7 @@ import (
 	"context"
 	"time"
 
+	pb "github.com/edrowsluo/new-mli/backend/internal/pb"
 	"github.com/edrowsluo/new-mli/backend/internal/wsx"
 )
 
@@ -22,18 +23,15 @@ func RegisterWS(hub *wsx.Hub, svc *Service) {
 
 	hub.Handle("auth.whoami", func(ctx context.Context, c *wsx.Conn, in wsx.Inbound) error {
 		if c.UserID == 0 {
-			c.Reply(in, map[string]any{"user": nil})
+			c.Reply(in, &pb.WhoamiResponse{})
 			return nil
 		}
-		// We don't look up the user again — UserID was authenticated at
-		// upgrade time. If a downstream consumer needs more, they can
-		// call svc.LookupUser via a separate method.
-		c.Reply(in, map[string]any{"user_id": c.UserID})
+		c.Reply(in, &pb.WhoamiResponse{UserId: &c.UserID})
 		return nil
 	})
 }
 
 func pong(c *wsx.Conn, in wsx.Inbound) error {
-	c.Reply(in, map[string]any{"server_time": time.Now().UTC().Format(time.RFC3339Nano)})
+	c.Reply(in, &pb.Pong{ServerTime: time.Now().UTC().Format(time.RFC3339Nano)})
 	return nil
 }

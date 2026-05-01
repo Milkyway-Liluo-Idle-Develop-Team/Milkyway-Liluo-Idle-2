@@ -1,11 +1,11 @@
 package bestiary
 
 import (
-	"encoding/json"
-
+	pb "github.com/edrowsluo/new-mli/backend/internal/pb"
 	"github.com/edrowsluo/new-mli/backend/internal/gameconfig"
 	"github.com/edrowsluo/new-mli/backend/internal/item"
 	"github.com/edrowsluo/new-mli/backend/internal/record"
+	"google.golang.org/protobuf/proto"
 )
 
 type unlockEntry struct {
@@ -52,20 +52,15 @@ func (b *Bucket) MergeInPlace(other record.RecordBucket) {
 	}
 }
 
-type unlockWire struct {
-	Type string `json:"type"`
-	ID   string `json:"id"`
-}
-
-func (b *Bucket) SerializeDiff() (json.RawMessage, error) {
+func (b *Bucket) SerializeDiff() (proto.Message, error) {
 	if len(b.entries) == 0 {
-		return json.RawMessage("[]"), nil
+		return nil, nil
 	}
-	out := make([]unlockWire, 0, len(b.entries))
+	diffs := make([]*pb.BestiaryDiff, 0, len(b.entries))
 	for _, e := range b.entries {
-		out = append(out, unlockWire{Type: e.typ, ID: e.id})
+		diffs = append(diffs, &pb.BestiaryDiff{Type: e.typ, Id: e.id})
 	}
-	return json.Marshal(out)
+	return &pb.StateDiff{Bestiary: diffs}, nil
 }
 
 func (b *Bucket) IsEmpty() bool { return len(b.entries) == 0 }

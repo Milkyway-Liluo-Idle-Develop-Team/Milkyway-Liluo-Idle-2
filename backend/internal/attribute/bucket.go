@@ -1,9 +1,9 @@
 package attribute
 
 import (
-	"encoding/json"
-
+	pb "github.com/edrowsluo/new-mli/backend/internal/pb"
 	"github.com/edrowsluo/new-mli/backend/internal/record"
+	"google.golang.org/protobuf/proto"
 )
 
 // Bucket collects dirty attribute IDs within a single namespace.
@@ -47,33 +47,19 @@ func (b *Bucket) MergeInPlace(other record.RecordBucket) {
 
 // SerializeDiff computes the final value and collects the full modifier
 // state for every dirty attribute, then serializes the result.
-func (b *Bucket) SerializeDiff() (json.RawMessage, error) {
+func (b *Bucket) SerializeDiff() (proto.Message, error) {
 	if len(b.dirty) == 0 {
-		return json.RawMessage("[]"), nil
+		return nil, nil
 	}
 
-	type modWire struct {
-		Source  string  `json:"source"`
-		Op      string  `json:"op"`
-		Value   float64 `json:"value,omitempty"`
-		RefAttr string  `json:"ref_attr,omitempty"`
-		Display string  `json:"display,omitempty"`
-	}
-
-	type attrDiff struct {
-		AttrID     string    `json:"attr_id"`
-		FinalValue float64   `json:"final_value"`
-		Modifiers  []modWire `json:"modifiers"`
-	}
-
-	out := make([]attrDiff, 0, len(b.dirty))
+	diffs := make([]*pb.AttributeDiff, 0, len(b.dirty))
 	for id := range b.dirty {
 		finalVal := b.instance.GetFinal(id)
 		mods := b.instance.ModifiersFor(id)
 
-		wmods := make([]modWire, 0, len(mods))
+		wmods := make([]*pb.ModifierWire, 0, len(mods))
 		for _, m := range mods {
-			wm := modWire{
+			wm := &pb.ModifierWire{
 				Source:  m.Source,
 				Op:      string(m.Op),
 				Display: string(m.Display),
@@ -89,14 +75,14 @@ func (b *Bucket) SerializeDiff() (json.RawMessage, error) {
 		}
 
 		strID, _ := b.instance.reg.AttrString(id)
-		out = append(out, attrDiff{
-			AttrID:     strID,
+		diffs = append(diffs, &pb.AttributeDiff{
+			AttrId:     strID,
 			FinalValue: finalVal,
 			Modifiers:  wmods,
 		})
 	}
 
-	return json.Marshal(out)
+	return &pb.StateDiff{Attribute: diffs}, nil
 }
 
 // IsEmpty reports whether no attributes are dirty.

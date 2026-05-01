@@ -22,10 +22,12 @@ import (
 	"github.com/edrowsluo/new-mli/backend/internal/gameconfig"
 	"github.com/edrowsluo/new-mli/backend/internal/inventory"
 	"github.com/edrowsluo/new-mli/backend/internal/item"
+	pb "github.com/edrowsluo/new-mli/backend/internal/pb"
 	"github.com/edrowsluo/new-mli/backend/internal/record"
 	"github.com/edrowsluo/new-mli/backend/internal/skill"
 	"github.com/edrowsluo/new-mli/backend/internal/wsx"
 	"github.com/google/uuid"
+	"google.golang.org/protobuf/proto"
 )
 
 // PlayerSession is the in-memory game state for one connected player.
@@ -185,6 +187,15 @@ func (s *PlayerSession) FlushAll(ctx context.Context, database *db.DB) error {
 	})
 }
 
+func isStateDiffEmpty(d *pb.StateDiff) bool {
+	return len(d.Inventory) == 0 &&
+		len(d.Attribute) == 0 &&
+		len(d.SkillXp) == 0 &&
+		len(d.Bestiary) == 0 &&
+		len(d.EventExecution) == 0 &&
+		len(d.EventQueue) == 0
+}
+
 // Manager is the thread-safe registry of all active PlayerSessions,
 // keyed by WebSocket connection ID. It owns all session locking.
 type Manager struct {
@@ -290,15 +301,15 @@ func (m *Manager) HandleSession(hub *wsx.Hub, typ string, fn SessionHandler) {
 }
 
 // TypedSessionHandler is a SessionHandler that receives a pre-decoded payload.
-type TypedSessionHandler[T any] func(ctx context.Context, c *wsx.Conn, sess *PlayerSession, req T) error
+type TypedSessionHandler[T proto.Message] func(ctx context.Context, c *wsx.Conn, sess *PlayerSession, req T) error
 
 // HandleSessionTyped registers a WS message type that requires a locked session
 // and a typed payload. The payload is automatically decoded and validated
 // before fn is called; session is locked/unlocked around the call.
-func HandleSessionTyped[T any](m *Manager, hub *wsx.Hub, typ string, fn TypedSessionHandler[T]) {
+func HandleSessionTyped[T proto.Message](m *Manager, hub *wsx.Hub, typ string, fn TypedSessionHandler[T]) {
 	hub.Handle(typ, func(ctx context.Context, c *wsx.Conn, in wsx.Inbound) error {
 		var req T
-		if err := in.DecodePayload(&req); err != nil {
+		if err := in.DecodePayload(req); err != nil {
 			return err
 		}
 		s, ok := m.LockSession(c.ID)
@@ -355,7 +366,7 @@ func (m *Manager) StartLoop(sess *PlayerSession, conn *wsx.Conn) {
 						conn.Send(wsx.Outbound{Type: "error", Error: apperror.Internal("build diff").WithCause(err)})
 						return
 					}
-					if string(diff) != "{}" {
+					if !isStateDiffEmpty(diff) {
 						conn.Send(wsx.Outbound{Type: "state.diff", Payload: diff})
 					}
 				}()

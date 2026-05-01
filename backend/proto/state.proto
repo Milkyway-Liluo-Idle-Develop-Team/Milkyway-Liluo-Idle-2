@@ -1,0 +1,103 @@
+syntax = "proto3";
+
+package mli.v1;
+
+option go_package = "github.com/edrowsluo/new-mli/backend/internal/pb";
+
+// -- Inventory --
+message InventoryDiff {
+  int32 item_id = 1;
+  int32 item_state = 2;
+  double quantity_delta = 3;
+}
+
+message InventoryFull {
+  int32 item_id = 1;
+  int32 item_state = 2;
+  double quantity = 3;
+}
+
+// -- Attribute --
+message ModifierWire {
+  string source = 1;
+  string op = 2;
+  double value = 3;
+  string ref_attr = 4;
+  string display = 5;
+}
+
+message AttributeDiff {
+  string attr_id = 1;
+  double final_value = 2;
+  repeated ModifierWire modifiers = 3;
+}
+
+message AttributeFull {
+  string attr_id = 1;
+  string name = 2;
+  double final_value = 3;
+  string group = 4;
+  string direction = 5;
+  repeated ModifierWire modifiers = 6;
+}
+
+// -- Skill XP --
+message SkillXPDiff {
+  int64 skill_id = 1;
+  double xp_delta = 2;
+  double new_level = 3;
+}
+
+message SkillXPFull {
+  int64 skill_id = 1;
+  double level = 2;
+  double xp = 3;
+}
+
+// -- Bestiary --
+message BestiaryDiff {
+  string type = 1;
+  string id = 2;
+}
+
+message BestiaryFull {
+  string type = 1;
+  string id = 2;
+}
+
+// -- Event Execution --
+message EventExecutionDiff {
+  int64 event_id = 1;
+  int32 cycles = 2;
+}
+
+message EventExecutionFull {
+  int32 queue_id = 1;
+  int64 event_id = 2;
+  int32 target_cycles = 3;
+  double progress = 4;
+}
+
+// -- Event Queue --
+message EventQueueDiff {
+  int32 queue_id = 1;
+  string scope = 2; // "current" or "full"
+}
+
+// -- State envelopes --
+message StateDiff {
+  repeated InventoryDiff inventory = 1;
+  repeated AttributeDiff attribute = 2;
+  repeated SkillXPDiff skill_xp = 3;
+  repeated BestiaryDiff bestiary = 4;
+  repeated EventExecutionDiff event_execution = 5;
+  repeated EventQueueDiff event_queue = 6;
+}
+
+message StateFull {
+  repeated InventoryFull inventory = 1;
+  repeated AttributeFull attribute = 2;
+  repeated SkillXPFull skill_xp = 3;
+  repeated BestiaryFull bestiary = 4;
+  repeated EventExecutionFull event_execution = 5;
+}

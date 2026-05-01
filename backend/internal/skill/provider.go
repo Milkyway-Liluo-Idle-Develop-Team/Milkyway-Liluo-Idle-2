@@ -1,11 +1,12 @@
 package skill
 
 import (
-	"encoding/json"
 	"sort"
 
+	pb "github.com/edrowsluo/new-mli/backend/internal/pb"
 	"github.com/edrowsluo/new-mli/backend/internal/gameconfig"
 	"github.com/edrowsluo/new-mli/backend/internal/record"
+	"google.golang.org/protobuf/proto"
 )
 
 // Provider implements record.SystemProvider for the skill system.
@@ -16,31 +17,25 @@ type provider struct{}
 func (p *provider) SystemName() string            { return "skill_xp" }
 func (p *provider) NewBucket() record.RecordBucket { return newBucket() }
 
-func (p *provider) SerializeFull(state any) (json.RawMessage, error) {
+func (p *provider) SerializeFull(state any) (proto.Message, error) {
 	st, ok := state.(*State)
 	if !ok {
-		return json.RawMessage("null"), nil
-	}
-
-	type skillFull struct {
-		SkillID int64   `json:"skill_id"`
-		Level   float64 `json:"level"`
-		XP      float64 `json:"xp"`
+		return nil, nil
 	}
 
 	all := st.All()
-	out := make([]skillFull, 0, len(all))
+	out := make([]*pb.SkillXPFull, 0, len(all))
 	for id, slot := range all {
-		out = append(out, skillFull{
-			SkillID: int64(id),
+		out = append(out, &pb.SkillXPFull{
+			SkillId: int64(id),
 			Level:   slot.Level,
-			XP:      slot.XP,
+			Xp:      slot.XP,
 		})
 	}
 
-	sort.Slice(out, func(i, j int) bool { return out[i].SkillID < out[j].SkillID })
+	sort.Slice(out, func(i, j int) bool { return out[i].SkillId < out[j].SkillId })
 
-	return json.Marshal(out)
+	return &pb.StateFull{SkillXp: out}, nil
 }
 
 // LoadCurve parses the embedded level_exp_requirement.CSV and returns

@@ -1,0 +1,18 @@
+syntax = "proto3";
+
+package mli.v1;
+
+option go_package = "github.com/edrowsluo/new-mli/backend/internal/pb";
+
+message Envelope {
+  string id = 1;
+  string type = 2;
+  bytes payload = 3;
+  Error error = 4;
+}
+
+message Error {
+  string code = 1;
+  string message = 2;
+  map<string, string> fields = 3;
+}

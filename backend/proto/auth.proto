@@ -1,0 +1,9 @@
+syntax = "proto3";
+
+package mli.v1;
+
+option go_package = "github.com/edrowsluo/new-mli/backend/internal/pb";
+
+message WhoamiResponse {
+  optional int64 user_id = 1;
+}

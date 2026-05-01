@@ -1,10 +1,10 @@
 package inventory
 
 import (
-	"encoding/json"
-
+	pb "github.com/edrowsluo/new-mli/backend/internal/pb"
 	"github.com/edrowsluo/new-mli/backend/internal/item"
 	"github.com/edrowsluo/new-mli/backend/internal/record"
+	"google.golang.org/protobuf/proto"
 )
 
 // Bucket collects InventoryChangeRecords within a single namespace.
@@ -32,25 +32,19 @@ func (b *Bucket) MergeInPlace(other record.RecordBucket) {
 	}
 }
 
-type invWire struct {
-	ItemID    int32   `json:"item_id"`
-	ItemState int32   `json:"item_state"`
-	QtyDelta  float64 `json:"quantity_delta"`
-}
-
-func (b *Bucket) SerializeDiff() (json.RawMessage, error) {
+func (b *Bucket) SerializeDiff() (proto.Message, error) {
 	if len(b.changes) == 0 {
-		return json.RawMessage("[]"), nil
+		return nil, nil
 	}
-	out := make([]invWire, 0, len(b.changes))
+	diffs := make([]*pb.InventoryDiff, 0, len(b.changes))
 	for it, qty := range b.changes {
-		out = append(out, invWire{
-			ItemID:    int32(it.ID),
-			ItemState: int32(it.State),
-			QtyDelta:  qty,
+		diffs = append(diffs, &pb.InventoryDiff{
+			ItemId:        int32(it.ID),
+			ItemState:     int32(it.State),
+			QuantityDelta: qty,
 		})
 	}
-	return json.Marshal(out)
+	return &pb.StateDiff{Inventory: diffs}, nil
 }
 
 func (b *Bucket) IsEmpty() bool { return len(b.changes) == 0 }

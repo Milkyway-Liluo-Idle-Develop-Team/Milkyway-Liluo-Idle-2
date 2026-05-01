@@ -1,0 +1,2 @@
+- [] attr的protobuf里有一些应该用enum的在用string编码
+- [] EventQueueDiff里没有编码队列信息

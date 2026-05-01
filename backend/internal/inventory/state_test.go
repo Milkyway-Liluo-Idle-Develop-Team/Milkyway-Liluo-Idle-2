@@ -3,7 +3,6 @@ package inventory_test
 import (
 	"context"
 	"database/sql"
-	"encoding/json"
 	"testing"
 
 	"github.com/edrowsluo/new-mli/backend/internal/attribute"
@@ -198,27 +197,12 @@ func TestRecordBucket(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	var m map[string]json.RawMessage
-	json.Unmarshal(diff, &m)
-
-	raw, ok := m["inventory_changes"]
-	if !ok {
-		t.Fatal("missing inventory_changes")
+	if len(diff.Inventory) != 2 {
+		t.Fatalf("want 2 changes (1 merged, 1 subtract), got %d", len(diff.Inventory))
 	}
-
-	var changes []struct {
-		ItemID    int32   `json:"item_id"`
-		ItemState int32   `json:"item_state"`
-		QtyDelta  float64 `json:"quantity_delta"`
-	}
-	json.Unmarshal(raw, &changes)
-
-	if len(changes) != 2 {
-		t.Fatalf("want 2 changes (1 merged, 1 subtract), got %d", len(changes))
-	}
-	for _, c := range changes {
-		if c.ItemID == 1 && c.QtyDelta != 8 {
-			t.Errorf("item 1: want qty_delta=8, got %v", c.QtyDelta)
+	for _, c := range diff.Inventory {
+		if c.ItemId == 1 && c.QuantityDelta != 8 {
+			t.Errorf("item 1: want qty_delta=8, got %v", c.QuantityDelta)
 		}
 	}
 }
@@ -239,17 +223,7 @@ func TestFullSnapshot(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	var m map[string]json.RawMessage
-	json.Unmarshal(data, &m)
-	if _, ok := m["inventory"]; !ok {
-		t.Fatal("missing inventory in full snapshot")
-	}
-
-	var slots []struct {
-		Quantity float64 `json:"quantity"`
-	}
-	json.Unmarshal(m["inventory"], &slots)
-	if len(slots) != 2 {
-		t.Fatalf("want 2 slots, got %d", len(slots))
+	if len(data.Inventory) != 2 {
+		t.Fatalf("want 2 slots, got %d", len(data.Inventory))
 	}
 }

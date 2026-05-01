@@ -9,7 +9,7 @@
 // produces the data packet.
 package record
 
-import "encoding/json"
+import "google.golang.org/protobuf/proto"
 
 // RecordBucket is the per-system container that collects changes during a
 // single namespace. Each system implements its own bucket with an internal
@@ -27,8 +27,8 @@ type RecordBucket interface {
 	MergeInPlace(other RecordBucket)
 
 	// SerializeDiff serializes this bucket's contents for the incremental
-	// diff packet. An empty bucket should return an empty JSON array ("[]").
-	SerializeDiff() (json.RawMessage, error)
+	// diff packet. Returns nil if the bucket is empty (no changes to report).
+	SerializeDiff() (proto.Message, error)
 
 	// IsEmpty reports whether this bucket contains no records.
 	IsEmpty() bool
@@ -48,5 +48,6 @@ type SystemProvider interface {
 	// SerializeFull serializes the complete current state of this system for
 	// a full-snapshot packet (e.g. on initial connection or reconnect).
 	// The state parameter is the opaque state object owned by the system.
-	SerializeFull(state any) (json.RawMessage, error)
+	// Returns nil if the state is nil or the system does not support full snapshots.
+	SerializeFull(state any) (proto.Message, error)
 }

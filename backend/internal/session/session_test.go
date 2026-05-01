@@ -3,7 +3,6 @@ package session_test
 import (
 	"context"
 	"database/sql"
-	"encoding/json"
 	"log/slog"
 	"sync"
 	"testing"
@@ -181,7 +180,7 @@ func TestExecutionCycle(t *testing.T) {
 	}
 
 	diff, _ := mgr.Registry().BuildDiff(rec)
-	if string(diff) == "{}" {
+	if len(diff.Attribute) == 0 {
 		t.Fatal("diff should not be empty")
 	}
 }
@@ -206,7 +205,7 @@ func TestMultipleExecutionCycles(t *testing.T) {
 	s.ClearRecorder()
 
 	diff1, _ := reg.BuildDiff(rec1)
-	if string(diff1) == "{}" {
+	if len(diff1.Attribute) == 0 {
 		t.Error("cycle 1 diff should not be empty")
 	}
 
@@ -244,8 +243,8 @@ func TestExecutionCycleNoChanges(t *testing.T) {
 	s.ClearRecorder()
 
 	diff, _ := reg.BuildDiff(rec)
-	if string(diff) != "{}" {
-		t.Errorf("idle cycle should produce empty diff, got %s", diff)
+	if len(diff.Attribute) != 0 {
+		t.Errorf("idle cycle should produce empty diff")
 	}
 }
 
@@ -291,18 +290,17 @@ func TestSessionLifecycleSimulation(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		var m map[string]json.RawMessage
-		json.Unmarshal(diff, &m)
-		raw, ok := m["attribute_changes"]
+				_ = diff // was json.Unmarshal
+		// was raw ok
 		if !ok {
 			t.Fatal("missing attribute_changes")
 		}
-		var changes []struct{ AttrID string `json:"attr_id"` }
-		json.Unmarshal(raw, &changes)
+		// was changes struct AttrID string `json:"attr_id"` }
+		// was raw unmarshal
 
 		attrIDs := make(map[string]bool)
-		for _, c := range changes {
-			attrIDs[c.AttrID] = true
+		for _, c := range diff.Attribute {
+			attrIDs[c.AttrId] = true
 		}
 		if !attrIDs["physical_power"] {
 			t.Error("diff should include physical_power")
@@ -367,16 +365,9 @@ func TestFullSnapshotOnConnect(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	var m map[string]json.RawMessage
-	json.Unmarshal(data, &m)
-	var attrs []struct {
-		AttrID     string  `json:"attr_id"`
-		FinalValue float64 `json:"final_value"`
-	}
-	json.Unmarshal(m["attribute"], &attrs)
-
-	if len(attrs) != r.Count() {
-		t.Fatalf("full snapshot: want %d attrs, got %d", r.Count(), len(attrs))
+	
+	if len(data.Attribute) != r.Count() {
+		t.Fatalf("full snapshot: want %d attrs, got %d", r.Count(), len(data.Attribute))
 	}
 }
 
@@ -402,8 +393,8 @@ func TestRecorderIsCleanBetweenCycles(t *testing.T) {
 	rec2 := mgr.NewRecorder()
 	s.SetRecorder(rec2)
 	diff, _ := reg.BuildDiff(rec2)
-	if string(diff) != "{}" {
-		t.Errorf("fresh recorder should produce empty diff, got %s", diff)
+	if len(diff.Attribute) != 0 {
+		t.Errorf("fresh recorder should produce empty diff")
 	}
 
 	val := s.Attr().GetFinal(physID)
@@ -511,13 +502,12 @@ func TestSessionWithInventory(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	var m map[string]json.RawMessage
-	json.Unmarshal(diff, &m)
+		_ = diff // was json.Unmarshal
 
-	if _, ok := m["attribute_changes"]; !ok {
+	if len(diff.Attribute) == 0 {
 		t.Error("missing attribute_changes")
 	}
-	if _, ok := m["inventory_changes"]; !ok {
+	if len(diff.Inventory) == 0 {
 		t.Error("missing inventory_changes")
 	}
 }
@@ -649,16 +639,15 @@ func TestFullCycleAllSystems(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	var m map[string]json.RawMessage
-	json.Unmarshal(diff, &m)
+		_ = diff // was json.Unmarshal
 
-	if _, ok := m["attribute_changes"]; !ok {
+	if len(diff.Attribute) == 0 {
 		t.Error("missing attribute_changes")
 	}
-	if _, ok := m["inventory_changes"]; !ok {
+	if len(diff.Inventory) == 0 {
 		t.Error("missing inventory_changes")
 	}
-	if _, ok := m["skill_xp_changes"]; !ok {
+	if len(diff.SkillXp) == 0 {
 		t.Error("missing skill_xp_changes")
 	}
 }

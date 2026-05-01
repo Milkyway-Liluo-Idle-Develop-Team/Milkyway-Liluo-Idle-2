@@ -1,10 +1,10 @@
 package event
 
 import (
-	"encoding/json"
-
+	pb "github.com/edrowsluo/new-mli/backend/internal/pb"
 	"github.com/edrowsluo/new-mli/backend/internal/gameconfig"
 	"github.com/edrowsluo/new-mli/backend/internal/record"
+	"google.golang.org/protobuf/proto"
 )
 
 // --- event_execution ---
@@ -30,20 +30,18 @@ func (b *execBucket) MergeInPlace(other record.RecordBucket) {
 	}
 }
 
-type execWire struct {
-	EventID int64 `json:"event_id"`
-	Cycles  int   `json:"cycles"`
-}
-
-func (b *execBucket) SerializeDiff() (json.RawMessage, error) {
+func (b *execBucket) SerializeDiff() (proto.Message, error) {
 	if len(b.cycles) == 0 {
-		return json.RawMessage("[]"), nil
+		return nil, nil
 	}
-	out := make([]execWire, 0, len(b.cycles))
+	diffs := make([]*pb.EventExecutionDiff, 0, len(b.cycles))
 	for id, c := range b.cycles {
-		out = append(out, execWire{EventID: int64(id), Cycles: c})
+		diffs = append(diffs, &pb.EventExecutionDiff{
+			EventId: int64(id),
+			Cycles:  int32(c),
+		})
 	}
-	return json.Marshal(out)
+	return &pb.StateDiff{EventExecution: diffs}, nil
 }
 
 func (b *execBucket) IsEmpty() bool { return len(b.cycles) == 0 }
@@ -79,24 +77,22 @@ func (b *queueBucket) MergeInPlace(other record.RecordBucket) {
 	}
 }
 
-type queueWire struct {
-	QueueID int    `json:"queue_id"`
-	Scope   string `json:"scope"` // "current" or "full"
-}
-
-func (b *queueBucket) SerializeDiff() (json.RawMessage, error) {
+func (b *queueBucket) SerializeDiff() (proto.Message, error) {
 	if len(b.marks) == 0 {
-		return json.RawMessage("[]"), nil
+		return nil, nil
 	}
-	out := make([]queueWire, 0, len(b.marks))
+	diffs := make([]*pb.EventQueueDiff, 0, len(b.marks))
 	for id, full := range b.marks {
 		scope := "current"
 		if full {
 			scope = "full"
 		}
-		out = append(out, queueWire{QueueID: id, Scope: scope})
+		diffs = append(diffs, &pb.EventQueueDiff{
+			QueueId: int32(id),
+			Scope:   scope,
+		})
 	}
-	return json.Marshal(out)
+	return &pb.StateDiff{EventQueue: diffs}, nil
 }
 
 func (b *queueBucket) IsEmpty() bool { return len(b.marks) == 0 }

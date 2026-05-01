@@ -1,8 +1,10 @@
 package record
 
 import (
-	"encoding/json"
 	"fmt"
+
+	pb "github.com/edrowsluo/new-mli/backend/internal/pb"
+	"google.golang.org/protobuf/proto"
 )
 
 // Registry holds all registered SystemProviders and provides the global view
@@ -45,24 +47,20 @@ func (r *Registry) Providers() []SystemProvider {
 }
 
 // BuildDiff drains the Recorder's namespaces and produces the incremental
-// diff JSON payload.
+// diff as a StateDiff proto message.
 //
 // Processing:
 //  1. PopAll namespaces from the Recorder.
-//  2. For each system, take the first namespace's bucket as the accumulator.
-//  3. Merge buckets from remaining namespaces into the accumulator.
-//  4. Collect non-empty buckets and serialize each via the provider.
-//  5. Assemble the final JSON object keyed by "{system}_changes".
-func (r *Registry) BuildDiff(rec *Recorder) (json.RawMessage, error) {
+//  2. For each system, merge same-system buckets across namespaces.
+//  3. Collect non-empty buckets and serialize each via SerializeDiff.
+//  4. Merge per-system results into the final StateDiff.
+func (r *Registry) BuildDiff(rec *Recorder) (*pb.StateDiff, error) {
 	namespaces := rec.PopAll()
 	if len(namespaces) == 0 {
-		return json.RawMessage("{}"), nil
+		return &pb.StateDiff{}, nil
 	}
 
-	// For each system, merge its buckets across all namespaces.
-	// First pass: find the first non-empty bucket per system as the base.
 	merged := make(map[string]RecordBucket)
-
 	for _, ns := range namespaces {
 		for sysName, b := range ns.buckets {
 			if b.IsEmpty() {
@@ -71,19 +69,18 @@ func (r *Registry) BuildDiff(rec *Recorder) (json.RawMessage, error) {
 			if existing, ok := merged[sysName]; ok {
 				existing.MergeInPlace(b)
 			} else {
-				// Shallow copy the bucket so we don't mutate the original.
 				merged[sysName] = b
 			}
 		}
 	}
 
-	return r.buildDiffJSON(merged)
+	return r.buildDiffProto(merged)
 }
 
 // BuildFullSnapshot calls each registered provider's SerializeFull with the
 // corresponding state object and assembles the complete state packet.
-func (r *Registry) BuildFullSnapshot(states map[string]any) (json.RawMessage, error) {
-	parts := make([]jsonPiece, 0, len(states))
+func (r *Registry) BuildFullSnapshot(states map[string]any) (*pb.StateFull, error) {
+	stateFull := &pb.StateFull{}
 
 	for _, name := range r.order {
 		state, ok := states[name]
@@ -95,19 +92,18 @@ func (r *Registry) BuildFullSnapshot(states map[string]any) (json.RawMessage, er
 		if err != nil {
 			return nil, fmt.Errorf("record: serialize full for %q: %w", name, err)
 		}
-		if data == nil || string(data) == "null" {
+		if data == nil {
 			continue
 		}
-		parts = append(parts, jsonPiece{key: name, value: data})
+		mergeStateFull(stateFull, data)
 	}
 
-	return assembleJSON(parts), nil
+	return stateFull, nil
 }
 
-func (r *Registry) buildDiffJSON(merged map[string]RecordBucket) (json.RawMessage, error) {
-	parts := make([]jsonPiece, 0, len(merged))
+func (r *Registry) buildDiffProto(merged map[string]RecordBucket) (*pb.StateDiff, error) {
+	stateDiff := &pb.StateDiff{}
 
-	// Use registration order for deterministic output.
 	for _, name := range r.order {
 		b, ok := merged[name]
 		if !ok {
@@ -117,37 +113,38 @@ func (r *Registry) buildDiffJSON(merged map[string]RecordBucket) (json.RawMessag
 		if err != nil {
 			return nil, fmt.Errorf("record: serialize diff for %q: %w", name, err)
 		}
-		if data == nil || string(data) == "null" || string(data) == "[]" {
+		if data == nil {
 			continue
 		}
-		parts = append(parts, jsonPiece{key: name + "_changes", value: data})
+		mergeStateDiff(stateDiff, data)
 	}
 
-	return assembleJSON(parts), nil
+	return stateDiff, nil
 }
 
-// --- JSON helpers ---
-
-type jsonPiece struct {
-	key   string
-	value json.RawMessage
+// mergeStateDiff merges a per-system proto message (typically *pb.StateDiff
+// with exactly one repeated field populated) into the accumulator.
+func mergeStateDiff(acc *pb.StateDiff, msg proto.Message) {
+	switch m := msg.(type) {
+	case *pb.StateDiff:
+		acc.Inventory = append(acc.Inventory, m.Inventory...)
+		acc.Attribute = append(acc.Attribute, m.Attribute...)
+		acc.SkillXp = append(acc.SkillXp, m.SkillXp...)
+		acc.Bestiary = append(acc.Bestiary, m.Bestiary...)
+		acc.EventExecution = append(acc.EventExecution, m.EventExecution...)
+		acc.EventQueue = append(acc.EventQueue, m.EventQueue...)
+	}
 }
 
-func assembleJSON(parts []jsonPiece) json.RawMessage {
-	if len(parts) == 0 {
-		return json.RawMessage("{}")
+// mergeStateFull merges a per-system proto message (typically *pb.StateFull
+// with exactly one repeated field populated) into the accumulator.
+func mergeStateFull(acc *pb.StateFull, msg proto.Message) {
+	switch m := msg.(type) {
+	case *pb.StateFull:
+		acc.Inventory = append(acc.Inventory, m.Inventory...)
+		acc.Attribute = append(acc.Attribute, m.Attribute...)
+		acc.SkillXp = append(acc.SkillXp, m.SkillXp...)
+		acc.Bestiary = append(acc.Bestiary, m.Bestiary...)
+		acc.EventExecution = append(acc.EventExecution, m.EventExecution...)
 	}
-
-	buf := []byte("{")
-	for i, p := range parts {
-		if i > 0 {
-			buf = append(buf, ',')
-		}
-		buf = append(buf, '"')
-		buf = append(buf, p.key...)
-		buf = append(buf, '"', ':')
-		buf = append(buf, p.value...)
-	}
-	buf = append(buf, '}')
-	return json.RawMessage(buf)
 }

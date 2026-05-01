@@ -1,7 +1,6 @@
 package attribute_test
 
 import (
-	"encoding/json"
 	"testing"
 
 	"github.com/edrowsluo/new-mli/backend/internal/attribute"
@@ -209,39 +208,18 @@ func TestBucketDiff(t *testing.T) {
 
 	inst.ClearRecorder()
 
-	data, err := reg.BuildDiff(rec)
+	diff, err := reg.BuildDiff(rec)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	var m map[string]json.RawMessage
-	if err := json.Unmarshal(data, &m); err != nil {
-		t.Fatal(err)
-	}
-
-	if _, ok := m["attribute_changes"]; !ok {
-		t.Fatal("missing attribute_changes in diff")
-	}
-
-	// Verify the payload contains final_value and modifiers.
-	var changes []struct {
-		AttrID     string  `json:"attr_id"`
-		FinalValue float64 `json:"final_value"`
-		Modifiers  []struct {
-			Source string  `json:"source"`
-			Op     string  `json:"op"`
-			Value  float64 `json:"value"`
-		} `json:"modifiers"`
-	}
-	json.Unmarshal(m["attribute_changes"], &changes)
-
-	if len(changes) == 0 {
+	if len(diff.Attribute) == 0 {
 		t.Fatal("no attribute changes")
 	}
 
 	found := false
-	for _, c := range changes {
-		if c.AttrID == "physical_power" {
+	for _, c := range diff.Attribute {
+		if c.AttrId == "physical_power" {
 			found = true
 			if c.FinalValue != 25 {
 				t.Errorf("final_value: want 25, got %v", c.FinalValue)
@@ -272,20 +250,7 @@ func TestFullSnapshot(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	var m map[string]json.RawMessage
-	json.Unmarshal(data, &m)
-
-	if _, ok := m["attribute"]; !ok {
-		t.Fatal("missing attribute in full snapshot")
-	}
-
-	var attrs []struct {
-		AttrID     string  `json:"attr_id"`
-		FinalValue float64 `json:"final_value"`
-	}
-	json.Unmarshal(m["attribute"], &attrs)
-
-	if len(attrs) != r.Count() {
-		t.Errorf("want %d attributes, got %d", r.Count(), len(attrs))
+	if len(data.Attribute) != r.Count() {
+		t.Errorf("want %d attributes, got %d", r.Count(), len(data.Attribute))
 	}
 }

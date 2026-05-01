@@ -2,15 +2,17 @@ package wsx
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
+	"fmt"
 	"sync"
 	"time"
 
 	"github.com/coder/websocket"
 	"github.com/edrowsluo/new-mli/backend/internal/apperror"
 	"github.com/edrowsluo/new-mli/backend/internal/logging"
+	pb "github.com/edrowsluo/new-mli/backend/internal/pb"
 	"github.com/google/uuid"
+	"google.golang.org/protobuf/proto"
 )
 
 // Conn is a single client WebSocket connection managed by a Hub. It is
@@ -54,7 +56,7 @@ func (c *Conn) Send(msg Outbound) bool {
 
 // Reply sends a typed response to an inbound request, reusing its ID.
 // The response type is in.Type + ".ok"; use Send directly for custom types.
-func (c *Conn) Reply(in Inbound, payload any) bool {
+func (c *Conn) Reply(in Inbound, payload proto.Message) bool {
 	return c.Send(Outbound{
 		ID:      in.ID,
 		Type:    in.Type + ".ok",
@@ -89,6 +91,17 @@ func (c *Conn) closeWithReason(reason string) {
 	})
 }
 
+func convertFields(fields map[string]any) map[string]string {
+	if len(fields) == 0 {
+		return nil
+	}
+	out := make(map[string]string, len(fields))
+	for k, v := range fields {
+		out[k] = fmt.Sprintf("%v", v)
+	}
+	return out
+}
+
 // run owns the read/write goroutines for the lifetime of the connection.
 // It returns when both loops have exited.
 func (c *Conn) run(ctx context.Context) {
@@ -120,13 +133,31 @@ func (c *Conn) writeLoop(ctx context.Context, done chan<- struct{}) {
 				return
 			}
 		case msg := <-c.send:
-			data, err := json.Marshal(msg)
+			env := &pb.Envelope{
+				Id:   msg.ID,
+				Type: msg.Type,
+			}
+			if msg.Error != nil {
+				env.Error = &pb.Error{
+					Code:    string(msg.Error.Code),
+					Message: msg.Error.Message,
+					Fields:  convertFields(msg.Error.Fields),
+				}
+			} else if msg.Payload != nil {
+				payload, err := proto.Marshal(msg.Payload)
+				if err != nil {
+					logging.FromContext(ctx).Error("ws marshal", "err", err, "type", msg.Type)
+					continue
+				}
+				env.Payload = payload
+			}
+			data, err := proto.Marshal(env)
 			if err != nil {
-				logging.FromContext(ctx).Error("ws marshal", "err", err, "type", msg.Type)
+				logging.FromContext(ctx).Error("ws envelope marshal", "err", err, "type", msg.Type)
 				continue
 			}
 			wctx, cancel := context.WithTimeout(ctx, cfg.WriteTimeout)
-			err = c.ws.Write(wctx, websocket.MessageText, data)
+			err = c.ws.Write(wctx, websocket.MessageBinary, data)
 			cancel()
 			if err != nil {
 				c.closeWithReason("write failed")
@@ -146,17 +177,22 @@ func (c *Conn) readLoop(ctx context.Context) {
 			}
 			return
 		}
-		if typ != websocket.MessageText {
-			c.closeWithReason("unexpected binary frame")
+		if typ != websocket.MessageBinary {
+			c.closeWithReason("unexpected text frame")
 			return
 		}
-		var in Inbound
-		if err := json.Unmarshal(data, &in); err != nil {
+		var env pb.Envelope
+		if err := proto.Unmarshal(data, &env); err != nil {
 			c.Send(Outbound{
 				Type:  "error",
-				Error: apperror.BadRequest("invalid JSON message").WithCause(err),
+				Error: apperror.BadRequest("invalid protobuf message").WithCause(err),
 			})
 			continue
+		}
+		in := Inbound{
+			ID:      env.Id,
+			Type:    env.Type,
+			Payload: env.Payload,
 		}
 		c.hub.dispatch(ctx, c, in)
 	}

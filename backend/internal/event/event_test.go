@@ -3,7 +3,6 @@ package event_test
 import (
 	"context"
 	"database/sql"
-	"encoding/json"
 	"testing"
 
 	"github.com/edrowsluo/new-mli/backend/internal/attribute"
@@ -126,12 +125,10 @@ func TestSettleLoopProduces(t *testing.T) {
 
 	// Check diff payload.
 	diff, _ := reg.BuildDiff(rec)
-	var m map[string]json.RawMessage
-	json.Unmarshal(diff, &m)
-	if _, ok := m["event_execution_changes"]; !ok {
+	if len(diff.EventExecution) == 0 {
 		t.Error("missing event_execution_changes")
 	}
-	if _, ok := m["event_queue_changes"]; !ok {
+	if len(diff.EventQueue) == 0 {
 		t.Error("missing event_queue_changes")
 	}
 }

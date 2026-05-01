@@ -1,9 +1,9 @@
 package attribute
 
 import (
-	"encoding/json"
-
+	pb "github.com/edrowsluo/new-mli/backend/internal/pb"
 	"github.com/edrowsluo/new-mli/backend/internal/record"
+	"google.golang.org/protobuf/proto"
 )
 
 // Provider implements record.SystemProvider for the attribute system.
@@ -16,40 +16,23 @@ func (p *provider) NewBucket() record.RecordBucket { return &Bucket{dirty: make(
 
 // SerializeFull produces the complete attribute state for a full-snapshot
 // packet. The state parameter must be an *Instance.
-func (p *provider) SerializeFull(state any) (json.RawMessage, error) {
+func (p *provider) SerializeFull(state any) (proto.Message, error) {
 	inst, ok := state.(*Instance)
 	if !ok {
-		return json.RawMessage("null"), nil
-	}
-
-	type modFull struct {
-		Source  string  `json:"source"`
-		Op      string  `json:"op"`
-		Value   float64 `json:"value,omitempty"`
-		RefAttr string  `json:"ref_attr,omitempty"`
-		Display string  `json:"display,omitempty"`
-	}
-
-	type attrFull struct {
-		AttrID     string    `json:"attr_id"`
-		Name       string    `json:"name"`
-		FinalValue float64   `json:"final_value"`
-		Group      string    `json:"group"`
-		Direction  Direction `json:"direction"`
-		Modifiers  []modFull `json:"modifiers"`
+		return nil, nil
 	}
 
 	allIDs := inst.reg.AllIDs()
-	out := make([]attrFull, 0, len(allIDs))
+	out := make([]*pb.AttributeFull, 0, len(allIDs))
 
 	for _, id := range allIDs {
 		def, _ := inst.reg.Def(id)
 		finalVal := inst.GetFinal(id)
 		mods := inst.ModifiersFor(id)
 
-		wmods := make([]modFull, 0, len(mods))
+		wmods := make([]*pb.ModifierWire, 0, len(mods))
 		for _, m := range mods {
-			mf := modFull{
+			mf := &pb.ModifierWire{
 				Source:  m.Source,
 				Op:      string(m.Op),
 				Display: string(m.Display),
@@ -65,16 +48,15 @@ func (p *provider) SerializeFull(state any) (json.RawMessage, error) {
 		}
 
 		strID, _ := inst.reg.AttrString(id)
-		out = append(out, attrFull{
-			AttrID:     strID,
+		out = append(out, &pb.AttributeFull{
+			AttrId:     strID,
 			Name:       def.Name,
 			FinalValue: finalVal,
 			Group:      def.Group,
-			Direction:  def.Direction,
+			Direction:  string(def.Direction),
 			Modifiers:  wmods,
 		})
 	}
 
-	// AllIDs is already sorted by numeric ID — no need to re-sort by string.
-	return json.Marshal(out)
+	return &pb.StateFull{Attribute: out}, nil
 }
