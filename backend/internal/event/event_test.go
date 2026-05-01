@@ -373,6 +373,282 @@ func TestFlushRoundTrip(t *testing.T) {
 	}
 }
 
+func TestQueueDiffCurrentScope(t *testing.T) {
+	// "current" scope should only include the head entry (position 0).
+	reg := record.NewRegistry()
+	reg.Register(event.ExecProvider)
+	reg.Register(event.QueueProvider)
+
+	db, q := openEventDB(t)
+	defer db.Close()
+
+	st, err := event.Load(context.Background(), q, 1)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	eid, _ := gameconfig.StringToEventID("felling_oak_tree")
+	rec := record.NewRecorder(reg)
+	st.SetRecorder(rec)
+
+	st.Enqueue(0, eid, -1)
+
+	ctx := newMockCtx()
+	fellingID, _ := gameconfig.StringToSkillID("felling")
+	ctx.skillLvl[fellingID] = 1
+
+	// Settle less than 1 full cycle (loop_time=2, settle=1)
+	rec.PushNamespace("tick")
+	st.Settle(ctx, 1.0)
+	rec.PopNamespace()
+	st.ClearRecorder()
+
+	diff, _ := reg.BuildDiff(rec)
+	if len(diff.EventQueue) != 1 {
+		t.Fatalf("want 1 queue mark, got %d", len(diff.EventQueue))
+	}
+	qm := diff.EventQueue[0]
+	if qm.Scope != "current" {
+		t.Errorf("want scope 'current', got %q", qm.Scope)
+	}
+	// Should only have the head entry, not all entries.
+	if len(qm.Entries) != 1 {
+		t.Errorf("current scope: want 1 entry (head only), got %d", len(qm.Entries))
+	}
+	if qm.Entries[0].Progress == 0 {
+		t.Error("progress should have advanced")
+	}
+}
+
+func TestQueueDiffFullScope(t *testing.T) {
+	// "full" scope should include all queue entries.
+	reg := record.NewRegistry()
+	reg.Register(event.ExecProvider)
+	reg.Register(event.QueueProvider)
+
+	db, q := openEventDB(t)
+	defer db.Close()
+
+	st, err := event.Load(context.Background(), q, 1)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	eid, _ := gameconfig.StringToEventID("felling_oak_tree")
+	plankID, _ := gameconfig.StringToEventID("making_oak_plank")
+
+	rec := record.NewRecorder(reg)
+	st.SetRecorder(rec)
+
+	// Enqueue two events → triggers "full" scope.
+	rec.PushNamespace("edit")
+	st.Enqueue(0, eid, -1)
+	st.Enqueue(0, plankID, -1)
+	rec.PopNamespace()
+	st.ClearRecorder()
+
+	diff, _ := reg.BuildDiff(rec)
+	if len(diff.EventQueue) != 1 {
+		t.Fatalf("want 1 queue mark, got %d", len(diff.EventQueue))
+	}
+	qm := diff.EventQueue[0]
+	if qm.Scope != "full" {
+		t.Errorf("want scope 'full', got %q", qm.Scope)
+	}
+	// Enqueue added 2 events → should have 2 entries.
+	if len(qm.Entries) != 2 {
+		t.Errorf("full scope: want 2 entries, got %d", len(qm.Entries))
+	}
+}
+
+func TestMoveEntryToFront(t *testing.T) {
+	// Move the entry at position 1 to position 0 → "full" scope, order reversed.
+	reg := record.NewRegistry()
+	reg.Register(event.ExecProvider)
+	reg.Register(event.QueueProvider)
+
+	db, q := openEventDB(t)
+	defer db.Close()
+
+	st, err := event.Load(context.Background(), q, 1)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	eid1, _ := gameconfig.StringToEventID("felling_oak_tree")
+	eid2, _ := gameconfig.StringToEventID("making_oak_plank")
+
+	rec := record.NewRecorder(reg)
+	st.SetRecorder(rec)
+	rec.PushNamespace("edit")
+	st.Enqueue(0, eid1, -1) // position 0
+	st.Enqueue(0, eid2, -1) // position 1
+	st.MoveEntry(0, 1, 0)   // move position 1 to front
+	rec.PopNamespace()
+	st.ClearRecorder()
+
+	diff, _ := reg.BuildDiff(rec)
+	if len(diff.EventQueue) != 1 {
+		t.Fatalf("want 1 queue mark, got %d", len(diff.EventQueue))
+	}
+	qm := diff.EventQueue[0]
+	if qm.Scope != "full" {
+		t.Errorf("want scope 'full', got %q", qm.Scope)
+	}
+	if len(qm.Entries) != 2 {
+		t.Fatalf("want 2 entries, got %d", len(qm.Entries))
+	}
+	// After move: making_oak_plank (old pos 1) now at position 0.
+	if qm.Entries[0].EventId != int64(eid2) {
+		t.Errorf("entry 0: want %d, got %d", eid2, qm.Entries[0].EventId)
+	}
+	if qm.Entries[1].EventId != int64(eid1) {
+		t.Errorf("entry 1: want %d, got %d", eid1, qm.Entries[1].EventId)
+	}
+}
+
+func TestInsertEntryAtPosition(t *testing.T) {
+	// Insert a new event at position 1 between two existing entries.
+	reg := record.NewRegistry()
+	reg.Register(event.ExecProvider)
+	reg.Register(event.QueueProvider)
+
+	db, q := openEventDB(t)
+	defer db.Close()
+
+	st, err := event.Load(context.Background(), q, 1)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	eid1, _ := gameconfig.StringToEventID("felling_oak_tree")
+	eid2, _ := gameconfig.StringToEventID("making_oak_plank")
+	eid3, _ := gameconfig.StringToEventID("mining_dirt")
+
+	rec := record.NewRecorder(reg)
+	st.SetRecorder(rec)
+	rec.PushNamespace("edit")
+	st.Enqueue(0, eid1, -1)     // position 0
+	st.Enqueue(0, eid2, -1)     // position 1
+	st.InsertEntry(0, 1, eid3, -1) // insert at position 1, old 1 → 2
+	rec.PopNamespace()
+	st.ClearRecorder()
+
+	diff, _ := reg.BuildDiff(rec)
+	qm := diff.EventQueue[0]
+	if qm.Scope != "full" {
+		t.Errorf("want scope 'full', got %q", qm.Scope)
+	}
+	if len(qm.Entries) != 3 {
+		t.Fatalf("want 3 entries, got %d", len(qm.Entries))
+	}
+	// Order: eid1(0) → eid3(1) → eid2(2)
+	if qm.Entries[0].EventId != int64(eid1) {
+		t.Errorf("entry 0: want %d, got %d", eid1, qm.Entries[0].EventId)
+	}
+	if qm.Entries[1].EventId != int64(eid3) {
+		t.Errorf("entry 1: want %d, got %d", eid3, qm.Entries[1].EventId)
+	}
+	if qm.Entries[2].EventId != int64(eid2) {
+		t.Errorf("entry 2: want %d, got %d", eid2, qm.Entries[2].EventId)
+	}
+}
+
+func TestConsumeHeadByProgress(t *testing.T) {
+	// target_cycles=1 with enough delta → head consumed, queue empty.
+	reg := record.NewRegistry()
+	reg.Register(event.ExecProvider)
+	reg.Register(event.QueueProvider)
+
+	db, q := openEventDB(t)
+	defer db.Close()
+
+	st, err := event.Load(context.Background(), q, 1)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	eid, _ := gameconfig.StringToEventID("felling_oak_tree") // loop_time=2
+
+	ctx := newMockCtx()
+	fellingSid, _ := gameconfig.StringToSkillID("felling")
+	ctx.skillLvl[fellingSid] = 1
+
+	rec := record.NewRecorder(reg)
+	st.SetRecorder(rec)
+
+	// Enqueue with target_cycles=1 (execute once, then remove).
+	rec.PushNamespace("edit")
+	st.Enqueue(0, eid, 1)
+	rec.PopNamespace()
+
+	// Settle 2s → exactly 1 cycle → consumed.
+	rec.PushNamespace("tick")
+	st.Settle(ctx, 2.0)
+	rec.PopNamespace()
+	st.ClearRecorder()
+
+	diff, _ := reg.BuildDiff(rec)
+	if len(diff.EventQueue) != 1 {
+		t.Fatalf("want 1 queue mark, got %d", len(diff.EventQueue))
+	}
+	qm := diff.EventQueue[0]
+	if qm.Scope != "full" {
+		t.Errorf("want scope 'full' after consume, got %q", qm.Scope)
+	}
+	// Queue should be empty after consumption.
+	if len(qm.Entries) != 0 {
+		t.Errorf("want empty queue after consume, got %d entries", len(qm.Entries))
+	}
+}
+
+func TestConsumeTwoHeadByProgress(t *testing.T) {
+	// Two events each target_cycles=1, settle enough → both consumed, queue empty.
+	reg := record.NewRegistry()
+	reg.Register(event.ExecProvider)
+	reg.Register(event.QueueProvider)
+
+	db, q := openEventDB(t)
+	defer db.Close()
+
+	st, err := event.Load(context.Background(), q, 1)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	eid1, _ := gameconfig.StringToEventID("felling_oak_tree") // loop_time=2
+	eid2, _ := gameconfig.StringToEventID("mining_dirt")
+
+	ctx := newMockCtx()
+	fellingSid, _ := gameconfig.StringToSkillID("felling")
+	miningSid, _ := gameconfig.StringToSkillID("mining")
+	ctx.skillLvl[fellingSid] = 1
+	ctx.skillLvl[miningSid] = 1
+
+	rec := record.NewRecorder(reg)
+	st.SetRecorder(rec)
+
+	rec.PushNamespace("edit")
+	st.Enqueue(0, eid1, 1) // consumes after 1 cycle
+	st.Enqueue(0, eid2, 1)
+	rec.PopNamespace()
+
+	// Settle enough for both events (each loop_time ≤ 2, so 4s should cover both).
+	rec.PushNamespace("tick")
+	st.Settle(ctx, 10.0)
+	rec.PopNamespace()
+	st.ClearRecorder()
+
+	diff, _ := reg.BuildDiff(rec)
+	qm := diff.EventQueue[0]
+	if qm.Scope != "full" {
+		t.Errorf("want scope 'full', got %q", qm.Scope)
+	}
+	if len(qm.Entries) != 0 {
+		t.Errorf("want empty queue, got %d entries", len(qm.Entries))
+	}
+}
+
 func openEventDB(t *testing.T) (*sql.DB, *dbgen.Queries) {
 	t.Helper()
 	db, err := sql.Open("sqlite", ":memory:?_pragma=foreign_keys(1)")

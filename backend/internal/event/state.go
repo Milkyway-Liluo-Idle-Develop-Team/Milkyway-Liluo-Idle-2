@@ -184,6 +184,53 @@ func (st *State) Enqueue(queueID int, eventID gameconfig.EventID, targetCycles i
 	st.markQueueFull(queueID)
 }
 
+// MoveEntry moves the entry at fromPos to toPos, shifting entries between.
+func (st *State) MoveEntry(queueID int, fromPos, toPos int) {
+	q, ok := st.queues[queueID]
+	if !ok || fromPos < 0 || fromPos >= len(q.Entries) || toPos < 0 || toPos >= len(q.Entries) {
+		return
+	}
+	if fromPos == toPos {
+		return
+	}
+	entry := q.Entries[fromPos]
+	// Remove from old position.
+	q.Entries = append(q.Entries[:fromPos], q.Entries[fromPos+1:]...)
+	// Insert at new position.
+	if toPos == len(q.Entries) {
+		q.Entries = append(q.Entries, entry)
+	} else {
+		q.Entries = append(q.Entries[:toPos], append([]QueueEntry{entry}, q.Entries[toPos:]...)...)
+	}
+	// Reassign positions.
+	for i := range q.Entries {
+		q.Entries[i].Position = i
+	}
+	st.markQueueFull(queueID)
+}
+
+// InsertEntry inserts a new event at the given position, shifting later entries down.
+func (st *State) InsertEntry(queueID int, pos int, eventID gameconfig.EventID, targetCycles int) {
+	q, ok := st.queues[queueID]
+	if !ok {
+		q = &Queue{ID: queueID}
+		st.queues[queueID] = q
+	}
+	if pos < 0 || pos > len(q.Entries) {
+		pos = len(q.Entries)
+	}
+	entry := QueueEntry{EventID: eventID, TargetCycles: targetCycles}
+	if pos == len(q.Entries) {
+		q.Entries = append(q.Entries, entry)
+	} else {
+		q.Entries = append(q.Entries[:pos], append([]QueueEntry{entry}, q.Entries[pos:]...)...)
+	}
+	for i := range q.Entries {
+		q.Entries[i].Position = i
+	}
+	st.markQueueFull(queueID)
+}
+
 // SetRecorder / ClearRecorder — standard lifecycle.
 func (st *State) SetRecorder(rec *record.Recorder) { st.recorder = rec }
 func (st *State) ClearRecorder()                    { st.recorder = nil }
