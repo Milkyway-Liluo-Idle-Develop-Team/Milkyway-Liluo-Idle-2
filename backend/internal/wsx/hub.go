@@ -79,12 +79,13 @@ func (h *Hub) Serve(w http.ResponseWriter, r *http.Request, opts ServeOptions) e
 	}
 
 	c := &Conn{
-		ID:     uuid.New(),
-		UserID: opts.UserID,
-		hub:    h,
-		ws:     ws,
-		send:   make(chan Outbound, h.cfg.SendBuffer),
-		done:   make(chan struct{}),
+		ID:        uuid.New(),
+		UserID:    opts.UserID,
+		hub:       h,
+		ws:        ws,
+		send:      make(chan Outbound, h.cfg.SendBuffer),
+		done:      make(chan struct{}),
+		jsonCodec: h.cfg.Codec == "json",
 	}
 
 	if !h.register(c) {

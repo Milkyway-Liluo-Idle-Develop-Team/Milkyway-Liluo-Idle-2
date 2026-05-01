@@ -2,6 +2,7 @@ package wsx
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"sync"
@@ -12,6 +13,7 @@ import (
 	"github.com/edrowsluo/new-mli/backend/internal/logging"
 	pb "github.com/edrowsluo/new-mli/backend/internal/pb"
 	"github.com/google/uuid"
+	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/proto"
 )
 
@@ -29,6 +31,7 @@ type Conn struct {
 	send chan Outbound
 	done chan struct{} // closed by Close to signal the writer to stop
 
+	jsonCodec bool // use protojson+text frames instead of proto+binary
 	closeOnce sync.Once
 }
 
@@ -133,31 +136,60 @@ func (c *Conn) writeLoop(ctx context.Context, done chan<- struct{}) {
 				return
 			}
 		case msg := <-c.send:
-			env := &pb.Envelope{
-				Id:   msg.ID,
-				Type: msg.Type,
-			}
-			if msg.Error != nil {
-				env.Error = &pb.Error{
-					Code:    string(msg.Error.Code),
-					Message: msg.Error.Message,
-					Fields:  convertFields(msg.Error.Fields),
+			var data []byte
+			var err error
+			msgType := websocket.MessageBinary
+
+			if c.jsonCodec {
+				// Build JSON-friendly envelope with inline payload.
+				envMap := map[string]any{
+					"id":   msg.ID,
+					"type": msg.Type,
 				}
-			} else if msg.Payload != nil {
-				payload, err := proto.Marshal(msg.Payload)
-				if err != nil {
-					logging.FromContext(ctx).Error("ws marshal", "err", err, "type", msg.Type)
-					continue
+				if msg.Error != nil {
+					envMap["error"] = map[string]any{
+						"code":    string(msg.Error.Code),
+						"message": msg.Error.Message,
+						"fields":  convertFields(msg.Error.Fields),
+					}
+				} else if msg.Payload != nil {
+					payloadJSON, jerr := protojson.Marshal(msg.Payload)
+					if jerr != nil {
+						logging.FromContext(ctx).Error("ws marshal", "err", jerr, "type", msg.Type)
+						continue
+					}
+					envMap["payload"] = json.RawMessage(payloadJSON)
 				}
-				env.Payload = payload
+				data, err = json.Marshal(envMap)
+				msgType = websocket.MessageText
+			} else {
+				env := &pb.Envelope{
+					Id:   msg.ID,
+					Type: msg.Type,
+				}
+				if msg.Error != nil {
+					env.Error = &pb.Error{
+						Code:    string(msg.Error.Code),
+						Message: msg.Error.Message,
+						Fields:  convertFields(msg.Error.Fields),
+					}
+				} else if msg.Payload != nil {
+					var payload []byte
+					payload, err = proto.Marshal(msg.Payload)
+					if err != nil {
+						logging.FromContext(ctx).Error("ws marshal", "err", err, "type", msg.Type)
+						continue
+					}
+					env.Payload = payload
+				}
+				data, err = proto.Marshal(env)
 			}
-			data, err := proto.Marshal(env)
 			if err != nil {
 				logging.FromContext(ctx).Error("ws envelope marshal", "err", err, "type", msg.Type)
 				continue
 			}
 			wctx, cancel := context.WithTimeout(ctx, cfg.WriteTimeout)
-			err = c.ws.Write(wctx, websocket.MessageBinary, data)
+			err = c.ws.Write(wctx, msgType, data)
 			cancel()
 			if err != nil {
 				c.closeWithReason("write failed")
@@ -177,17 +209,39 @@ func (c *Conn) readLoop(ctx context.Context) {
 			}
 			return
 		}
-		if typ != websocket.MessageBinary {
-			c.closeWithReason("unexpected text frame")
-			return
-		}
 		var env pb.Envelope
-		if err := proto.Unmarshal(data, &env); err != nil {
-			c.Send(Outbound{
-				Type:  "error",
-				Error: apperror.BadRequest("invalid protobuf message").WithCause(err),
-			})
-			continue
+		if c.jsonCodec {
+			if typ != websocket.MessageText {
+				c.closeWithReason("unexpected binary frame")
+				return
+			}
+			var raw struct {
+				ID      string          `json:"id"`
+				Type    string          `json:"type"`
+				Payload json.RawMessage `json:"payload"`
+			}
+			if err := json.Unmarshal(data, &raw); err != nil {
+				c.Send(Outbound{
+					Type:  "error",
+					Error: apperror.BadRequest("invalid JSON message").WithCause(err),
+				})
+				continue
+			}
+			env.Id = raw.ID
+			env.Type = raw.Type
+			env.Payload = raw.Payload
+		} else {
+			if typ != websocket.MessageBinary {
+				c.closeWithReason("unexpected text frame")
+				return
+			}
+			if err := proto.Unmarshal(data, &env); err != nil {
+				c.Send(Outbound{
+					Type:  "error",
+					Error: apperror.BadRequest("invalid protobuf message").WithCause(err),
+				})
+				continue
+			}
 		}
 		in := Inbound{
 			ID:      env.Id,

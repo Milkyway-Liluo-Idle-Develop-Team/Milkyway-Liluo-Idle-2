@@ -15,6 +15,7 @@ import (
 	"context"
 
 	"github.com/edrowsluo/new-mli/backend/internal/apperror"
+	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/proto"
 )
 
@@ -35,14 +36,16 @@ type Outbound struct {
 	Error   *apperror.AppError
 }
 
-// DecodePayload unmarshals an Inbound's payload into dst. Returns a
-// BadRequest apperror on failure so handlers can return it directly.
+// DecodePayload unmarshals an Inbound's payload into dst. Tries proto binary
+// first, then protojson (dev mode) as fallback.
 func (in Inbound) DecodePayload(dst proto.Message) error {
 	if len(in.Payload) == 0 {
 		return nil
 	}
 	if err := proto.Unmarshal(in.Payload, dst); err != nil {
-		return apperror.BadRequest("invalid message payload").WithCause(err)
+		if err2 := protojson.Unmarshal(in.Payload, dst); err2 != nil {
+			return apperror.BadRequest("invalid message payload").WithCause(err)
+		}
 	}
 	return nil
 }
