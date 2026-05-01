@@ -148,7 +148,9 @@ func (st *State) markQueueCurrent(id int) {
 	if st.recorder == nil { return }
 	b := st.recorder.Bucket("event_queue")
 	if b != nil {
-		b.(*queueBucket).markQueue(id, false)
+		qb := b.(*queueBucket)
+		qb.st = st
+		qb.markQueue(id, false)
 	}
 }
 
@@ -157,7 +159,9 @@ func (st *State) markQueueFull(id int) {
 	if st.recorder == nil { return }
 	b := st.recorder.Bucket("event_queue")
 	if b != nil {
-		b.(*queueBucket).markQueue(id, true)
+		qb := b.(*queueBucket)
+		qb.st = st
+		qb.markQueue(id, true)
 	}
 }
 

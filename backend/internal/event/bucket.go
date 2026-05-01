@@ -49,12 +49,15 @@ func (b *execBucket) IsEmpty() bool { return len(b.cycles) == 0 }
 // --- event_queue ---
 
 type queueBucket struct {
+	st    *State       // set by State when marking; read in SerializeDiff
 	marks map[int]bool // queueID → full=true
 }
 
 var _ record.RecordBucket = (*queueBucket)(nil)
 
-func newQueueBucket() *queueBucket { return &queueBucket{marks: make(map[int]bool)} }
+func newQueueBucket() *queueBucket {
+	return &queueBucket{marks: make(map[int]bool)}
+}
 
 func (b *queueBucket) markQueue(id int, full bool) {
 	if existing, ok := b.marks[id]; ok {
@@ -75,6 +78,10 @@ func (b *queueBucket) MergeInPlace(other record.RecordBucket) {
 			b.marks[id] = full
 		}
 	}
+	// Keep the last State reference set (either bucket should point to the same State).
+	if ob.st != nil {
+		b.st = ob.st
+	}
 }
 
 func (b *queueBucket) SerializeDiff() (proto.Message, error) {
@@ -87,9 +94,30 @@ func (b *queueBucket) SerializeDiff() (proto.Message, error) {
 		if full {
 			scope = "full"
 		}
+		var pbEnts []*pb.EventQueueEntry
+		if b.st != nil {
+			if q, ok := b.st.queues[id]; ok {
+				entries := q.Entries
+				if !full {
+					if len(entries) > 1 {
+						entries = entries[:1]
+					}
+				}
+				pbEnts = make([]*pb.EventQueueEntry, len(entries))
+				for i, e := range entries {
+					pbEnts[i] = &pb.EventQueueEntry{
+						Position:     int32(e.Position),
+						EventId:      int64(e.EventID),
+						TargetCycles: int32(e.TargetCycles),
+						Progress:     e.Progress,
+					}
+				}
+			}
+		}
 		diffs = append(diffs, &pb.EventQueueDiff{
 			QueueId: int32(id),
 			Scope:   scope,
+			Entries: pbEnts,
 		})
 	}
 	return &pb.StateDiff{EventQueue: diffs}, nil

@@ -711,17 +711,86 @@ func (x *EventExecutionFull) GetProgress() float64 {
 }
 
 // -- Event Queue --
+type EventQueueEntry struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Position      int32                  `protobuf:"varint,1,opt,name=position,proto3" json:"position,omitempty"`
+	EventId       int64                  `protobuf:"varint,2,opt,name=event_id,json=eventId,proto3" json:"event_id,omitempty"`
+	TargetCycles  int32                  `protobuf:"varint,3,opt,name=target_cycles,json=targetCycles,proto3" json:"target_cycles,omitempty"`
+	Progress      float64                `protobuf:"fixed64,4,opt,name=progress,proto3" json:"progress,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *EventQueueEntry) Reset() {
+	*x = EventQueueEntry{}
+	mi := &file_state_proto_msgTypes[11]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *EventQueueEntry) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*EventQueueEntry) ProtoMessage() {}
+
+func (x *EventQueueEntry) ProtoReflect() protoreflect.Message {
+	mi := &file_state_proto_msgTypes[11]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use EventQueueEntry.ProtoReflect.Descriptor instead.
+func (*EventQueueEntry) Descriptor() ([]byte, []int) {
+	return file_state_proto_rawDescGZIP(), []int{11}
+}
+
+func (x *EventQueueEntry) GetPosition() int32 {
+	if x != nil {
+		return x.Position
+	}
+	return 0
+}
+
+func (x *EventQueueEntry) GetEventId() int64 {
+	if x != nil {
+		return x.EventId
+	}
+	return 0
+}
+
+func (x *EventQueueEntry) GetTargetCycles() int32 {
+	if x != nil {
+		return x.TargetCycles
+	}
+	return 0
+}
+
+func (x *EventQueueEntry) GetProgress() float64 {
+	if x != nil {
+		return x.Progress
+	}
+	return 0
+}
+
 type EventQueueDiff struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	QueueId       int32                  `protobuf:"varint,1,opt,name=queue_id,json=queueId,proto3" json:"queue_id,omitempty"`
 	Scope         string                 `protobuf:"bytes,2,opt,name=scope,proto3" json:"scope,omitempty"` // "current" or "full"
+	Entries       []*EventQueueEntry     `protobuf:"bytes,3,rep,name=entries,proto3" json:"entries,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
 func (x *EventQueueDiff) Reset() {
 	*x = EventQueueDiff{}
-	mi := &file_state_proto_msgTypes[11]
+	mi := &file_state_proto_msgTypes[12]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -733,7 +802,7 @@ func (x *EventQueueDiff) String() string {
 func (*EventQueueDiff) ProtoMessage() {}
 
 func (x *EventQueueDiff) ProtoReflect() protoreflect.Message {
-	mi := &file_state_proto_msgTypes[11]
+	mi := &file_state_proto_msgTypes[12]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -746,7 +815,7 @@ func (x *EventQueueDiff) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use EventQueueDiff.ProtoReflect.Descriptor instead.
 func (*EventQueueDiff) Descriptor() ([]byte, []int) {
-	return file_state_proto_rawDescGZIP(), []int{11}
+	return file_state_proto_rawDescGZIP(), []int{12}
 }
 
 func (x *EventQueueDiff) GetQueueId() int32 {
@@ -761,6 +830,13 @@ func (x *EventQueueDiff) GetScope() string {
 		return x.Scope
 	}
 	return ""
+}
+
+func (x *EventQueueDiff) GetEntries() []*EventQueueEntry {
+	if x != nil {
+		return x.Entries
+	}
+	return nil
 }
 
 // -- State envelopes --
@@ -778,7 +854,7 @@ type StateDiff struct {
 
 func (x *StateDiff) Reset() {
 	*x = StateDiff{}
-	mi := &file_state_proto_msgTypes[12]
+	mi := &file_state_proto_msgTypes[13]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -790,7 +866,7 @@ func (x *StateDiff) String() string {
 func (*StateDiff) ProtoMessage() {}
 
 func (x *StateDiff) ProtoReflect() protoreflect.Message {
-	mi := &file_state_proto_msgTypes[12]
+	mi := &file_state_proto_msgTypes[13]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -803,7 +879,7 @@ func (x *StateDiff) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use StateDiff.ProtoReflect.Descriptor instead.
 func (*StateDiff) Descriptor() ([]byte, []int) {
-	return file_state_proto_rawDescGZIP(), []int{12}
+	return file_state_proto_rawDescGZIP(), []int{13}
 }
 
 func (x *StateDiff) GetInventory() []*InventoryDiff {
@@ -861,7 +937,7 @@ type StateFull struct {
 
 func (x *StateFull) Reset() {
 	*x = StateFull{}
-	mi := &file_state_proto_msgTypes[13]
+	mi := &file_state_proto_msgTypes[14]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -873,7 +949,7 @@ func (x *StateFull) String() string {
 func (*StateFull) ProtoMessage() {}
 
 func (x *StateFull) ProtoReflect() protoreflect.Message {
-	mi := &file_state_proto_msgTypes[13]
+	mi := &file_state_proto_msgTypes[14]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -886,7 +962,7 @@ func (x *StateFull) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use StateFull.ProtoReflect.Descriptor instead.
 func (*StateFull) Descriptor() ([]byte, []int) {
-	return file_state_proto_rawDescGZIP(), []int{13}
+	return file_state_proto_rawDescGZIP(), []int{14}
 }
 
 func (x *StateFull) GetInventory() []*InventoryFull {
@@ -979,10 +1055,16 @@ const file_state_proto_rawDesc = "" +
 	"\bqueue_id\x18\x01 \x01(\x05R\aqueueId\x12\x19\n" +
 	"\bevent_id\x18\x02 \x01(\x03R\aeventId\x12#\n" +
 	"\rtarget_cycles\x18\x03 \x01(\x05R\ftargetCycles\x12\x1a\n" +
-	"\bprogress\x18\x04 \x01(\x01R\bprogress\"A\n" +
+	"\bprogress\x18\x04 \x01(\x01R\bprogress\"\x89\x01\n" +
+	"\x0fEventQueueEntry\x12\x1a\n" +
+	"\bposition\x18\x01 \x01(\x05R\bposition\x12\x19\n" +
+	"\bevent_id\x18\x02 \x01(\x03R\aeventId\x12#\n" +
+	"\rtarget_cycles\x18\x03 \x01(\x05R\ftargetCycles\x12\x1a\n" +
+	"\bprogress\x18\x04 \x01(\x01R\bprogress\"t\n" +
 	"\x0eEventQueueDiff\x12\x19\n" +
 	"\bqueue_id\x18\x01 \x01(\x05R\aqueueId\x12\x14\n" +
-	"\x05scope\x18\x02 \x01(\tR\x05scope\"\xd5\x02\n" +
+	"\x05scope\x18\x02 \x01(\tR\x05scope\x121\n" +
+	"\aentries\x18\x03 \x03(\v2\x17.mli.v1.EventQueueEntryR\aentries\"\xd5\x02\n" +
 	"\tStateDiff\x123\n" +
 	"\tinventory\x18\x01 \x03(\v2\x15.mli.v1.InventoryDiffR\tinventory\x123\n" +
 	"\tattribute\x18\x02 \x03(\v2\x15.mli.v1.AttributeDiffR\tattribute\x12.\n" +
@@ -1010,7 +1092,7 @@ func file_state_proto_rawDescGZIP() []byte {
 	return file_state_proto_rawDescData
 }
 
-var file_state_proto_msgTypes = make([]protoimpl.MessageInfo, 14)
+var file_state_proto_msgTypes = make([]protoimpl.MessageInfo, 15)
 var file_state_proto_goTypes = []any{
 	(*InventoryDiff)(nil),      // 0: mli.v1.InventoryDiff
 	(*InventoryFull)(nil),      // 1: mli.v1.InventoryFull
@@ -1023,29 +1105,31 @@ var file_state_proto_goTypes = []any{
 	(*BestiaryFull)(nil),       // 8: mli.v1.BestiaryFull
 	(*EventExecutionDiff)(nil), // 9: mli.v1.EventExecutionDiff
 	(*EventExecutionFull)(nil), // 10: mli.v1.EventExecutionFull
-	(*EventQueueDiff)(nil),     // 11: mli.v1.EventQueueDiff
-	(*StateDiff)(nil),          // 12: mli.v1.StateDiff
-	(*StateFull)(nil),          // 13: mli.v1.StateFull
+	(*EventQueueEntry)(nil),    // 11: mli.v1.EventQueueEntry
+	(*EventQueueDiff)(nil),     // 12: mli.v1.EventQueueDiff
+	(*StateDiff)(nil),          // 13: mli.v1.StateDiff
+	(*StateFull)(nil),          // 14: mli.v1.StateFull
 }
 var file_state_proto_depIdxs = []int32{
 	2,  // 0: mli.v1.AttributeDiff.modifiers:type_name -> mli.v1.ModifierWire
 	2,  // 1: mli.v1.AttributeFull.modifiers:type_name -> mli.v1.ModifierWire
-	0,  // 2: mli.v1.StateDiff.inventory:type_name -> mli.v1.InventoryDiff
-	3,  // 3: mli.v1.StateDiff.attribute:type_name -> mli.v1.AttributeDiff
-	5,  // 4: mli.v1.StateDiff.skill_xp:type_name -> mli.v1.SkillXPDiff
-	7,  // 5: mli.v1.StateDiff.bestiary:type_name -> mli.v1.BestiaryDiff
-	9,  // 6: mli.v1.StateDiff.event_execution:type_name -> mli.v1.EventExecutionDiff
-	11, // 7: mli.v1.StateDiff.event_queue:type_name -> mli.v1.EventQueueDiff
-	1,  // 8: mli.v1.StateFull.inventory:type_name -> mli.v1.InventoryFull
-	4,  // 9: mli.v1.StateFull.attribute:type_name -> mli.v1.AttributeFull
-	6,  // 10: mli.v1.StateFull.skill_xp:type_name -> mli.v1.SkillXPFull
-	8,  // 11: mli.v1.StateFull.bestiary:type_name -> mli.v1.BestiaryFull
-	10, // 12: mli.v1.StateFull.event_execution:type_name -> mli.v1.EventExecutionFull
-	13, // [13:13] is the sub-list for method output_type
-	13, // [13:13] is the sub-list for method input_type
-	13, // [13:13] is the sub-list for extension type_name
-	13, // [13:13] is the sub-list for extension extendee
-	0,  // [0:13] is the sub-list for field type_name
+	11, // 2: mli.v1.EventQueueDiff.entries:type_name -> mli.v1.EventQueueEntry
+	0,  // 3: mli.v1.StateDiff.inventory:type_name -> mli.v1.InventoryDiff
+	3,  // 4: mli.v1.StateDiff.attribute:type_name -> mli.v1.AttributeDiff
+	5,  // 5: mli.v1.StateDiff.skill_xp:type_name -> mli.v1.SkillXPDiff
+	7,  // 6: mli.v1.StateDiff.bestiary:type_name -> mli.v1.BestiaryDiff
+	9,  // 7: mli.v1.StateDiff.event_execution:type_name -> mli.v1.EventExecutionDiff
+	12, // 8: mli.v1.StateDiff.event_queue:type_name -> mli.v1.EventQueueDiff
+	1,  // 9: mli.v1.StateFull.inventory:type_name -> mli.v1.InventoryFull
+	4,  // 10: mli.v1.StateFull.attribute:type_name -> mli.v1.AttributeFull
+	6,  // 11: mli.v1.StateFull.skill_xp:type_name -> mli.v1.SkillXPFull
+	8,  // 12: mli.v1.StateFull.bestiary:type_name -> mli.v1.BestiaryFull
+	10, // 13: mli.v1.StateFull.event_execution:type_name -> mli.v1.EventExecutionFull
+	14, // [14:14] is the sub-list for method output_type
+	14, // [14:14] is the sub-list for method input_type
+	14, // [14:14] is the sub-list for extension type_name
+	14, // [14:14] is the sub-list for extension extendee
+	0,  // [0:14] is the sub-list for field type_name
 }
 
 func init() { file_state_proto_init() }
@@ -1059,7 +1143,7 @@ func file_state_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_state_proto_rawDesc), len(file_state_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   14,
+			NumMessages:   15,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

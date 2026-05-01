@@ -79,9 +79,17 @@ message EventExecutionFull {
 }
 
 // -- Event Queue --
+message EventQueueEntry {
+  int32 position = 1;
+  int64 event_id = 2;
+  int32 target_cycles = 3;
+  double progress = 4;
+}
+
 message EventQueueDiff {
   int32 queue_id = 1;
   string scope = 2; // "current" or "full"
+  repeated EventQueueEntry entries = 3;
 }
 
 // -- State envelopes --
