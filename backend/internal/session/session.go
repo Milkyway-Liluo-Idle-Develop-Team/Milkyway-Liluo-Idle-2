@@ -17,6 +17,7 @@ import (
 	"github.com/edrowsluo/new-mli/backend/internal/attribute"
 	"github.com/edrowsluo/new-mli/backend/internal/bestiary"
 	"github.com/edrowsluo/new-mli/backend/internal/db"
+	dbgen "github.com/edrowsluo/new-mli/backend/internal/db/gen"
 	"github.com/edrowsluo/new-mli/backend/internal/event"
 	"github.com/edrowsluo/new-mli/backend/internal/gameconfig"
 	"github.com/edrowsluo/new-mli/backend/internal/inventory"
@@ -45,8 +46,7 @@ type PlayerSession struct {
 
 	mu       sync.Mutex
 	recorder *record.Recorder
-
-	done chan struct{} // closed on session close
+	done     chan struct{} // closed on session close
 }
 
 // New creates a PlayerSession. The attribute instance is constructed bare;
@@ -158,19 +158,49 @@ func (s *PlayerSession) ClearRecorder() *record.Recorder {
 	return rec
 }
 
+// FlushAll persists every dirty subsystem inside a single SQLite transaction.
+func (s *PlayerSession) FlushAll(ctx context.Context, database *db.DB) error {
+	return database.InTx(ctx, func(q *dbgen.Queries) error {
+		if s.inv != nil {
+			if err := s.inv.Flush(ctx, q); err != nil {
+				return err
+			}
+		}
+		if s.skill != nil {
+			if err := s.skill.Flush(ctx, q); err != nil {
+				return err
+			}
+		}
+		if s.best != nil {
+			if err := s.best.Flush(ctx, q); err != nil {
+				return err
+			}
+		}
+		if s.ev != nil {
+			if err := s.ev.Flush(ctx, q); err != nil {
+				return err
+			}
+		}
+		return nil
+	})
+}
+
 // Manager is the thread-safe registry of all active PlayerSessions,
 // keyed by WebSocket connection ID. It owns all session locking.
 type Manager struct {
 	mu       sync.RWMutex
 	sessions map[uuid.UUID]*PlayerSession
 	reg      *record.Registry
+	database *db.DB
 }
 
 // NewManager creates a Manager backed by the given record Registry.
-func NewManager(reg *record.Registry) *Manager {
+// database is used for flush and may be nil in tests.
+func NewManager(reg *record.Registry, database *db.DB) *Manager {
 	return &Manager{
 		sessions: make(map[uuid.UUID]*PlayerSession),
 		reg:      reg,
+		database: database,
 	}
 }
 
@@ -259,6 +289,28 @@ func (m *Manager) HandleSession(hub *wsx.Hub, typ string, fn SessionHandler) {
 	})
 }
 
+// TypedSessionHandler is a SessionHandler that receives a pre-decoded payload.
+type TypedSessionHandler[T any] func(ctx context.Context, c *wsx.Conn, sess *PlayerSession, req T) error
+
+// HandleSessionTyped registers a WS message type that requires a locked session
+// and a typed payload. The payload is automatically decoded and validated
+// before fn is called; session is locked/unlocked around the call.
+func HandleSessionTyped[T any](m *Manager, hub *wsx.Hub, typ string, fn TypedSessionHandler[T]) {
+	hub.Handle(typ, func(ctx context.Context, c *wsx.Conn, in wsx.Inbound) error {
+		var req T
+		if err := in.DecodePayload(&req); err != nil {
+			return err
+		}
+		s, ok := m.LockSession(c.ID)
+		if !ok {
+			c.ReplyError(in, apperror.NotFound("session not found"))
+			return nil
+		}
+		defer m.UnlockSession(s)
+		return fn(ctx, c, s, req)
+	})
+}
+
 // StartLoop launches the push goroutine for a session. It ticks on a
 // fixed interval (placeholder until the event system provides smart
 // prediction), builds a diff packet, and pushes it to the client.
@@ -292,6 +344,11 @@ func (m *Manager) StartLoop(sess *PlayerSession, conn *wsx.Conn) {
 					s.Events().Settle(s, elapsed)
 					rec.PopNamespace()
 					s.ClearRecorder()
+
+					if err := s.FlushAll(context.TODO(), m.database); err != nil {
+						conn.Send(wsx.Outbound{Type: "error", Error: apperror.Internal("flush").WithCause(err)})
+						return
+					}
 
 					diff, err := m.reg.BuildDiff(rec)
 					if err != nil {

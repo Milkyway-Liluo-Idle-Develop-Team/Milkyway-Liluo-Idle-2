@@ -6,6 +6,9 @@ import (
 	"github.com/edrowsluo/new-mli/backend/internal/item"
 )
 
+// SettlementHook is a callback invoked around each Settle call.
+type SettlementHook func(ctx SettlementCtx, delta float64)
+
 // SettlementCtx is the interface the settlement engine uses to read/write
 // player state. PlayerSession implements this by delegating to its subsystems.
 type SettlementCtx interface {
@@ -25,6 +28,9 @@ func (st *State) Settle(ctx SettlementCtx, delta float64) {
 	if delta <= 0 {
 		return
 	}
+	for _, h := range st.beforeHooks {
+		h(ctx, delta)
+	}
 	remaining := delta
 	for _, q := range st.queues {
 		if remaining <= 0 {
@@ -32,6 +38,19 @@ func (st *State) Settle(ctx SettlementCtx, delta float64) {
 		}
 		remaining = st.settleQueue(ctx, q, remaining)
 	}
+	for _, h := range st.afterHooks {
+		h(ctx, delta)
+	}
+}
+
+// BeforeSettle registers a hook that runs before each Settle cycle.
+func (st *State) BeforeSettle(h SettlementHook) {
+	st.beforeHooks = append(st.beforeHooks, h)
+}
+
+// AfterSettle registers a hook that runs after each Settle cycle.
+func (st *State) AfterSettle(h SettlementHook) {
+	st.afterHooks = append(st.afterHooks, h)
 }
 
 func (st *State) settleQueue(ctx SettlementCtx, q *Queue, delta float64) float64 {

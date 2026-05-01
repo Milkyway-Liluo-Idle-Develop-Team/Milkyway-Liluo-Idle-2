@@ -12,6 +12,7 @@
 package wsx
 
 import (
+	"context"
 	"encoding/json"
 
 	"github.com/edrowsluo/new-mli/backend/internal/apperror"
@@ -44,4 +45,22 @@ func (in Inbound) DecodePayload(dst any) error {
 		return apperror.BadRequest("invalid message payload").WithCause(err)
 	}
 	return nil
+}
+
+// TypedHandler is a Handler that receives a pre-decoded payload. The
+// framework unmarshals the inbound payload into T before calling fn.
+type TypedHandler[T any] func(ctx context.Context, c *Conn, req T) error
+
+// HandleTyped registers a typed handler for the given message type.
+// The inbound payload is automatically decoded and validated; on failure a
+// BadRequest error is returned to the client. Paired with HandleSessionTyped
+// in the session package for handlers that also need a locked session.
+func HandleTyped[T any](h *Hub, typ string, fn TypedHandler[T]) {
+	h.Handle(typ, func(ctx context.Context, c *Conn, in Inbound) error {
+		var req T
+		if err := in.DecodePayload(&req); err != nil {
+			return err
+		}
+		return fn(ctx, c, req)
+	})
 }

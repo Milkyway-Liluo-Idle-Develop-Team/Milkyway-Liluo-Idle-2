@@ -16,7 +16,9 @@ type State struct {
 
 	dirty map[int]bool
 
-	recorder *record.Recorder
+	recorder    *record.Recorder
+	beforeHooks []SettlementHook
+	afterHooks  []SettlementHook
 }
 
 // Queue is a serial list of events for one queue_id.

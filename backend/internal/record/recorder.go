@@ -119,6 +119,13 @@ func Get[T RecordBucket](rec *Recorder) T {
 	return typed
 }
 
+// Recordable is implemented by game state types that accept a Recorder
+// for the current execution cycle.
+type Recordable interface {
+	SetRecorder(rec *Recorder)
+	ClearRecorder()
+}
+
 // String returns a debug representation of the current stack.
 func (r *Recorder) String() string {
 	if len(r.stack) == 0 {

@@ -106,7 +106,7 @@ func run() error {
 	auth.RegisterWS(hub, authSvc)
 
 	// --- Session manager ---
-	sessMgr := session.NewManager(recordReg)
+	sessMgr := session.NewManager(recordReg, database)
 
 	// --- Background workers ---
 	go runSessionCleanup(rootCtx, logger, authSvc)

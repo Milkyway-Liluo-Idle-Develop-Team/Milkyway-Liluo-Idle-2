@@ -1,6 +1,7 @@
 package server
 
 import (
+	"context"
 	"net/http"
 
 	"github.com/edrowsluo/new-mli/backend/internal/auth"
@@ -49,6 +50,9 @@ func wsHandler(hub *wsx.Hub, mw *auth.Middleware, httpCfg config.HTTP, wsCfg con
 			},
 			OnDisconnect: func(c *wsx.Conn) {
 				if s, ok := sessMgr.LockSession(c.ID); ok {
+					if err := s.FlushAll(context.Background(), database); err != nil {
+						logger.Error("flush on disconnect", "err", err)
+					}
 					s.ClearRecorder()
 					sessMgr.UnlockSession(s)
 				}

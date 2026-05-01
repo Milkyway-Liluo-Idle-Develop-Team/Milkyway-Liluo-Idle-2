@@ -237,6 +237,8 @@ func (h *Hub) Close(shutdownTimeout time.Duration) {
 }
 
 func (h *Hub) dispatch(ctx context.Context, c *Conn, in Inbound) {
+	start := time.Now()
+
 	h.handlersMu.RLock()
 	fn, ok := h.handlers[in.Type]
 	h.handlersMu.RUnlock()
@@ -245,12 +247,19 @@ func (h *Hub) dispatch(ctx context.Context, c *Conn, in Inbound) {
 		return
 	}
 	if err := fn(ctx, c, in); err != nil {
-		// Handler can return apperror.AppError to control the wire payload.
 		c.ReplyError(in, err)
-		// Internal errors deserve a log line.
 		if ae, ok := apperror.As(err); ok && ae.Code == apperror.CodeInternal {
 			logging.FromContext(ctx).Error("ws handler error",
 				"type", in.Type, "conn", c.ID, "err", err)
 		}
+	}
+
+	dur := time.Since(start)
+	if dur > 200*time.Millisecond {
+		logging.FromContext(ctx).Warn("ws handler slow",
+			"type", in.Type, "conn", c.ID, "dur_ms", dur.Milliseconds())
+	} else {
+		logging.FromContext(ctx).Debug("ws handler",
+			"type", in.Type, "conn", c.ID, "dur_ms", dur.Milliseconds())
 	}
 }
