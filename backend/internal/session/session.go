@@ -57,7 +57,12 @@ type PlayerSession struct {
 
 	commandCh chan command
 
-	done chan struct{} // closed on session close; kept for StartLoop compat
+	done chan struct{} // closed on session close; kept for Close() compat
+
+	state         sessionState
+	graceTimer    *time.Timer
+	graceMu       sync.Mutex
+	onGraceExpire func()
 }
 
 // New creates a PlayerSession. The attribute instance is constructed bare;
@@ -72,11 +77,19 @@ func New(connID uuid.UUID, userID int64, logger *slog.Logger) *PlayerSession {
 		logger:    logger,
 		commandCh: make(chan command, 64),
 		done:      make(chan struct{}),
+		state:     StateActive,
 	}
 }
 
 // Close shuts down the push loop and releases resources. Idempotent.
 func (s *PlayerSession) Close() {
+	s.graceMu.Lock()
+	defer s.graceMu.Unlock()
+	if s.graceTimer != nil {
+		s.graceTimer.Stop()
+		s.graceTimer = nil
+	}
+	s.setState(StateClosed)
 	select {
 	case <-s.done:
 	default:
@@ -410,48 +423,6 @@ func (m *Manager) Registry() *record.Registry {
 	return m.reg
 }
 
-// SessionHandler is a WS message handler that receives a pre-locked session.
-type SessionHandler func(ctx context.Context, c *wsx.Conn, sess *PlayerSession, in wsx.Inbound) error
-
-// HandleSession registers a WS message type that requires a locked session.
-// The session is locked before fn is called and unlocked afterwards.
-func (m *Manager) HandleSession(hub *wsx.Hub, typ string, fn SessionHandler) {
-	hub.Handle(typ, func(ctx context.Context, c *wsx.Conn, in wsx.Inbound) error {
-		s, ok := m.Get(c.UserID)
-		if !ok {
-			c.ReplyError(in, apperror.NotFound("session not found"))
-			return nil
-		}
-		s.lock()
-		defer m.UnlockSession(s)
-		return fn(ctx, c, s, in)
-	})
-}
-
-// TypedSessionHandler is a SessionHandler that receives a pre-decoded payload.
-type TypedSessionHandler[T proto.Message] func(ctx context.Context, c *wsx.Conn, sess *PlayerSession, req T) error
-
-// HandleSessionTyped registers a WS message type that requires a locked session
-// and a typed payload. The payload is automatically decoded and validated
-// before fn is called; session is locked/unlocked around the call.
-func HandleSessionTyped[T proto.Message](m *Manager, hub *wsx.Hub, typ string, fn TypedSessionHandler[T]) {
-	hub.Handle(typ, func(ctx context.Context, c *wsx.Conn, in wsx.Inbound) error {
-		var req T
-		req = reflect.New(reflect.TypeOf(req).Elem()).Interface().(T)
-		if err := in.DecodePayload(req); err != nil {
-			return err
-		}
-		s, ok := m.Get(c.UserID)
-		if !ok {
-			c.ReplyError(in, apperror.NotFound("session not found"))
-			return nil
-		}
-		s.lock()
-		defer m.UnlockSession(s)
-		return fn(ctx, c, s, req)
-	})
-}
-
 // CommandHandler is a WS message handler that submits a command to the session's RunLoop.
 type CommandHandler func(ctx context.Context, c *wsx.Conn, sess *PlayerSession, in wsx.Inbound) error
 
@@ -490,13 +461,6 @@ func HandleCommandTyped[T proto.Message](m *Manager, hub *wsx.Hub, typ string, f
 			return fn(ctx, c, sess, req)
 		})
 	})
-}
-
-// StartLoop is DEPRECATED — kept temporarily for ws.go compatibility.
-// It will be removed when ws.go is rewritten in Phase 4.
-func (m *Manager) StartLoop(sess *PlayerSession, conn *wsx.Conn) {
-	sess.AttachConn(conn)
-	go sess.RunLoop(context.Background(), m, m.database, 1*time.Second)
 }
 
 // CreateSession builds a fully-loaded PlayerSession from the database.

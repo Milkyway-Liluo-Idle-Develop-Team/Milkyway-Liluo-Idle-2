@@ -13,7 +13,6 @@ import (
 	"github.com/edrowsluo/new-mli/backend/internal/wsx"
 )
 
-// wsHandler builds the http.Handler for the WebSocket upgrade endpoint.
 func wsHandler(hub *wsx.Hub, mw *auth.Middleware, httpCfg config.HTTP, wsCfg config.WS, sessMgr *session.Manager, database *db.DB) http.Handler {
 	originPatterns := allowedOriginPatterns(httpCfg)
 
@@ -35,13 +34,43 @@ func wsHandler(hub *wsx.Hub, mw *auth.Middleware, httpCfg config.HTTP, wsCfg con
 			UserID:         userID,
 			OriginPatterns: originPatterns,
 			OnConnect: func(c *wsx.Conn) {
+				// Single-online: look up existing session
+				if existing, ok := sessMgr.Get(userID); ok {
+					// Kick old connection if present
+					if old := existing.Conn(); old != nil {
+						old.Close()
+					}
+					existing.AttachConn(c)
+					existing.StopGraceTimer()
+					logger.Info("player session reconnected",
+						"conn", c.ID,
+						"user_id", userID,
+					)
+					return
+				}
+
+				// No existing session — create new
 				sess, err := sessMgr.CreateSession(r.Context(), c.ID, userID, database, logger)
 				if err != nil {
 					logger.Error("create session", "err", err)
 					return
 				}
+				sess.AttachConn(c)
 				sessMgr.Add(sess)
-				sessMgr.StartLoop(sess, c)
+
+				// Grace expire callback: flush and remove
+				sess.SetOnGraceExpire(func() {
+					if err := sess.FlushAll(context.Background(), database); err != nil {
+						logger.Error("flush on grace expire", "err", err)
+					}
+					sessMgr.Remove(userID)
+					logger.Info("player session grace expired",
+						"user_id", userID,
+					)
+				})
+
+				go sess.RunLoop(context.Background(), sessMgr, database, wsCfg.GameLoopTick)
+
 				logger.Info("player session created",
 					"conn", c.ID,
 					"user_id", userID,
@@ -49,18 +78,24 @@ func wsHandler(hub *wsx.Hub, mw *auth.Middleware, httpCfg config.HTTP, wsCfg con
 				)
 			},
 			OnDisconnect: func(c *wsx.Conn) {
-				if s, ok := sessMgr.LockSession(c.UserID); ok {
-					if err := s.FlushAll(context.Background(), database); err != nil {
-						logger.Error("flush on disconnect", "err", err)
-					}
-					s.ClearRecorder()
-					sessMgr.UnlockSession(s)
+				sess, ok := sessMgr.Get(userID)
+				if !ok {
+					return
 				}
-				sessMgr.Remove(c.UserID)
-				logger.Info("player session removed",
-					"conn", c.ID,
-					"total", sessMgr.Count(),
-				)
+
+				// Only detach if this is the current conn
+				if sess.Conn() != nil && sess.Conn().ID == c.ID {
+					sess.DetachConn()
+				}
+
+				if !sess.HasConn() {
+					sess.StartGraceTimer(wsCfg.SessionGracePeriod)
+					logger.Info("player session detached, grace started",
+						"conn", c.ID,
+						"user_id", userID,
+						"grace", wsCfg.SessionGracePeriod,
+					)
+				}
 			},
 		}); err != nil {
 			logger.Debug("ws serve ended", "err", err)
