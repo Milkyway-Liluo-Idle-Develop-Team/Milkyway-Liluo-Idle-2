@@ -55,6 +55,8 @@ type PlayerSession struct {
 	conn   *wsx.Conn
 	connMu sync.RWMutex
 
+	commandCh chan command
+
 	done chan struct{} // closed on session close; kept for StartLoop compat
 }
 
@@ -63,12 +65,13 @@ type PlayerSession struct {
 // from the database.
 func New(connID uuid.UUID, userID int64, logger *slog.Logger) *PlayerSession {
 	return &PlayerSession{
-		ID:     connID,
-		UserID: userID,
-		attr:   attribute.NewInstance(),
-		eq:     equipment.NewState(userID),
-		logger: logger,
-		done:   make(chan struct{}),
+		ID:        connID,
+		UserID:    userID,
+		attr:      attribute.NewInstance(),
+		eq:        equipment.NewState(userID),
+		logger:    logger,
+		commandCh: make(chan command, 64),
+		done:      make(chan struct{}),
 	}
 }
 
@@ -446,57 +449,11 @@ func HandleSessionTyped[T proto.Message](m *Manager, hub *wsx.Hub, typ string, f
 	})
 }
 
-// StartLoop launches the push goroutine for a session. It ticks on a
-// fixed interval (placeholder until the event system provides smart
-// prediction), builds a diff packet, and pushes it to the client.
-// Exits when the session is closed.
+// StartLoop is DEPRECATED — kept temporarily for ws.go compatibility.
+// It will be removed when ws.go is rewritten in Phase 4.
 func (m *Manager) StartLoop(sess *PlayerSession, conn *wsx.Conn) {
-	go func() {
-		const tick = 1 * time.Second
-		ticker := time.NewTicker(tick)
-		defer ticker.Stop()
-		lastTick := time.Now()
-
-		for {
-			select {
-			case <-sess.done:
-				return
-			case now := <-ticker.C:
-				elapsed := now.Sub(lastTick).Seconds()
-				lastTick = now
-
-				s, ok := m.LockSession(sess.UserID)
-				if !ok {
-					return
-				}
-
-				func() {
-					defer m.UnlockSession(s)
-
-					rec := m.NewRecorder()
-					s.SetRecorder(rec)
-					rec.PushNamespace("action_queue")
-					s.Events().Settle(s, elapsed)
-					rec.PopNamespace()
-					s.ClearRecorder()
-
-					if err := s.FlushAll(context.TODO(), m.database); err != nil {
-						conn.Send(wsx.Outbound{Type: "error", Error: apperror.Internal("flush").WithCause(err)})
-						return
-					}
-
-					diff, err := m.reg.BuildDiff(rec)
-					if err != nil {
-						conn.Send(wsx.Outbound{Type: "error", Error: apperror.Internal("build diff").WithCause(err)})
-						return
-					}
-					if !isStateDiffEmpty(diff) {
-						conn.Send(wsx.Outbound{Type: "state.diff", Payload: diff})
-					}
-				}()
-			}
-		}
-	}()
+	sess.AttachConn(conn)
+	go sess.RunLoop(context.Background(), m, m.database, 1*time.Second)
 }
 
 // CreateSession builds a fully-loaded PlayerSession from the database.

@@ -90,3 +90,4 @@ func Forbidden(msg string) *AppError    { return New(CodeForbidden, msg) }
 func NotFound(msg string) *AppError     { return New(CodeNotFound, msg) }
 func Conflict(msg string) *AppError     { return New(CodeConflict, msg) }
 func Validation(msg string) *AppError   { return New(CodeValidation, msg) }
+func Unavailable(msg string) *AppError  { return New(CodeUnavailable, msg) }
