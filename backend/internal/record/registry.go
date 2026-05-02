@@ -133,6 +133,7 @@ func mergeStateDiff(acc *pb.StateDiff, msg proto.Message) {
 		acc.Bestiary = append(acc.Bestiary, m.Bestiary...)
 		acc.EventExecution = append(acc.EventExecution, m.EventExecution...)
 		acc.EventQueue = append(acc.EventQueue, m.EventQueue...)
+		acc.Equipment = append(acc.Equipment, m.Equipment...)
 	}
 }
 
@@ -146,5 +147,13 @@ func mergeStateFull(acc *pb.StateFull, msg proto.Message) {
 		acc.SkillXp = append(acc.SkillXp, m.SkillXp...)
 		acc.Bestiary = append(acc.Bestiary, m.Bestiary...)
 		acc.EventExecution = append(acc.EventExecution, m.EventExecution...)
+		if len(m.Equipment) > 0 {
+			if acc.Equipment == nil {
+				acc.Equipment = make(map[string]*pb.ItemIdentity, len(m.Equipment))
+			}
+			for slot, ident := range m.Equipment {
+				acc.Equipment[slot] = ident
+			}
+		}
 	}
 }

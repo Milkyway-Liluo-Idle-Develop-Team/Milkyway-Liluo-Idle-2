@@ -18,6 +18,7 @@ import (
 	"github.com/edrowsluo/new-mli/backend/internal/bestiary"
 	"github.com/edrowsluo/new-mli/backend/internal/config"
 	"github.com/edrowsluo/new-mli/backend/internal/db"
+	"github.com/edrowsluo/new-mli/backend/internal/equipment"
 	"github.com/edrowsluo/new-mli/backend/internal/event"
 	"github.com/edrowsluo/new-mli/backend/internal/gameconfig"
 	"github.com/edrowsluo/new-mli/backend/internal/inventory"
@@ -81,6 +82,7 @@ func run() error {
 	recordReg.Register(bestiary.Provider)
 	recordReg.Register(event.ExecProvider)
 	recordReg.Register(event.QueueProvider)
+	recordReg.Register(equipment.Provider)
 
 	rootCtx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()

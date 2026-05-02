@@ -73,6 +73,56 @@ func (InventoryChangeReason) EnumDescriptor() ([]byte, []int) {
 	return file_state_proto_rawDescGZIP(), []int{0}
 }
 
+// -- Equipment --
+type EquipAction int32
+
+const (
+	EquipAction_EQUIP_ACTION_UNSPECIFIED EquipAction = 0
+	EquipAction_EQUIP_ACTION_EQUIP       EquipAction = 1
+	EquipAction_EQUIP_ACTION_UNEQUIP     EquipAction = 2
+)
+
+// Enum value maps for EquipAction.
+var (
+	EquipAction_name = map[int32]string{
+		0: "EQUIP_ACTION_UNSPECIFIED",
+		1: "EQUIP_ACTION_EQUIP",
+		2: "EQUIP_ACTION_UNEQUIP",
+	}
+	EquipAction_value = map[string]int32{
+		"EQUIP_ACTION_UNSPECIFIED": 0,
+		"EQUIP_ACTION_EQUIP":       1,
+		"EQUIP_ACTION_UNEQUIP":     2,
+	}
+)
+
+func (x EquipAction) Enum() *EquipAction {
+	p := new(EquipAction)
+	*p = x
+	return p
+}
+
+func (x EquipAction) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (EquipAction) Descriptor() protoreflect.EnumDescriptor {
+	return file_state_proto_enumTypes[1].Descriptor()
+}
+
+func (EquipAction) Type() protoreflect.EnumType {
+	return &file_state_proto_enumTypes[1]
+}
+
+func (x EquipAction) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use EquipAction.Descriptor instead.
+func (EquipAction) EnumDescriptor() ([]byte, []int) {
+	return file_state_proto_rawDescGZIP(), []int{1}
+}
+
 type ItemIdentity struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	ItemId        int32                  `protobuf:"varint,1,opt,name=item_id,json=itemId,proto3" json:"item_id,omitempty"`
@@ -951,6 +1001,74 @@ func (x *EventQueueDiff) GetEntries() []*EventQueueEntry {
 	return nil
 }
 
+type EquipmentDiff struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Slot          string                 `protobuf:"bytes,1,opt,name=slot,proto3" json:"slot,omitempty"`
+	ItemId        int32                  `protobuf:"varint,2,opt,name=item_id,json=itemId,proto3" json:"item_id,omitempty"`
+	ItemState     int32                  `protobuf:"varint,3,opt,name=item_state,json=itemState,proto3" json:"item_state,omitempty"`
+	Action        EquipAction            `protobuf:"varint,4,opt,name=action,proto3,enum=mli.v1.EquipAction" json:"action,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *EquipmentDiff) Reset() {
+	*x = EquipmentDiff{}
+	mi := &file_state_proto_msgTypes[14]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *EquipmentDiff) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*EquipmentDiff) ProtoMessage() {}
+
+func (x *EquipmentDiff) ProtoReflect() protoreflect.Message {
+	mi := &file_state_proto_msgTypes[14]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use EquipmentDiff.ProtoReflect.Descriptor instead.
+func (*EquipmentDiff) Descriptor() ([]byte, []int) {
+	return file_state_proto_rawDescGZIP(), []int{14}
+}
+
+func (x *EquipmentDiff) GetSlot() string {
+	if x != nil {
+		return x.Slot
+	}
+	return ""
+}
+
+func (x *EquipmentDiff) GetItemId() int32 {
+	if x != nil {
+		return x.ItemId
+	}
+	return 0
+}
+
+func (x *EquipmentDiff) GetItemState() int32 {
+	if x != nil {
+		return x.ItemState
+	}
+	return 0
+}
+
+func (x *EquipmentDiff) GetAction() EquipAction {
+	if x != nil {
+		return x.Action
+	}
+	return EquipAction_EQUIP_ACTION_UNSPECIFIED
+}
+
 // -- State envelopes --
 type StateDiff struct {
 	state          protoimpl.MessageState `protogen:"open.v1"`
@@ -960,13 +1078,14 @@ type StateDiff struct {
 	Bestiary       []*BestiaryDiff        `protobuf:"bytes,4,rep,name=bestiary,proto3" json:"bestiary,omitempty"`
 	EventExecution []*EventExecutionDiff  `protobuf:"bytes,5,rep,name=event_execution,json=eventExecution,proto3" json:"event_execution,omitempty"`
 	EventQueue     []*EventQueueDiff      `protobuf:"bytes,6,rep,name=event_queue,json=eventQueue,proto3" json:"event_queue,omitempty"`
+	Equipment      []*EquipmentDiff       `protobuf:"bytes,7,rep,name=equipment,proto3" json:"equipment,omitempty"`
 	unknownFields  protoimpl.UnknownFields
 	sizeCache      protoimpl.SizeCache
 }
 
 func (x *StateDiff) Reset() {
 	*x = StateDiff{}
-	mi := &file_state_proto_msgTypes[14]
+	mi := &file_state_proto_msgTypes[15]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -978,7 +1097,7 @@ func (x *StateDiff) String() string {
 func (*StateDiff) ProtoMessage() {}
 
 func (x *StateDiff) ProtoReflect() protoreflect.Message {
-	mi := &file_state_proto_msgTypes[14]
+	mi := &file_state_proto_msgTypes[15]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -991,7 +1110,7 @@ func (x *StateDiff) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use StateDiff.ProtoReflect.Descriptor instead.
 func (*StateDiff) Descriptor() ([]byte, []int) {
-	return file_state_proto_rawDescGZIP(), []int{14}
+	return file_state_proto_rawDescGZIP(), []int{15}
 }
 
 func (x *StateDiff) GetInventory() []*InventoryDiff {
@@ -1036,6 +1155,13 @@ func (x *StateDiff) GetEventQueue() []*EventQueueDiff {
 	return nil
 }
 
+func (x *StateDiff) GetEquipment() []*EquipmentDiff {
+	if x != nil {
+		return x.Equipment
+	}
+	return nil
+}
+
 type StateFull struct {
 	state          protoimpl.MessageState   `protogen:"open.v1"`
 	Inventory      []*InventoryFull         `protobuf:"bytes,1,rep,name=inventory,proto3" json:"inventory,omitempty"`
@@ -1050,7 +1176,7 @@ type StateFull struct {
 
 func (x *StateFull) Reset() {
 	*x = StateFull{}
-	mi := &file_state_proto_msgTypes[15]
+	mi := &file_state_proto_msgTypes[16]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1062,7 +1188,7 @@ func (x *StateFull) String() string {
 func (*StateFull) ProtoMessage() {}
 
 func (x *StateFull) ProtoReflect() protoreflect.Message {
-	mi := &file_state_proto_msgTypes[15]
+	mi := &file_state_proto_msgTypes[16]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1075,7 +1201,7 @@ func (x *StateFull) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use StateFull.ProtoReflect.Descriptor instead.
 func (*StateFull) Descriptor() ([]byte, []int) {
-	return file_state_proto_rawDescGZIP(), []int{15}
+	return file_state_proto_rawDescGZIP(), []int{16}
 }
 
 func (x *StateFull) GetInventory() []*InventoryFull {
@@ -1189,7 +1315,13 @@ const file_state_proto_rawDesc = "" +
 	"\x0eEventQueueDiff\x12\x19\n" +
 	"\bqueue_id\x18\x01 \x01(\x05R\aqueueId\x12\x14\n" +
 	"\x05scope\x18\x02 \x01(\tR\x05scope\x121\n" +
-	"\aentries\x18\x03 \x03(\v2\x17.mli.v1.EventQueueEntryR\aentries\"\xd5\x02\n" +
+	"\aentries\x18\x03 \x03(\v2\x17.mli.v1.EventQueueEntryR\aentries\"\x88\x01\n" +
+	"\rEquipmentDiff\x12\x12\n" +
+	"\x04slot\x18\x01 \x01(\tR\x04slot\x12\x17\n" +
+	"\aitem_id\x18\x02 \x01(\x05R\x06itemId\x12\x1d\n" +
+	"\n" +
+	"item_state\x18\x03 \x01(\x05R\titemState\x12+\n" +
+	"\x06action\x18\x04 \x01(\x0e2\x13.mli.v1.EquipActionR\x06action\"\x8a\x03\n" +
 	"\tStateDiff\x123\n" +
 	"\tinventory\x18\x01 \x03(\v2\x15.mli.v1.InventoryDiffR\tinventory\x123\n" +
 	"\tattribute\x18\x02 \x03(\v2\x15.mli.v1.AttributeDiffR\tattribute\x12.\n" +
@@ -1197,7 +1329,8 @@ const file_state_proto_rawDesc = "" +
 	"\bbestiary\x18\x04 \x03(\v2\x14.mli.v1.BestiaryDiffR\bbestiary\x12C\n" +
 	"\x0fevent_execution\x18\x05 \x03(\v2\x1a.mli.v1.EventExecutionDiffR\x0eeventExecution\x127\n" +
 	"\vevent_queue\x18\x06 \x03(\v2\x16.mli.v1.EventQueueDiffR\n" +
-	"eventQueue\"\xb0\x03\n" +
+	"eventQueue\x123\n" +
+	"\tequipment\x18\a \x03(\v2\x15.mli.v1.EquipmentDiffR\tequipment\"\xb0\x03\n" +
 	"\tStateFull\x123\n" +
 	"\tinventory\x18\x01 \x03(\v2\x15.mli.v1.InventoryFullR\tinventory\x123\n" +
 	"\tattribute\x18\x02 \x03(\v2\x15.mli.v1.AttributeFullR\tattribute\x12.\n" +
@@ -1212,7 +1345,11 @@ const file_state_proto_rawDesc = "" +
 	"\x1cINVENTORY_CHANGE_UNSPECIFIED\x10\x00\x12\t\n" +
 	"\x05EVENT\x10\x01\x12\t\n" +
 	"\x05EQUIP\x10\x02\x12\v\n" +
-	"\aUNEQUIP\x10\x03B2Z0github.com/edrowsluo/new-mli/backend/internal/pbb\x06proto3"
+	"\aUNEQUIP\x10\x03*]\n" +
+	"\vEquipAction\x12\x1c\n" +
+	"\x18EQUIP_ACTION_UNSPECIFIED\x10\x00\x12\x16\n" +
+	"\x12EQUIP_ACTION_EQUIP\x10\x01\x12\x18\n" +
+	"\x14EQUIP_ACTION_UNEQUIP\x10\x02B2Z0github.com/edrowsluo/new-mli/backend/internal/pbb\x06proto3"
 
 var (
 	file_state_proto_rawDescOnce sync.Once
@@ -1226,51 +1363,55 @@ func file_state_proto_rawDescGZIP() []byte {
 	return file_state_proto_rawDescData
 }
 
-var file_state_proto_enumTypes = make([]protoimpl.EnumInfo, 1)
-var file_state_proto_msgTypes = make([]protoimpl.MessageInfo, 17)
+var file_state_proto_enumTypes = make([]protoimpl.EnumInfo, 2)
+var file_state_proto_msgTypes = make([]protoimpl.MessageInfo, 18)
 var file_state_proto_goTypes = []any{
 	(InventoryChangeReason)(0), // 0: mli.v1.InventoryChangeReason
-	(*ItemIdentity)(nil),       // 1: mli.v1.ItemIdentity
-	(*InventoryDiff)(nil),      // 2: mli.v1.InventoryDiff
-	(*InventoryFull)(nil),      // 3: mli.v1.InventoryFull
-	(*ModifierWire)(nil),       // 4: mli.v1.ModifierWire
-	(*AttributeDiff)(nil),      // 5: mli.v1.AttributeDiff
-	(*AttributeFull)(nil),      // 6: mli.v1.AttributeFull
-	(*SkillXPDiff)(nil),        // 7: mli.v1.SkillXPDiff
-	(*SkillXPFull)(nil),        // 8: mli.v1.SkillXPFull
-	(*BestiaryDiff)(nil),       // 9: mli.v1.BestiaryDiff
-	(*BestiaryFull)(nil),       // 10: mli.v1.BestiaryFull
-	(*EventExecutionDiff)(nil), // 11: mli.v1.EventExecutionDiff
-	(*EventExecutionFull)(nil), // 12: mli.v1.EventExecutionFull
-	(*EventQueueEntry)(nil),    // 13: mli.v1.EventQueueEntry
-	(*EventQueueDiff)(nil),     // 14: mli.v1.EventQueueDiff
-	(*StateDiff)(nil),          // 15: mli.v1.StateDiff
-	(*StateFull)(nil),          // 16: mli.v1.StateFull
-	nil,                        // 17: mli.v1.StateFull.EquipmentEntry
+	(EquipAction)(0),           // 1: mli.v1.EquipAction
+	(*ItemIdentity)(nil),       // 2: mli.v1.ItemIdentity
+	(*InventoryDiff)(nil),      // 3: mli.v1.InventoryDiff
+	(*InventoryFull)(nil),      // 4: mli.v1.InventoryFull
+	(*ModifierWire)(nil),       // 5: mli.v1.ModifierWire
+	(*AttributeDiff)(nil),      // 6: mli.v1.AttributeDiff
+	(*AttributeFull)(nil),      // 7: mli.v1.AttributeFull
+	(*SkillXPDiff)(nil),        // 8: mli.v1.SkillXPDiff
+	(*SkillXPFull)(nil),        // 9: mli.v1.SkillXPFull
+	(*BestiaryDiff)(nil),       // 10: mli.v1.BestiaryDiff
+	(*BestiaryFull)(nil),       // 11: mli.v1.BestiaryFull
+	(*EventExecutionDiff)(nil), // 12: mli.v1.EventExecutionDiff
+	(*EventExecutionFull)(nil), // 13: mli.v1.EventExecutionFull
+	(*EventQueueEntry)(nil),    // 14: mli.v1.EventQueueEntry
+	(*EventQueueDiff)(nil),     // 15: mli.v1.EventQueueDiff
+	(*EquipmentDiff)(nil),      // 16: mli.v1.EquipmentDiff
+	(*StateDiff)(nil),          // 17: mli.v1.StateDiff
+	(*StateFull)(nil),          // 18: mli.v1.StateFull
+	nil,                        // 19: mli.v1.StateFull.EquipmentEntry
 }
 var file_state_proto_depIdxs = []int32{
 	0,  // 0: mli.v1.InventoryDiff.reason:type_name -> mli.v1.InventoryChangeReason
-	4,  // 1: mli.v1.AttributeDiff.modifiers:type_name -> mli.v1.ModifierWire
-	4,  // 2: mli.v1.AttributeFull.modifiers:type_name -> mli.v1.ModifierWire
-	13, // 3: mli.v1.EventQueueDiff.entries:type_name -> mli.v1.EventQueueEntry
-	2,  // 4: mli.v1.StateDiff.inventory:type_name -> mli.v1.InventoryDiff
-	5,  // 5: mli.v1.StateDiff.attribute:type_name -> mli.v1.AttributeDiff
-	7,  // 6: mli.v1.StateDiff.skill_xp:type_name -> mli.v1.SkillXPDiff
-	9,  // 7: mli.v1.StateDiff.bestiary:type_name -> mli.v1.BestiaryDiff
-	11, // 8: mli.v1.StateDiff.event_execution:type_name -> mli.v1.EventExecutionDiff
-	14, // 9: mli.v1.StateDiff.event_queue:type_name -> mli.v1.EventQueueDiff
-	3,  // 10: mli.v1.StateFull.inventory:type_name -> mli.v1.InventoryFull
-	6,  // 11: mli.v1.StateFull.attribute:type_name -> mli.v1.AttributeFull
-	8,  // 12: mli.v1.StateFull.skill_xp:type_name -> mli.v1.SkillXPFull
-	10, // 13: mli.v1.StateFull.bestiary:type_name -> mli.v1.BestiaryFull
-	12, // 14: mli.v1.StateFull.event_execution:type_name -> mli.v1.EventExecutionFull
-	17, // 15: mli.v1.StateFull.equipment:type_name -> mli.v1.StateFull.EquipmentEntry
-	1,  // 16: mli.v1.StateFull.EquipmentEntry.value:type_name -> mli.v1.ItemIdentity
-	17, // [17:17] is the sub-list for method output_type
-	17, // [17:17] is the sub-list for method input_type
-	17, // [17:17] is the sub-list for extension type_name
-	17, // [17:17] is the sub-list for extension extendee
-	0,  // [0:17] is the sub-list for field type_name
+	5,  // 1: mli.v1.AttributeDiff.modifiers:type_name -> mli.v1.ModifierWire
+	5,  // 2: mli.v1.AttributeFull.modifiers:type_name -> mli.v1.ModifierWire
+	14, // 3: mli.v1.EventQueueDiff.entries:type_name -> mli.v1.EventQueueEntry
+	1,  // 4: mli.v1.EquipmentDiff.action:type_name -> mli.v1.EquipAction
+	3,  // 5: mli.v1.StateDiff.inventory:type_name -> mli.v1.InventoryDiff
+	6,  // 6: mli.v1.StateDiff.attribute:type_name -> mli.v1.AttributeDiff
+	8,  // 7: mli.v1.StateDiff.skill_xp:type_name -> mli.v1.SkillXPDiff
+	10, // 8: mli.v1.StateDiff.bestiary:type_name -> mli.v1.BestiaryDiff
+	12, // 9: mli.v1.StateDiff.event_execution:type_name -> mli.v1.EventExecutionDiff
+	15, // 10: mli.v1.StateDiff.event_queue:type_name -> mli.v1.EventQueueDiff
+	16, // 11: mli.v1.StateDiff.equipment:type_name -> mli.v1.EquipmentDiff
+	4,  // 12: mli.v1.StateFull.inventory:type_name -> mli.v1.InventoryFull
+	7,  // 13: mli.v1.StateFull.attribute:type_name -> mli.v1.AttributeFull
+	9,  // 14: mli.v1.StateFull.skill_xp:type_name -> mli.v1.SkillXPFull
+	11, // 15: mli.v1.StateFull.bestiary:type_name -> mli.v1.BestiaryFull
+	13, // 16: mli.v1.StateFull.event_execution:type_name -> mli.v1.EventExecutionFull
+	19, // 17: mli.v1.StateFull.equipment:type_name -> mli.v1.StateFull.EquipmentEntry
+	2,  // 18: mli.v1.StateFull.EquipmentEntry.value:type_name -> mli.v1.ItemIdentity
+	19, // [19:19] is the sub-list for method output_type
+	19, // [19:19] is the sub-list for method input_type
+	19, // [19:19] is the sub-list for extension type_name
+	19, // [19:19] is the sub-list for extension extendee
+	0,  // [0:19] is the sub-list for field type_name
 }
 
 func init() { file_state_proto_init() }
@@ -1283,8 +1424,8 @@ func file_state_proto_init() {
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_state_proto_rawDesc), len(file_state_proto_rawDesc)),
-			NumEnums:      1,
-			NumMessages:   17,
+			NumEnums:      2,
+			NumMessages:   18,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

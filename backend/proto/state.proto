@@ -105,6 +105,20 @@ message EventQueueDiff {
   repeated EventQueueEntry entries = 3;
 }
 
+// -- Equipment --
+enum EquipAction {
+  EQUIP_ACTION_UNSPECIFIED = 0;
+  EQUIP_ACTION_EQUIP = 1;
+  EQUIP_ACTION_UNEQUIP = 2;
+}
+
+message EquipmentDiff {
+  string slot = 1;
+  int32 item_id = 2;
+  int32 item_state = 3;
+  EquipAction action = 4;
+}
+
 // -- State envelopes --
 message StateDiff {
   repeated InventoryDiff inventory = 1;
@@ -113,6 +127,7 @@ message StateDiff {
   repeated BestiaryDiff bestiary = 4;
   repeated EventExecutionDiff event_execution = 5;
   repeated EventQueueDiff event_queue = 6;
+  repeated EquipmentDiff equipment = 7;
 }
 
 message StateFull {

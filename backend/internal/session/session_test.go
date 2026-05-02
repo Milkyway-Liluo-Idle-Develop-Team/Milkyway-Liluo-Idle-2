@@ -9,6 +9,7 @@ import (
 
 	"github.com/edrowsluo/new-mli/backend/internal/attribute"
 	dbgen "github.com/edrowsluo/new-mli/backend/internal/db/gen"
+	"github.com/edrowsluo/new-mli/backend/internal/equipment"
 	pb "github.com/edrowsluo/new-mli/backend/internal/pb"
 	"github.com/edrowsluo/new-mli/backend/internal/gameconfig"
 	"github.com/edrowsluo/new-mli/backend/internal/inventory"
@@ -670,7 +671,7 @@ func TestEquip(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	got, ok := s.Equipped("main_hand")
+	got, ok := s.Equipment().Get("main_hand")
 	if !ok {
 		t.Fatal("main_hand should be equipped")
 	}
@@ -711,7 +712,7 @@ func TestEquipUnequip(t *testing.T) {
 	if err := s.Unequip(context.Background(), "main_hand"); err != nil {
 		t.Fatal(err)
 	}
-	_, ok := s.Equipped("main_hand")
+	_, ok := s.Equipment().Get("main_hand")
 	if ok {
 		t.Error("main_hand should be empty after unequip")
 	}
@@ -740,7 +741,7 @@ func TestEquipReplaceSlot(t *testing.T) {
 	s.Equip(context.Background(), sword, "main_hand")
 	s.Equip(context.Background(), staff, "main_hand")
 
-	got, ok := s.Equipped("main_hand")
+	got, ok := s.Equipment().Get("main_hand")
 	if !ok || got.ID != 33 {
 		t.Errorf("want staff(33) equipped, got %v", got.ID)
 	}
@@ -756,6 +757,7 @@ func TestEquipInventoryDiffReason(t *testing.T) {
 	reg := record.NewRegistry()
 	reg.Register(inventory.Provider)
 	reg.Register(attribute.Provider)
+	reg.Register(equipment.Provider)
 
 	_, q := openInvDB(t)
 	invSt, _ := inventory.Load(context.Background(), q, 1)
@@ -790,6 +792,14 @@ func TestEquipInventoryDiffReason(t *testing.T) {
 	for _, c := range diff.Inventory {
 		if c.Reason != pb.InventoryChangeReason_EQUIP {
 			t.Errorf("item %d: want EQUIP, got %v", c.ItemId, c.Reason)
+		}
+	}
+	if len(diff.Equipment) != 2 {
+		t.Fatalf("expected 2 equipment diffs, got %d", len(diff.Equipment))
+	}
+	for _, ed := range diff.Equipment {
+		if ed.Action != pb.EquipAction_EQUIP_ACTION_EQUIP {
+			t.Errorf("expected EQUIP action, got %v", ed.Action)
 		}
 	}
 }
@@ -870,7 +880,7 @@ func TestEquipMultipleSlots(t *testing.T) {
 
 	// All slots occupied.
 	for slot := range slots {
-		if _, ok := s.Equipped(slot); !ok {
+		if _, ok := s.Equipment().Get(slot); !ok {
 			t.Errorf("slot %s should be occupied", slot)
 		}
 	}
@@ -892,6 +902,7 @@ func TestEquipUnequipDiffReason(t *testing.T) {
 	reg := record.NewRegistry()
 	reg.Register(inventory.Provider)
 	reg.Register(attribute.Provider)
+	reg.Register(equipment.Provider)
 
 	_, q := openInvDB(t)
 	invSt, _ := inventory.Load(context.Background(), q, 1)
@@ -926,10 +937,22 @@ func TestEquipUnequipDiffReason(t *testing.T) {
 	if len(diff1.Inventory) != 1 || diff1.Inventory[0].Reason != pb.InventoryChangeReason_EQUIP {
 		t.Error("equip should produce EQUIP reason")
 	}
+	if len(diff1.Equipment) != 1 {
+		t.Fatalf("expected 1 equipment diff for equip tick, got %d", len(diff1.Equipment))
+	}
+	if diff1.Equipment[0].Action != pb.EquipAction_EQUIP_ACTION_EQUIP {
+		t.Errorf("expected EQUIP action in equip tick, got %v", diff1.Equipment[0].Action)
+	}
 
 	diff2, _ := reg.BuildDiff(rec2)
 	if len(diff2.Inventory) != 1 || diff2.Inventory[0].Reason != pb.InventoryChangeReason_UNEQUIP {
 		t.Error("unequip should produce UNEQUIP reason")
+	}
+	if len(diff2.Equipment) != 1 {
+		t.Fatalf("expected 1 equipment diff for unequip tick, got %d", len(diff2.Equipment))
+	}
+	if diff2.Equipment[0].Action != pb.EquipAction_EQUIP_ACTION_UNEQUIP {
+		t.Errorf("expected UNEQUIP action in unequip tick, got %v", diff2.Equipment[0].Action)
 	}
 }
 
@@ -1046,9 +1069,11 @@ func TestEquipPersistsAcrossSessions(t *testing.T) {
 	s.SetInv(invSt)
 	mgr.Add(s)
 	// Simulate reconnect: reload equipment from DB.
-	if err := s.LoadEquipment(context.Background(), q); err != nil {
+	equipSt, err := equipment.Load(context.Background(), q, 1)
+	if err != nil {
 		t.Fatal(err)
 	}
+	s.SetEquipment(equipSt)
 
 	locked, ok := mgr.LockSession(s.ID)
 	if !ok {
@@ -1056,7 +1081,7 @@ func TestEquipPersistsAcrossSessions(t *testing.T) {
 	}
 	defer mgr.UnlockSession(locked)
 
-	got, ok := locked.Equipped("main_hand")
+	got, ok := locked.Equipment().Get("main_hand")
 	if !ok || got.ID != 35 {
 		t.Fatalf("main_hand should have sword(35) after reconnect, got %v", got)
 	}

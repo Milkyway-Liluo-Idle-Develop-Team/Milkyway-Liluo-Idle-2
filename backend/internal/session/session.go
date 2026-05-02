@@ -9,7 +9,6 @@ package session
 
 import (
 	"context"
-	"fmt"
 	"log/slog"
 	"reflect"
 	"sync"
@@ -20,6 +19,7 @@ import (
 	"github.com/edrowsluo/new-mli/backend/internal/bestiary"
 	"github.com/edrowsluo/new-mli/backend/internal/db"
 	dbgen "github.com/edrowsluo/new-mli/backend/internal/db/gen"
+	"github.com/edrowsluo/new-mli/backend/internal/equipment"
 	"github.com/edrowsluo/new-mli/backend/internal/event"
 	"github.com/edrowsluo/new-mli/backend/internal/gameconfig"
 	"github.com/edrowsluo/new-mli/backend/internal/inventory"
@@ -45,14 +45,13 @@ type PlayerSession struct {
 	skill  *skill.State
 	best   *bestiary.State
 	ev     *event.State
+	eq     *equipment.State
 
 	logger *slog.Logger
 
-	mu           sync.Mutex
-	recorder     *record.Recorder
-	done         chan struct{} // closed on session close
-	equipped     map[string]item.Item
-	deletedSlots []string
+	mu       sync.Mutex
+	recorder *record.Recorder
+	done     chan struct{} // closed on session close
 }
 
 // New creates a PlayerSession. The attribute instance is constructed bare;
@@ -60,12 +59,12 @@ type PlayerSession struct {
 // from the database.
 func New(connID uuid.UUID, userID int64, logger *slog.Logger) *PlayerSession {
 	return &PlayerSession{
-		ID:       connID,
-		UserID:   userID,
-		attr:     attribute.NewInstance(),
-		logger:   logger,
-		done:     make(chan struct{}),
-		equipped: make(map[string]item.Item),
+		ID:     connID,
+		UserID: userID,
+		attr:   attribute.NewInstance(),
+		eq:     equipment.NewState(userID),
+		logger: logger,
+		done:   make(chan struct{}),
 	}
 }
 
@@ -112,6 +111,29 @@ func (s *PlayerSession) Events() *event.State { return s.ev }
 // SetEvents attaches an event state.
 func (s *PlayerSession) SetEvents(st *event.State) { s.ev = st }
 
+// Equipment returns the equipment state, or nil if not yet loaded.
+func (s *PlayerSession) Equipment() *equipment.State { return s.eq }
+
+// SetEquipment attaches an equipment state (called after DB load).
+func (s *PlayerSession) SetEquipment(st *equipment.State) {
+	s.eq = st
+	// Replay equipment modifiers on the attribute system. equipment.Load is
+	// pure DB → State; attribute coupling is the session's job.
+	for _, it := range st.All() {
+		def, ok := gameconfig.GetItemDefByID(it.ID)
+		if !ok {
+			continue
+		}
+		mods, err := def.Modifiers(it, attribute.Get())
+		if err != nil {
+			// Best-effort: log and skip broken definitions.
+			s.logger.Warn("equipment modifier replay failed", "item_id", it.ID, "err", err)
+			continue
+		}
+		s.attr.AddModifiers("equipment:"+def.StringID(), mods)
+	}
+}
+
 // --- SettlementCtx (implements event.SettlementCtx) ---
 
 func (s *PlayerSession) HasItem(it item.Item, qty float64) bool    { return s.inv.Has(it, qty) }
@@ -143,6 +165,9 @@ func (s *PlayerSession) SetRecorder(rec *record.Recorder) {
 	if s.ev != nil {
 		s.ev.SetRecorder(rec)
 	}
+	if s.eq != nil {
+		s.eq.SetRecorder(rec)
+	}
 }
 
 // ClearRecorder detaches and returns the current Recorder, if any.
@@ -159,6 +184,9 @@ func (s *PlayerSession) ClearRecorder() *record.Recorder {
 	}
 	if s.ev != nil {
 		s.ev.ClearRecorder()
+	}
+	if s.eq != nil {
+		s.eq.ClearRecorder()
 	}
 	rec := s.recorder
 	s.recorder = nil
@@ -188,44 +216,13 @@ func (s *PlayerSession) FlushAll(ctx context.Context, database *db.DB) error {
 				return err
 			}
 		}
-		// Upsert equipment.
-		for slot, it := range s.equipped {
-			if err := q.UpsertEquipment(ctx, dbgen.UpsertEquipmentParams{
-				UserID:    s.UserID,
-				Slot:      slot,
-				ItemID:    int64(it.ID),
-				ItemState: int64(it.State),
-			}); err != nil {
+		if s.eq != nil {
+			if err := s.eq.Flush(ctx, q); err != nil {
 				return err
 			}
 		}
-		// Delete unequipped slots since last flush.
-		for _, slot := range s.deletedSlots {
-			if err := q.DeleteEquipment(ctx, dbgen.DeleteEquipmentParams{
-				UserID: s.UserID,
-				Slot:   slot,
-			}); err != nil {
-				return err
-			}
-		}
-		s.deletedSlots = s.deletedSlots[:0]
 		return nil
 	})
-}
-
-// Equipped returns the item in the given slot.
-func (s *PlayerSession) Equipped(slot string) (item.Item, bool) {
-	it, ok := s.equipped[slot]
-	return it, ok
-}
-
-// AllEquipped returns a copy of the equipped items map.
-func (s *PlayerSession) AllEquipped() map[string]item.Item {
-	out := make(map[string]item.Item, len(s.equipped))
-	for k, v := range s.equipped {
-		out[k] = v
-	}
-	return out
 }
 
 // Equip moves an item from inventory to the given slot, applying attribute modifiers.
@@ -242,9 +239,13 @@ func (s *PlayerSession) Equip(ctx context.Context, it item.Item, slot string) er
 		return apperror.BadRequest("item not in inventory")
 	}
 
-	// If slot is occupied, unequip the old item first.
-	if old, ok := s.equipped[slot]; ok {
-		s.unequipInternal(slot, old)
+	// Replace existing item in slot, if any.
+	if old, ok := s.eq.Get(slot); ok {
+		if oldDef, ok := gameconfig.GetItemDefByID(old.ID); ok {
+			s.attr.RemoveModifiers("equipment:" + oldDef.StringID())
+		}
+		s.inv.AddEquipChange(old, 1, false) // returns to inventory, reason=UNEQUIP
+		s.eq.Unequip(slot)                  // clears + records UNEQUIP
 	}
 
 	// Deduct from inventory with EQUIP reason.
@@ -256,49 +257,23 @@ func (s *PlayerSession) Equip(ctx context.Context, it item.Item, slot string) er
 		return err
 	}
 	s.attr.AddModifiers("equipment:"+def.StringID(), mods)
-	s.equipped[slot] = it
+
+	// Record slot mount.
+	s.eq.Equip(slot, it)
 	return nil
 }
 
 // Unequip removes the item from the given slot and returns it to inventory.
 func (s *PlayerSession) Unequip(ctx context.Context, slot string) error {
-	it, ok := s.equipped[slot]
+	it, ok := s.eq.Get(slot)
 	if !ok {
 		return apperror.NotFound("no item equipped in slot")
 	}
-	return s.unequipInternal(slot, it)
-}
-
-func (s *PlayerSession) unequipInternal(slot string, it item.Item) error {
 	if def, ok := gameconfig.GetItemDefByID(it.ID); ok {
 		s.attr.RemoveModifiers("equipment:" + def.StringID())
 	}
 	s.inv.AddEquipChange(it, 1, false)
-	delete(s.equipped, slot)
-	s.deletedSlots = append(s.deletedSlots, slot)
-	return nil
-}
-
-// LoadEquipment reloads equipped items from DB, applying modifiers without
-// generating inventory records (for reconnect).
-func (s *PlayerSession) LoadEquipment(ctx context.Context, q *dbgen.Queries) error {
-	rows, err := q.LoadEquipment(ctx, s.UserID)
-	if err != nil {
-		return fmt.Errorf("load equipment: %w", err)
-	}
-	for _, r := range rows {
-		it := item.Item{ID: item.ID(r.ItemID), State: item.State(r.ItemState)}
-		def, ok := gameconfig.GetItemDefByID(it.ID)
-		if !ok {
-			continue
-		}
-		mods, err := def.Modifiers(it, attribute.Get())
-		if err != nil {
-			return err
-		}
-		s.attr.AddModifiers("equipment:"+def.StringID(), mods)
-		s.equipped[r.Slot] = it
-	}
+	s.eq.Unequip(slot)
 	return nil
 }
 
@@ -308,7 +283,8 @@ func isStateDiffEmpty(d *pb.StateDiff) bool {
 		len(d.SkillXp) == 0 &&
 		len(d.Bestiary) == 0 &&
 		len(d.EventExecution) == 0 &&
-		len(d.EventQueue) == 0
+		len(d.EventQueue) == 0 &&
+		len(d.Equipment) == 0
 }
 
 // Manager is the thread-safe registry of all active PlayerSessions,
@@ -536,8 +512,10 @@ func (m *Manager) CreateSession(ctx context.Context, connID uuid.UUID, userID in
 	sess.SetSkill(skillSt)
 	sess.SetBestiary(best)
 	sess.SetEvents(evSt)
-	if err := sess.LoadEquipment(ctx, database.Queries); err != nil {
+	eqSt, err := equipment.Load(ctx, database.Queries, userID)
+	if err != nil {
 		return nil, err
 	}
+	sess.SetEquipment(eqSt)
 	return sess, nil
 }
