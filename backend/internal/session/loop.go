@@ -36,10 +36,9 @@ func (s *PlayerSession) RunLoop(ctx context.Context, mgr *Manager, database *db.
 			rec.PopNamespace()
 			elapsedAccum = 0
 
-			// Battle hook placeholder for Phase 5
-			// if s.battle != nil {
-			// 	// will be filled in Phase 5
-			// }
+			if s.battle != nil && s.battle.Active() {
+				// Placeholder: battle simulation runs here.
+			}
 
 			s.ClearRecorder()
 

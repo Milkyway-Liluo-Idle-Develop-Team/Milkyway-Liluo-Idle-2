@@ -26,6 +26,10 @@ func (s *PlayerSession) StartGraceTimer(duration time.Duration) {
 	s.graceMu.Lock()
 	defer s.graceMu.Unlock()
 
+	if s.battle != nil && s.battle.Active() {
+		duration = 5 * time.Minute
+	}
+
 	if s.graceTimer != nil {
 		s.graceTimer.Stop()
 	}
@@ -34,6 +38,10 @@ func (s *PlayerSession) StartGraceTimer(duration time.Duration) {
 		s.graceMu.Lock()
 		defer s.graceMu.Unlock()
 		if s.State() != StateGrace {
+			return
+		}
+		if s.battle != nil && s.battle.Active() {
+			s.graceTimer.Reset(5 * time.Minute)
 			return
 		}
 		s.setState(StateClosing)
