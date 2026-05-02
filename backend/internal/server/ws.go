@@ -84,7 +84,7 @@ func wsHandler(hub *wsx.Hub, mw *auth.Middleware, httpCfg config.HTTP, wsCfg con
 				}
 
 				// Only detach if this is the current conn
-				if sess.Conn() != nil && sess.Conn().ID == c.ID {
+				if cur := sess.Conn(); cur != nil && cur.ID == c.ID {
 					sess.DetachConn()
 				}
 

@@ -1,10 +1,12 @@
-// Package session manages PlayerSession instances, one per WebSocket
-// connection. Each session holds the per-player game state and provides
-// the recorder lifecycle for execution cycles.
+// Package session manages PlayerSession instances, one per user.
+// A session survives WebSocket disconnect for a configurable grace period
+// and is destroyed only on grace expiry or explicit eviction.
+// Each session holds the per-player game state and provides the recorder
+// lifecycle for execution cycles.
 //
-// Concurrency: game-state access is gated by Manager.LockSession /
-// Manager.UnlockSession. The session's mutex is not exposed — the Manager
-// is the sole choke point for locking.
+// Concurrency: game-state writes are handled exclusively by the session's
+// RunLoop goroutine via the command channel. External reads may use
+// Manager.RLockSession / RUnlockSession.
 package session
 
 import (

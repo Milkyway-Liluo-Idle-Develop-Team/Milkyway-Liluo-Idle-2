@@ -2,6 +2,7 @@ package session
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	"github.com/edrowsluo/new-mli/backend/internal/db"
@@ -23,6 +24,10 @@ func (s *PlayerSession) RunLoop(ctx context.Context, mgr *Manager, database *db.
 			delta := now.Sub(lastTick).Seconds()
 			lastTick = now
 			elapsedAccum += delta
+
+			if s.State() == StateClosed {
+				return
+			}
 
 			s.drainCommands()
 
@@ -65,7 +70,16 @@ func (s *PlayerSession) drainCommands() {
 	for {
 		select {
 		case cmd := <-s.commandCh:
-			err := cmd.fn(s)
+			var err error
+			func() {
+				defer func() {
+					if r := recover(); r != nil {
+						err = fmt.Errorf("panic: %v", r)
+						s.logger.Error("command panic", "recover", r)
+					}
+				}()
+				err = cmd.fn(s)
+			}()
 			cmd.resp <- err
 		default:
 			return
