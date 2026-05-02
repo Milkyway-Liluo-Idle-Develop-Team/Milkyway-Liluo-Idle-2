@@ -49,9 +49,13 @@ type PlayerSession struct {
 
 	logger *slog.Logger
 
-	mu       sync.Mutex
+	mu       sync.RWMutex
 	recorder *record.Recorder
-	done     chan struct{} // closed on session close
+
+	conn   *wsx.Conn
+	connMu sync.RWMutex
+
+	done chan struct{} // closed on session close; kept for StartLoop compat
 }
 
 // New creates a PlayerSession. The attribute instance is constructed bare;
@@ -75,6 +79,35 @@ func (s *PlayerSession) Close() {
 	default:
 		close(s.done)
 	}
+}
+
+// ---- conn attach / detach ----
+
+func (s *PlayerSession) AttachConn(c *wsx.Conn) {
+	s.connMu.Lock()
+	defer s.connMu.Unlock()
+	if old := s.conn; old != nil && old.ID != c.ID {
+		old.Close()
+	}
+	s.conn = c
+}
+
+func (s *PlayerSession) DetachConn() {
+	s.connMu.Lock()
+	defer s.connMu.Unlock()
+	s.conn = nil
+}
+
+func (s *PlayerSession) Conn() *wsx.Conn {
+	s.connMu.RLock()
+	defer s.connMu.RUnlock()
+	return s.conn
+}
+
+func (s *PlayerSession) HasConn() bool {
+	s.connMu.RLock()
+	defer s.connMu.RUnlock()
+	return s.conn != nil
 }
 
 // ---- lock (unexported — only Manager touches these) ----
@@ -288,10 +321,10 @@ func isStateDiffEmpty(d *pb.StateDiff) bool {
 }
 
 // Manager is the thread-safe registry of all active PlayerSessions,
-// keyed by WebSocket connection ID. It owns all session locking.
+// keyed by user ID. It owns all session locking.
 type Manager struct {
 	mu       sync.RWMutex
-	sessions map[uuid.UUID]*PlayerSession
+	sessions map[int64]*PlayerSession
 	reg      *record.Registry
 	database *db.DB
 }
@@ -300,18 +333,18 @@ type Manager struct {
 // database is used for flush and may be nil in tests.
 func NewManager(reg *record.Registry, database *db.DB) *Manager {
 	return &Manager{
-		sessions: make(map[uuid.UUID]*PlayerSession),
+		sessions: make(map[int64]*PlayerSession),
 		reg:      reg,
 		database: database,
 	}
 }
 
-// LockSession returns the session for connID, already locked for exclusive
+// LockSession returns the session for userID, already locked for exclusive
 // access. Call UnlockSession after the operation.
-func (m *Manager) LockSession(id uuid.UUID) (*PlayerSession, bool) {
+func (m *Manager) LockSession(userID int64) (*PlayerSession, bool) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
-	s, ok := m.sessions[id]
+	s, ok := m.sessions[userID]
 	if !ok {
 		return nil, false
 	}
@@ -323,38 +356,35 @@ func (m *Manager) LockSession(id uuid.UUID) (*PlayerSession, bool) {
 func (m *Manager) UnlockSession(s *PlayerSession) { s.unlock() }
 
 // Add registers a new PlayerSession. Called on WebSocket connect.
+// If a session already exists for the same user, the old one is closed
+// and replaced (single-online-per-user).
 func (m *Manager) Add(s *PlayerSession) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
-	m.sessions[s.ID] = s
+	if old, ok := m.sessions[s.UserID]; ok {
+		old.Close()
+	}
+	m.sessions[s.UserID] = s
 }
 
 // Remove unregisters a PlayerSession. Called on WebSocket disconnect.
-func (m *Manager) Remove(id uuid.UUID) {
+func (m *Manager) Remove(userID int64) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
-	delete(m.sessions, id)
+	delete(m.sessions, userID)
 }
 
 // Get returns the session without locking. Prefer LockSession.
-func (m *Manager) Get(id uuid.UUID) (*PlayerSession, bool) {
+func (m *Manager) Get(userID int64) (*PlayerSession, bool) {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
-	s, ok := m.sessions[id]
+	s, ok := m.sessions[userID]
 	return s, ok
 }
 
-// GetByUser returns all sessions belonging to a user.
-func (m *Manager) GetByUser(userID int64) []*PlayerSession {
-	m.mu.RLock()
-	defer m.mu.RUnlock()
-	var out []*PlayerSession
-	for _, s := range m.sessions {
-		if s.UserID == userID {
-			out = append(out, s)
-		}
-	}
-	return out
+// GetByUser returns the session for a user.
+func (m *Manager) GetByUser(userID int64) (*PlayerSession, bool) {
+	return m.Get(userID)
 }
 
 // NewRecorder creates a Recorder backed by this manager's Registry.
@@ -381,11 +411,12 @@ type SessionHandler func(ctx context.Context, c *wsx.Conn, sess *PlayerSession, 
 // The session is locked before fn is called and unlocked afterwards.
 func (m *Manager) HandleSession(hub *wsx.Hub, typ string, fn SessionHandler) {
 	hub.Handle(typ, func(ctx context.Context, c *wsx.Conn, in wsx.Inbound) error {
-		s, ok := m.LockSession(c.ID)
+		s, ok := m.Get(c.UserID)
 		if !ok {
 			c.ReplyError(in, apperror.NotFound("session not found"))
 			return nil
 		}
+		s.lock()
 		defer m.UnlockSession(s)
 		return fn(ctx, c, s, in)
 	})
@@ -404,11 +435,12 @@ func HandleSessionTyped[T proto.Message](m *Manager, hub *wsx.Hub, typ string, f
 		if err := in.DecodePayload(req); err != nil {
 			return err
 		}
-		s, ok := m.LockSession(c.ID)
+		s, ok := m.Get(c.UserID)
 		if !ok {
 			c.ReplyError(in, apperror.NotFound("session not found"))
 			return nil
 		}
+		s.lock()
 		defer m.UnlockSession(s)
 		return fn(ctx, c, s, req)
 	})
@@ -433,7 +465,7 @@ func (m *Manager) StartLoop(sess *PlayerSession, conn *wsx.Conn) {
 				elapsed := now.Sub(lastTick).Seconds()
 				lastTick = now
 
-				s, ok := m.LockSession(sess.ID)
+				s, ok := m.LockSession(sess.UserID)
 				if !ok {
 					return
 				}

@@ -128,7 +128,7 @@ func BenchmarkTick_Producing(b *testing.B) {
 	startingDialog, _ := gameconfig.StringToEventID("starting_dialog_5")
 
 	// One-time setup: enqueue 3 production events, set skills, seed items.
-	locked, _ := mgr.LockSession(s.ID)
+	locked, _ := mgr.LockSession(s.UserID)
 	locked.Events().Enqueue(0, fellingID, -1)
 	locked.Events().Enqueue(0, miningID, -1)
 	locked.Events().Enqueue(0, plankID, -1)
@@ -149,7 +149,7 @@ func BenchmarkTick_Producing(b *testing.B) {
 
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		locked, _ := mgr.LockSession(s.ID)
+		locked, _ := mgr.LockSession(s.UserID)
 
 		rec := mgr.NewRecorder()
 		locked.SetRecorder(rec)
@@ -180,7 +180,7 @@ func BenchmarkTick_Idle(b *testing.B) {
 	fellingSkill, _ := gameconfig.StringToSkillID("felling")
 	miningSkill, _ := gameconfig.StringToSkillID("mining")
 
-	locked, _ := mgr.LockSession(s.ID)
+	locked, _ := mgr.LockSession(s.UserID)
 	locked.Events().Enqueue(0, fellingID, -1)
 	locked.Events().Enqueue(0, miningID, -1)
 	locked.Skill().AddXP(fellingSkill, 100)
@@ -189,7 +189,7 @@ func BenchmarkTick_Idle(b *testing.B) {
 
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		locked, _ := mgr.LockSession(s.ID)
+		locked, _ := mgr.LockSession(s.UserID)
 
 		rec := mgr.NewRecorder()
 		locked.SetRecorder(rec)
@@ -223,7 +223,7 @@ func BenchmarkTick_OfflineReturn(b *testing.B) {
 	dirtID, _ := gameconfig.StringToItemID("dirt")
 
 	// Setup: enqueue events, set skills, seed items.
-	locked, _ := mgr.LockSession(s.ID)
+	locked, _ := mgr.LockSession(s.UserID)
 	locked.Events().Enqueue(0, fellingID, -1)
 	locked.Events().Enqueue(0, miningID, -1)
 	locked.Skill().AddXP(fellingSkill, 100)
@@ -234,7 +234,7 @@ func BenchmarkTick_OfflineReturn(b *testing.B) {
 
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		locked, _ := mgr.LockSession(s.ID)
+		locked, _ := mgr.LockSession(s.UserID)
 
 		rec := mgr.NewRecorder()
 		locked.SetRecorder(rec)
@@ -300,7 +300,7 @@ func BenchmarkTick_OnDisk(b *testing.B) {
 	plankItemID, _ := gameconfig.StringToItemID("oak_plank")
 	startingDialog, _ := gameconfig.StringToEventID("starting_dialog_5")
 
-	locked, _ := mgr.LockSession(s.ID)
+	locked, _ := mgr.LockSession(s.UserID)
 	locked.Events().Enqueue(0, fellingID, -1)
 	locked.Events().Enqueue(0, miningID, -1)
 	locked.Events().Enqueue(0, plankID, -1)
@@ -315,7 +315,7 @@ func BenchmarkTick_OnDisk(b *testing.B) {
 
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		locked, _ := mgr.LockSession(s.ID)
+		locked, _ := mgr.LockSession(s.UserID)
 
 		rec := mgr.NewRecorder()
 		locked.SetRecorder(rec)
@@ -382,7 +382,7 @@ func BenchmarkTick_OnDisk_FullSync(b *testing.B) {
 	plankItemID, _ := gameconfig.StringToItemID("oak_plank")
 	startingDialog, _ := gameconfig.StringToEventID("starting_dialog_5")
 
-	locked, _ := mgr.LockSession(s.ID)
+	locked, _ := mgr.LockSession(s.UserID)
 	locked.Events().Enqueue(0, fellingID, -1)
 	locked.Events().Enqueue(0, miningID, -1)
 	locked.Events().Enqueue(0, plankID, -1)
@@ -397,7 +397,7 @@ func BenchmarkTick_OnDisk_FullSync(b *testing.B) {
 
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		locked, _ := mgr.LockSession(s.ID)
+		locked, _ := mgr.LockSession(s.UserID)
 
 		rec := mgr.NewRecorder()
 		locked.SetRecorder(rec)
@@ -433,7 +433,7 @@ func BenchmarkSettle_Only(b *testing.B) {
 	craftSkill, _ := gameconfig.StringToSkillID("crafting")
 	oakID, _ := gameconfig.StringToItemID("oak_logs")
 
-	locked, _ := mgr.LockSession(s.ID)
+	locked, _ := mgr.LockSession(s.UserID)
 	locked.Events().Enqueue(0, fellingID, -1)
 	locked.Events().Enqueue(0, miningID, -1)
 	locked.Events().Enqueue(0, plankID, -1)
@@ -445,7 +445,7 @@ func BenchmarkSettle_Only(b *testing.B) {
 
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		locked, _ := mgr.LockSession(s.ID)
+		locked, _ := mgr.LockSession(s.UserID)
 		rec := mgr.NewRecorder()
 		locked.SetRecorder(rec)
 		rec.PushNamespace("tick")

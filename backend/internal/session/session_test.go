@@ -45,13 +45,13 @@ func newLockedSession(t *testing.T, mgr *session.Manager, userID int64) (*sessio
 	id := uuid.New()
 	s := session.New(id, userID, testLogger())
 	mgr.Add(s)
-	locked, ok := mgr.LockSession(id)
+	locked, ok := mgr.LockSession(userID)
 	if !ok {
 		t.Fatal("LockSession failed")
 	}
 	return locked, func() {
 		mgr.UnlockSession(locked)
-		mgr.Remove(id)
+		mgr.Remove(userID)
 	}
 }
 
@@ -66,12 +66,12 @@ func TestAddRemove(t *testing.T) {
 		t.Fatalf("want 1, got %d", mgr.Count())
 	}
 
-	got, ok := mgr.Get(id)
+	got, ok := mgr.Get(42)
 	if !ok || got.ID != id {
 		t.Fatal("session not found")
 	}
 
-	mgr.Remove(id)
+	mgr.Remove(42)
 	if mgr.Count() != 0 {
 		t.Fatalf("want 0, got %d", mgr.Count())
 	}
@@ -81,15 +81,13 @@ func TestGetByUser(t *testing.T) {
 	mgr := newTestManager(t)
 
 	s1 := session.New(uuid.New(), 1, testLogger())
-	s2 := session.New(uuid.New(), 1, testLogger())
-	s3 := session.New(uuid.New(), 2, testLogger())
+	s2 := session.New(uuid.New(), 2, testLogger())
 	mgr.Add(s1)
 	mgr.Add(s2)
-	mgr.Add(s3)
 
-	byUser := mgr.GetByUser(1)
-	if len(byUser) != 2 {
-		t.Fatalf("user 1: want 2 sessions, got %d", len(byUser))
+	got, ok := mgr.GetByUser(1)
+	if !ok || got != s1 {
+		t.Fatal("user 1 session not found")
 	}
 }
 
@@ -112,7 +110,7 @@ func TestConcurrentAccess(t *testing.T) {
 	for i := 0; i < n; i++ {
 		go func(i int) {
 			defer wg.Done()
-			_ = mgr.GetByUser(int64(i % 10))
+			_, _ = mgr.GetByUser(int64(i % 10))
 			_ = mgr.Count()
 		}(i)
 	}
@@ -269,7 +267,7 @@ func TestSessionLifecycleSimulation(t *testing.T) {
 
 	// Lock → operate → unlock
 	{
-		locked, ok := mgr.LockSession(connID)
+		locked, ok := mgr.LockSession(42)
 		if !ok {
 			t.Fatal("LockSession failed")
 		}
@@ -314,7 +312,7 @@ func TestSessionLifecycleSimulation(t *testing.T) {
 		mgr.UnlockSession(locked)
 	}
 
-	mgr.Remove(connID)
+	mgr.Remove(42)
 	if mgr.Count() != 0 {
 		t.Fatal("session should be removed after disconnect")
 	}
@@ -413,7 +411,7 @@ func TestLockSession(t *testing.T) {
 	s := session.New(id, 42, testLogger())
 	mgr.Add(s)
 
-	locked, ok := mgr.LockSession(id)
+	locked, ok := mgr.LockSession(42)
 	if !ok {
 		t.Fatal("LockSession should find the session")
 	}
@@ -425,7 +423,7 @@ func TestLockSession(t *testing.T) {
 
 func TestLockSessionNotFound(t *testing.T) {
 	mgr := newTestManager(t)
-	_, ok := mgr.LockSession(uuid.New())
+	_, ok := mgr.LockSession(9999)
 	if ok {
 		t.Fatal("LockSession should return false for unknown id")
 	}
@@ -478,7 +476,7 @@ func TestSessionWithInventory(t *testing.T) {
 	physID, _ := r.AttrID("physical_power")
 
 	// Lock and operate.
-	locked, ok := mgr.LockSession(s.ID)
+	locked, ok := mgr.LockSession(s.UserID)
 	if !ok {
 		t.Fatal("lock failed")
 	}
@@ -530,7 +528,7 @@ func TestInventoryFlushInCycle(t *testing.T) {
 	s.SetInv(invSt)
 	mgr.Add(s)
 
-	locked, ok := mgr.LockSession(s.ID)
+	locked, ok := mgr.LockSession(s.UserID)
 	if !ok {
 		t.Fatal("lock failed")
 	}
@@ -610,7 +608,7 @@ func TestFullCycleAllSystems(t *testing.T) {
 	s.SetSkill(skillSt)
 	mgr.Add(s)
 
-	locked, ok := mgr.LockSession(s.ID)
+	locked, ok := mgr.LockSession(s.UserID)
 	if !ok {
 		t.Fatal("lock failed")
 	}
@@ -771,7 +769,7 @@ func TestEquipInventoryDiffReason(t *testing.T) {
 	s.SetInv(invSt)
 	mgr.Add(s)
 
-	locked, _ := mgr.LockSession(s.ID)
+	locked, _ := mgr.LockSession(s.UserID)
 	defer mgr.UnlockSession(locked)
 
 	rec := mgr.NewRecorder()
@@ -914,7 +912,7 @@ func TestEquipUnequipDiffReason(t *testing.T) {
 	s.SetInv(invSt)
 	mgr.Add(s)
 
-	locked, _ := mgr.LockSession(s.ID)
+	locked, _ := mgr.LockSession(s.UserID)
 	defer mgr.UnlockSession(locked)
 
 	// First: equip in its own namespace.
@@ -974,7 +972,7 @@ func TestEquipRepeatedSlot(t *testing.T) {
 	s.SetInv(invSt)
 	mgr.Add(s)
 
-	locked, _ := mgr.LockSession(s.ID)
+	locked, _ := mgr.LockSession(s.UserID)
 	defer mgr.UnlockSession(locked)
 
 	rec := mgr.NewRecorder()
@@ -1014,7 +1012,7 @@ func TestEquipPersistsAcrossTicks(t *testing.T) {
 	s.SetInv(invSt)
 	mgr.Add(s)
 
-	locked, _ := mgr.LockSession(s.ID)
+	locked, _ := mgr.LockSession(s.UserID)
 	defer mgr.UnlockSession(locked)
 
 	physID, _ := attribute.Get().AttrID("physical_power")
@@ -1075,7 +1073,7 @@ func TestEquipPersistsAcrossSessions(t *testing.T) {
 	}
 	s.SetEquipment(equipSt)
 
-	locked, ok := mgr.LockSession(s.ID)
+	locked, ok := mgr.LockSession(s.UserID)
 	if !ok {
 		t.Fatal("LockSession failed")
 	}

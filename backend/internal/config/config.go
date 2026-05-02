@@ -74,6 +74,10 @@ type WS struct {
 	AllowAnonymous bool `env:"WS_ALLOW_ANONYMOUS" envDefault:"false"`
 	// Codec: "proto" (binary, default) or "json" (protojson text, for dev).
 	Codec string `env:"WS_CODEC" envDefault:"proto"`
+	// SessionGracePeriod is how long a session stays in memory after disconnect.
+	SessionGracePeriod time.Duration `env:"WS_SESSION_GRACE_PERIOD" envDefault:"30s"`
+	// GameLoopTick is the main session ticker interval.
+	GameLoopTick time.Duration `env:"WS_GAME_LOOP_TICK" envDefault:"50ms"`
 }
 
 type Log struct {

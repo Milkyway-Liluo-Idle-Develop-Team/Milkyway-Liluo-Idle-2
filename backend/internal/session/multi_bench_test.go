@@ -117,7 +117,7 @@ func buildPlayer(b *testing.B, db *sql.DB, userID int64) *sessionWithData {
 	plankItemID, _ := gameconfig.StringToItemID("oak_plank")
 	startingDialog, _ := gameconfig.StringToEventID("starting_dialog_5")
 
-	locked, _ := mgr.LockSession(s.ID)
+	locked, _ := mgr.LockSession(s.UserID)
 	locked.Events().Enqueue(0, fellingID, -1)
 	locked.Events().Enqueue(0, miningID, -1)
 	locked.Events().Enqueue(0, plankID, -1)
@@ -141,7 +141,7 @@ func buildPlayer(b *testing.B, db *sql.DB, userID int64) *sessionWithData {
 
 // doTick runs settle + flush on one session. Keeps the recorder for diff building.
 func doTick(sw *sessionWithData) {
-	s, _ := sw.mgr.LockSession(sw.session.ID)
+	s, _ := sw.mgr.LockSession(sw.session.UserID)
 
 	rec := sw.mgr.NewRecorder()
 	s.SetRecorder(rec)
@@ -158,7 +158,7 @@ func doTick(sw *sessionWithData) {
 
 // doSettleOnly runs settle without flush.
 func doSettleOnly(sw *sessionWithData) {
-	s, _ := sw.mgr.LockSession(sw.session.ID)
+	s, _ := sw.mgr.LockSession(sw.session.UserID)
 
 	rec := sw.mgr.NewRecorder()
 	s.SetRecorder(rec)
@@ -223,7 +223,7 @@ func batchFlush(ctx context.Context, db *sql.DB, players []*sessionWithData) err
 
 	q := dbgen.New(db).WithTx(tx)
 	for _, sw := range players {
-		s, _ := sw.mgr.LockSession(sw.session.ID)
+		s, _ := sw.mgr.LockSession(sw.session.UserID)
 		if s.Inv() != nil {
 			if err = s.Inv().Flush(ctx, q); err != nil {
 				sw.mgr.UnlockSession(s)
