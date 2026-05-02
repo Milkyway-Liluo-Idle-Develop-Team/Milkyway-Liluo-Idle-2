@@ -77,9 +77,10 @@ func (inst *Instance) AddModifiers(source string, mods []Modifier) {
 	}
 
 	attrIDs := make([]AttributeID, 0, len(mods))
-	for _, m := range mods {
-		attrIDs = append(attrIDs, m.AttrID)
-		inst.byAttr[m.AttrID] = append(inst.byAttr[m.AttrID], m)
+	for i := range mods {
+		mods[i].Source = source // overwrite for correct RemoveModifiers lookup
+		attrIDs = append(attrIDs, mods[i].AttrID)
+		inst.byAttr[mods[i].AttrID] = append(inst.byAttr[mods[i].AttrID], mods[i])
 	}
 	inst.bySource[source] = sourceInfo{mods: mods, attrIDs: attrIDs}
 

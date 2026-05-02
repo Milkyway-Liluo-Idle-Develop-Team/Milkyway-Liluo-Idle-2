@@ -9,6 +9,7 @@ import (
 
 	"github.com/edrowsluo/new-mli/backend/internal/attribute"
 	dbgen "github.com/edrowsluo/new-mli/backend/internal/db/gen"
+	pb "github.com/edrowsluo/new-mli/backend/internal/pb"
 	"github.com/edrowsluo/new-mli/backend/internal/gameconfig"
 	"github.com/edrowsluo/new-mli/backend/internal/inventory"
 	"github.com/edrowsluo/new-mli/backend/internal/item"
@@ -649,5 +650,421 @@ func TestFullCycleAllSystems(t *testing.T) {
 	}
 	if len(diff.SkillXp) == 0 {
 		t.Error("missing skill_xp_changes")
+	}
+}
+
+// --- Equipment tests ---
+
+func TestEquip(t *testing.T) {
+	mgr := newTestManager(t)
+	s, cleanup := newLockedSession(t, mgr, 1)
+	defer cleanup()
+
+	_, q := openInvDB(t)
+	invSt, _ := inventory.Load(context.Background(), q, 1)
+	sword := item.Item{ID: 35, State: 0} // wooden_sword
+	invSt.Add(sword, 1)
+	s.SetInv(invSt)
+
+	err := s.Equip(context.Background(), sword, "main_hand")
+	if err != nil {
+		t.Fatal(err)
+	}
+	got, ok := s.Equipped("main_hand")
+	if !ok {
+		t.Fatal("main_hand should be equipped")
+	}
+	if got.ID != 35 {
+		t.Errorf("want wooden_sword(35), got %v", got.ID)
+	}
+	if s.Inv().Get(sword) != 0 {
+		t.Error("inventory should have 0 after equip")
+	}
+	physID, _ := attribute.Get().AttrID("physical_power")
+	val := s.Attr().GetFinal(physID)
+	def, _ := attribute.Get().Def(physID)
+	if val <= def.DefaultValue {
+		t.Errorf("physical_power should increase after equip: want > %v, got %v", def.DefaultValue, val)
+	}
+}
+
+func TestEquipUnequip(t *testing.T) {
+	mgr := newTestManager(t)
+	s, cleanup := newLockedSession(t, mgr, 1)
+	defer cleanup()
+
+	_, q := openInvDB(t)
+	invSt, _ := inventory.Load(context.Background(), q, 1)
+	sword := item.Item{ID: 35, State: 0}
+	invSt.Add(sword, 1)
+	s.SetInv(invSt)
+
+	physID, _ := attribute.Get().AttrID("physical_power")
+	beforeUnequip := s.Attr().GetFinal(physID)
+
+	s.Equip(context.Background(), sword, "main_hand")
+	equippedVal := s.Attr().GetFinal(physID)
+	if equippedVal <= beforeUnequip {
+		t.Error("physical_power should increase after equip")
+	}
+
+	if err := s.Unequip(context.Background(), "main_hand"); err != nil {
+		t.Fatal(err)
+	}
+	_, ok := s.Equipped("main_hand")
+	if ok {
+		t.Error("main_hand should be empty after unequip")
+	}
+	if s.Inv().Get(sword) != 1 {
+		t.Error("inventory should have item back after unequip")
+	}
+	afterUnequip := s.Attr().GetFinal(physID)
+	if afterUnequip != beforeUnequip {
+		t.Errorf("physical_power should return to %v (before equip), got %v", beforeUnequip, afterUnequip)
+	}
+}
+
+func TestEquipReplaceSlot(t *testing.T) {
+	mgr := newTestManager(t)
+	s, cleanup := newLockedSession(t, mgr, 1)
+	defer cleanup()
+
+	_, q := openInvDB(t)
+	invSt, _ := inventory.Load(context.Background(), q, 1)
+	sword := item.Item{ID: 35, State: 0}
+	staff := item.Item{ID: 33, State: 0}
+	invSt.Add(sword, 1)
+	invSt.Add(staff, 1)
+	s.SetInv(invSt)
+
+	s.Equip(context.Background(), sword, "main_hand")
+	s.Equip(context.Background(), staff, "main_hand")
+
+	got, ok := s.Equipped("main_hand")
+	if !ok || got.ID != 33 {
+		t.Errorf("want staff(33) equipped, got %v", got.ID)
+	}
+	if s.Inv().Get(sword) != 1 {
+		t.Error("sword should return to inventory on replace")
+	}
+	if s.Inv().Get(staff) != 0 {
+		t.Error("staff should be consumed")
+	}
+}
+
+func TestEquipInventoryDiffReason(t *testing.T) {
+	reg := record.NewRegistry()
+	reg.Register(inventory.Provider)
+	reg.Register(attribute.Provider)
+
+	_, q := openInvDB(t)
+	invSt, _ := inventory.Load(context.Background(), q, 1)
+	sword := item.Item{ID: 35, State: 0}  // wooden_sword
+	boots := item.Item{ID: 15, State: 0}  // leather_boots
+	invSt.Add(sword, 1)
+	invSt.Add(boots, 1)
+
+	mgr := session.NewManager(reg, nil)
+	s := session.New(uuid.New(), 1, testLogger())
+	s.SetInv(invSt)
+	mgr.Add(s)
+
+	locked, _ := mgr.LockSession(s.ID)
+	defer mgr.UnlockSession(locked)
+
+	rec := mgr.NewRecorder()
+	locked.SetRecorder(rec)
+	rec.PushNamespace("action")
+
+	// Equip sword to main_hand (EQUIP), equip boots to feet (EQUIP).
+	locked.Equip(context.Background(), sword, "main_hand")
+	locked.Equip(context.Background(), boots, "feet")
+
+	rec.PopNamespace()
+	locked.ClearRecorder()
+
+	diff, _ := reg.BuildDiff(rec)
+	if len(diff.Inventory) != 2 {
+		t.Fatalf("want 2 changes, got %d", len(diff.Inventory))
+	}
+	for _, c := range diff.Inventory {
+		if c.Reason != pb.InventoryChangeReason_EQUIP {
+			t.Errorf("item %d: want EQUIP, got %v", c.ItemId, c.Reason)
+		}
+	}
+}
+
+func TestEquipNonEquipment(t *testing.T) {
+	mgr := newTestManager(t)
+	s, cleanup := newLockedSession(t, mgr, 1)
+	defer cleanup()
+
+	_, q := openInvDB(t)
+	invSt, _ := inventory.Load(context.Background(), q, 1)
+	logs := item.Item{ID: 19, State: 0} // oak_logs
+	invSt.Add(logs, 1)
+	s.SetInv(invSt)
+
+	err := s.Equip(context.Background(), logs, "main_hand")
+	if err == nil {
+		t.Fatal("expected error equipping non-equipment item")
+	}
+}
+
+func TestEquipNotInInventory(t *testing.T) {
+	mgr := newTestManager(t)
+	s, cleanup := newLockedSession(t, mgr, 1)
+	defer cleanup()
+
+	_, q := openInvDB(t)
+	invSt, _ := inventory.Load(context.Background(), q, 1)
+	s.SetInv(invSt)
+
+	sword := item.Item{ID: 35, State: 0}
+	err := s.Equip(context.Background(), sword, "main_hand")
+	if err == nil {
+		t.Fatal("expected error equipping item not in inventory")
+	}
+}
+
+func TestUnequipEmptySlot(t *testing.T) {
+	mgr := newTestManager(t)
+	s, cleanup := newLockedSession(t, mgr, 1)
+	defer cleanup()
+
+	err := s.Unequip(context.Background(), "main_hand")
+	if err == nil {
+		t.Fatal("expected error unequipping empty slot")
+	}
+}
+
+func TestEquipMultipleSlots(t *testing.T) {
+	mgr := newTestManager(t)
+	s, cleanup := newLockedSession(t, mgr, 1)
+	defer cleanup()
+
+	_, q := openInvDB(t)
+	invSt, _ := inventory.Load(context.Background(), q, 1)
+	sword := item.Item{ID: 35, State: 0}       // main_hand
+	helmet := item.Item{ID: 17, State: 0}       // head
+	breastplate := item.Item{ID: 16, State: 0}  // chest
+	legarmor := item.Item{ID: 18, State: 0}     // leg
+	boots := item.Item{ID: 15, State: 0}        // feet
+	for _, it := range []item.Item{sword, helmet, breastplate, legarmor, boots} {
+		invSt.Add(it, 1)
+	}
+	s.SetInv(invSt)
+
+	slots := map[string]item.Item{
+		"main_hand": sword,
+		"head":      helmet,
+		"chest":     breastplate,
+		"leg":       legarmor,
+		"feet":      boots,
+	}
+	for slot, it := range slots {
+		if err := s.Equip(context.Background(), it, slot); err != nil {
+			t.Fatalf("equip %s: %v", slot, err)
+		}
+	}
+
+	// All slots occupied.
+	for slot := range slots {
+		if _, ok := s.Equipped(slot); !ok {
+			t.Errorf("slot %s should be occupied", slot)
+		}
+	}
+	// Inventory empty.
+	for _, it := range slots {
+		if s.Inv().Get(it) != 0 {
+			t.Errorf("item %v should have count 0", it.ID)
+		}
+	}
+	// Check modifiers from each equipment.
+	physID, _ := attribute.Get().AttrID("physical_power")
+	if s.Attr().GetFinal(physID) < 20 {
+		t.Error("physical_power should increase from equipment modifiers")
+	}
+}
+
+func TestEquipUnequipDiffReason(t *testing.T) {
+	// Separate namespace for unequip to verify UNEQUIP reason independently.
+	reg := record.NewRegistry()
+	reg.Register(inventory.Provider)
+	reg.Register(attribute.Provider)
+
+	_, q := openInvDB(t)
+	invSt, _ := inventory.Load(context.Background(), q, 1)
+	sword := item.Item{ID: 35, State: 0}
+	invSt.Add(sword, 1)
+
+	mgr := session.NewManager(reg, nil)
+	s := session.New(uuid.New(), 1, testLogger())
+	s.SetInv(invSt)
+	mgr.Add(s)
+
+	locked, _ := mgr.LockSession(s.ID)
+	defer mgr.UnlockSession(locked)
+
+	// First: equip in its own namespace.
+	rec1 := mgr.NewRecorder()
+	locked.SetRecorder(rec1)
+	rec1.PushNamespace("equip")
+	locked.Equip(context.Background(), sword, "main_hand")
+	rec1.PopNamespace()
+	locked.ClearRecorder()
+
+	// Second: unequip in a separate namespace.
+	rec2 := mgr.NewRecorder()
+	locked.SetRecorder(rec2)
+	rec2.PushNamespace("unequip")
+	locked.Unequip(context.Background(), "main_hand")
+	rec2.PopNamespace()
+	locked.ClearRecorder()
+
+	diff1, _ := reg.BuildDiff(rec1)
+	if len(diff1.Inventory) != 1 || diff1.Inventory[0].Reason != pb.InventoryChangeReason_EQUIP {
+		t.Error("equip should produce EQUIP reason")
+	}
+
+	diff2, _ := reg.BuildDiff(rec2)
+	if len(diff2.Inventory) != 1 || diff2.Inventory[0].Reason != pb.InventoryChangeReason_UNEQUIP {
+		t.Error("unequip should produce UNEQUIP reason")
+	}
+}
+
+func TestEquipRepeatedSlot(t *testing.T) {
+	// Equipping to same slot twice should return old item and show both in diff.
+	reg := record.NewRegistry()
+	reg.Register(inventory.Provider)
+	reg.Register(attribute.Provider)
+
+	_, q := openInvDB(t)
+	invSt, _ := inventory.Load(context.Background(), q, 1)
+	sword := item.Item{ID: 35, State: 0}
+	staff := item.Item{ID: 33, State: 0}
+	invSt.Add(sword, 1)
+	invSt.Add(staff, 1)
+
+	mgr := session.NewManager(reg, nil)
+	s := session.New(uuid.New(), 1, testLogger())
+	s.SetInv(invSt)
+	mgr.Add(s)
+
+	locked, _ := mgr.LockSession(s.ID)
+	defer mgr.UnlockSession(locked)
+
+	rec := mgr.NewRecorder()
+	locked.SetRecorder(rec)
+	rec.PushNamespace("action")
+	locked.Equip(context.Background(), sword, "main_hand")
+	locked.Equip(context.Background(), staff, "main_hand")
+	rec.PopNamespace()
+	locked.ClearRecorder()
+
+	diff, _ := reg.BuildDiff(rec)
+	// sword: EQUIP (-1), then returned (+1) = net 0 → dropped
+	// staff: EQUIP (-1)
+	if len(diff.Inventory) != 1 {
+		t.Fatalf("want 1 net change (staff equip), got %d", len(diff.Inventory))
+	}
+	if diff.Inventory[0].ItemId != 33 {
+		t.Errorf("want staff(33), got %d", diff.Inventory[0].ItemId)
+	}
+	if diff.Inventory[0].Reason != pb.InventoryChangeReason_EQUIP {
+		t.Errorf("want EQUIP, got %v", diff.Inventory[0].Reason)
+	}
+}
+
+func TestEquipPersistsAcrossTicks(t *testing.T) {
+	reg := record.NewRegistry()
+	reg.Register(attribute.Provider)
+	reg.Register(inventory.Provider)
+
+	_, q := openInvDB(t)
+	invSt, _ := inventory.Load(context.Background(), q, 1)
+	sword := item.Item{ID: 35, State: 0}
+	invSt.Add(sword, 1)
+
+	mgr := session.NewManager(reg, nil)
+	s := session.New(uuid.New(), 1, testLogger())
+	s.SetInv(invSt)
+	mgr.Add(s)
+
+	locked, _ := mgr.LockSession(s.ID)
+	defer mgr.UnlockSession(locked)
+
+	physID, _ := attribute.Get().AttrID("physical_power")
+	valBefore := locked.Attr().GetFinal(physID)
+
+	// Tick 1: equip sword.
+	rec1 := mgr.NewRecorder()
+	locked.SetRecorder(rec1)
+	rec1.PushNamespace("tick_1")
+	locked.Equip(context.Background(), sword, "main_hand")
+	rec1.PopNamespace()
+	locked.ClearRecorder()
+
+	valAfterEquip := locked.Attr().GetFinal(physID)
+	if valAfterEquip <= valBefore {
+		t.Errorf("modifier should increase after equip: %v → %v", valBefore, valAfterEquip)
+	}
+
+	// Tick 2: idle — no equipment changes.
+	rec2 := mgr.NewRecorder()
+	locked.SetRecorder(rec2)
+	rec2.PushNamespace("tick_2")
+	rec2.PopNamespace()
+	locked.ClearRecorder()
+
+	if locked.Attr().GetFinal(physID) != valAfterEquip {
+		t.Error("modifiers should persist across idle ticks")
+	}
+	diff2, _ := reg.BuildDiff(rec2)
+	if len(diff2.Inventory) != 0 {
+		t.Errorf("idle tick should have no inventory changes, got %d", len(diff2.Inventory))
+	}
+}
+
+func TestEquipPersistsAcrossSessions(t *testing.T) {
+	reg := record.NewRegistry()
+	reg.Register(attribute.Provider)
+	reg.Register(inventory.Provider)
+
+	db, q := openInvDB(t)
+	// Create equipment table and insert a record to simulate a prior session.
+	db.ExecContext(context.Background(), `CREATE TABLE IF NOT EXISTS player_equipment (user_id INTEGER NOT NULL, slot TEXT NOT NULL, item_id INTEGER NOT NULL, item_state INTEGER NOT NULL DEFAULT 0, PRIMARY KEY (user_id, slot))`)
+	db.ExecContext(context.Background(), `INSERT OR REPLACE INTO player_equipment (user_id, slot, item_id, item_state) VALUES (1, 'main_hand', 35, 0)`)
+
+	invSt, _ := inventory.Load(context.Background(), q, 1)
+	sword := item.Item{ID: 35, State: 0}
+	invSt.Add(sword, 1)
+	invSt.Flush(context.Background(), q)
+
+	mgr := session.NewManager(reg, nil)
+	s := session.New(uuid.New(), 1, testLogger())
+	s.SetInv(invSt)
+	mgr.Add(s)
+	// Simulate reconnect: reload equipment from DB.
+	if err := s.LoadEquipment(context.Background(), q); err != nil {
+		t.Fatal(err)
+	}
+
+	locked, ok := mgr.LockSession(s.ID)
+	if !ok {
+		t.Fatal("LockSession failed")
+	}
+	defer mgr.UnlockSession(locked)
+
+	got, ok := locked.Equipped("main_hand")
+	if !ok || got.ID != 35 {
+		t.Fatalf("main_hand should have sword(35) after reconnect, got %v", got)
+	}
+
+	physID, _ := attribute.Get().AttrID("physical_power")
+	val := locked.Attr().GetFinal(physID)
+	def, _ := attribute.Get().Def(physID)
+	if val <= def.DefaultValue {
+		t.Errorf("physical_power should have equipment modifier: want > %v, got %v", def.DefaultValue, val)
 	}
 }

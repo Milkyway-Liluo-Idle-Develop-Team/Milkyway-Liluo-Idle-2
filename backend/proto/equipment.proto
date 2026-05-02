@@ -1,0 +1,21 @@
+syntax = "proto3";
+
+package mli.v1;
+
+option go_package = "github.com/edrowsluo/new-mli/backend/internal/pb";
+
+import "state.proto";
+
+message EquipReq {
+  int32 item_id = 1;
+  int32 item_state = 2;
+  string slot = 3;
+}
+
+message UnequipReq {
+  string slot = 1;
+}
+
+message EquipUnequipResponse {
+  map<string, ItemIdentity> equipped = 1;
+}

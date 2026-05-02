@@ -18,6 +18,13 @@ type PlayerActiveEvent struct {
 	Progress     float64 `json:"progress"`
 }
 
+type PlayerEquipment struct {
+	UserID    int64  `json:"user_id"`
+	Slot      string `json:"slot"`
+	ItemID    int64  `json:"item_id"`
+	ItemState int64  `json:"item_state"`
+}
+
 type PlayerInventory struct {
 	UserID    int64     `json:"user_id"`
 	ItemID    int64     `json:"item_id"`

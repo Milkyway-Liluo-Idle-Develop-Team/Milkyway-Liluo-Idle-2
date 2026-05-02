@@ -8,6 +8,7 @@ import (
 
 	"github.com/edrowsluo/new-mli/backend/internal/db/gen"
 	"github.com/edrowsluo/new-mli/backend/internal/item"
+	pb "github.com/edrowsluo/new-mli/backend/internal/pb"
 	"github.com/edrowsluo/new-mli/backend/internal/record"
 )
 
@@ -67,16 +68,32 @@ func (s *State) Flush(ctx context.Context, q *dbgen.Queries) error {
 }
 
 // Add increases the quantity of the given item identity.
-// Writes an InventoryChangeRecord to the current recorder (if set).
+// Writes an InventoryChangeRecord with EVENT reason to the current recorder (if set).
 func (s *State) Add(it item.Item, qty float64) {
-	s.slots[it] += qty
-	s.dirty[it] = true
-	s.record(it, qty)
+	s.add(it, qty, pb.InventoryChangeReason_EVENT)
 }
 
 // Deduct decreases quantity. Callers should check Has first.
 func (s *State) Deduct(it item.Item, qty float64) {
-	s.Add(it, -qty)
+	s.add(it, -qty, pb.InventoryChangeReason_EVENT)
+}
+
+// AddEquipChange records inventory change from equip (removal) or unequip (return).
+func (s *State) AddEquipChange(it item.Item, qty float64, equipped bool) {
+	reason := pb.InventoryChangeReason_EQUIP
+	if !equipped {
+		reason = pb.InventoryChangeReason_UNEQUIP
+	}
+	s.add(it, qty, reason)
+}
+
+func (s *State) add(it item.Item, qty float64, reason pb.InventoryChangeReason) {
+	s.slots[it] += qty
+	if s.slots[it] == 0 {
+		delete(s.slots, it)
+	}
+	s.dirty[it] = true
+	s.record(it, qty, reason)
 }
 
 // Get returns the current quantity (including unflushed changes).
@@ -105,13 +122,13 @@ func (s *State) All() map[item.Item]float64 {
 	return out
 }
 
-func (s *State) record(it item.Item, qty float64) {
+func (s *State) record(it item.Item, qty float64, reason pb.InventoryChangeReason) {
 	if s.recorder == nil {
 		return
 	}
 	b := s.recorder.Bucket("inventory")
 	if b != nil {
-		b.(*Bucket).add(it, qty)
+		b.(*Bucket).add(it, qty, reason)
 	}
 }
 

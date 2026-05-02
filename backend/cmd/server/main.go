@@ -108,6 +108,9 @@ func run() error {
 	// --- Session manager ---
 	sessMgr := session.NewManager(recordReg, database)
 
+	// --- WS game handlers ---
+	registerGameHandlers(hub, sessMgr)
+
 	// --- Background workers ---
 	go runSessionCleanup(rootCtx, logger, authSvc)
 

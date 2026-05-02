@@ -9,7 +9,9 @@ package session
 
 import (
 	"context"
+	"fmt"
 	"log/slog"
+	"reflect"
 	"sync"
 	"time"
 
@@ -46,9 +48,11 @@ type PlayerSession struct {
 
 	logger *slog.Logger
 
-	mu       sync.Mutex
-	recorder *record.Recorder
-	done     chan struct{} // closed on session close
+	mu           sync.Mutex
+	recorder     *record.Recorder
+	done         chan struct{} // closed on session close
+	equipped     map[string]item.Item
+	deletedSlots []string
 }
 
 // New creates a PlayerSession. The attribute instance is constructed bare;
@@ -56,11 +60,12 @@ type PlayerSession struct {
 // from the database.
 func New(connID uuid.UUID, userID int64, logger *slog.Logger) *PlayerSession {
 	return &PlayerSession{
-		ID:     connID,
-		UserID: userID,
-		attr:   attribute.NewInstance(),
-		logger: logger,
-		done:   make(chan struct{}),
+		ID:       connID,
+		UserID:   userID,
+		attr:     attribute.NewInstance(),
+		logger:   logger,
+		done:     make(chan struct{}),
+		equipped: make(map[string]item.Item),
 	}
 }
 
@@ -183,8 +188,118 @@ func (s *PlayerSession) FlushAll(ctx context.Context, database *db.DB) error {
 				return err
 			}
 		}
+		// Upsert equipment.
+		for slot, it := range s.equipped {
+			if err := q.UpsertEquipment(ctx, dbgen.UpsertEquipmentParams{
+				UserID:    s.UserID,
+				Slot:      slot,
+				ItemID:    int64(it.ID),
+				ItemState: int64(it.State),
+			}); err != nil {
+				return err
+			}
+		}
+		// Delete unequipped slots since last flush.
+		for _, slot := range s.deletedSlots {
+			if err := q.DeleteEquipment(ctx, dbgen.DeleteEquipmentParams{
+				UserID: s.UserID,
+				Slot:   slot,
+			}); err != nil {
+				return err
+			}
+		}
+		s.deletedSlots = s.deletedSlots[:0]
 		return nil
 	})
+}
+
+// Equipped returns the item in the given slot.
+func (s *PlayerSession) Equipped(slot string) (item.Item, bool) {
+	it, ok := s.equipped[slot]
+	return it, ok
+}
+
+// AllEquipped returns a copy of the equipped items map.
+func (s *PlayerSession) AllEquipped() map[string]item.Item {
+	out := make(map[string]item.Item, len(s.equipped))
+	for k, v := range s.equipped {
+		out[k] = v
+	}
+	return out
+}
+
+// Equip moves an item from inventory to the given slot, applying attribute modifiers.
+// If the slot is occupied, the old item is unequipped first.
+func (s *PlayerSession) Equip(ctx context.Context, it item.Item, slot string) error {
+	def, ok := gameconfig.GetItemDefByID(it.ID)
+	if !ok {
+		return apperror.NotFound("item not found")
+	}
+	if !def.IsEquipment() {
+		return apperror.BadRequest("item is not equipment")
+	}
+	if !s.inv.Has(it, 1) {
+		return apperror.BadRequest("item not in inventory")
+	}
+
+	// If slot is occupied, unequip the old item first.
+	if old, ok := s.equipped[slot]; ok {
+		s.unequipInternal(slot, old)
+	}
+
+	// Deduct from inventory with EQUIP reason.
+	s.inv.AddEquipChange(it, -1, true)
+
+	// Apply attribute modifiers.
+	mods, err := def.Modifiers(it, attribute.Get())
+	if err != nil {
+		return err
+	}
+	s.attr.AddModifiers("equipment:"+def.StringID(), mods)
+	s.equipped[slot] = it
+	return nil
+}
+
+// Unequip removes the item from the given slot and returns it to inventory.
+func (s *PlayerSession) Unequip(ctx context.Context, slot string) error {
+	it, ok := s.equipped[slot]
+	if !ok {
+		return apperror.NotFound("no item equipped in slot")
+	}
+	return s.unequipInternal(slot, it)
+}
+
+func (s *PlayerSession) unequipInternal(slot string, it item.Item) error {
+	if def, ok := gameconfig.GetItemDefByID(it.ID); ok {
+		s.attr.RemoveModifiers("equipment:" + def.StringID())
+	}
+	s.inv.AddEquipChange(it, 1, false)
+	delete(s.equipped, slot)
+	s.deletedSlots = append(s.deletedSlots, slot)
+	return nil
+}
+
+// LoadEquipment reloads equipped items from DB, applying modifiers without
+// generating inventory records (for reconnect).
+func (s *PlayerSession) LoadEquipment(ctx context.Context, q *dbgen.Queries) error {
+	rows, err := q.LoadEquipment(ctx, s.UserID)
+	if err != nil {
+		return fmt.Errorf("load equipment: %w", err)
+	}
+	for _, r := range rows {
+		it := item.Item{ID: item.ID(r.ItemID), State: item.State(r.ItemState)}
+		def, ok := gameconfig.GetItemDefByID(it.ID)
+		if !ok {
+			continue
+		}
+		mods, err := def.Modifiers(it, attribute.Get())
+		if err != nil {
+			return err
+		}
+		s.attr.AddModifiers("equipment:"+def.StringID(), mods)
+		s.equipped[r.Slot] = it
+	}
+	return nil
 }
 
 func isStateDiffEmpty(d *pb.StateDiff) bool {
@@ -309,6 +424,7 @@ type TypedSessionHandler[T proto.Message] func(ctx context.Context, c *wsx.Conn,
 func HandleSessionTyped[T proto.Message](m *Manager, hub *wsx.Hub, typ string, fn TypedSessionHandler[T]) {
 	hub.Handle(typ, func(ctx context.Context, c *wsx.Conn, in wsx.Inbound) error {
 		var req T
+		req = reflect.New(reflect.TypeOf(req).Elem()).Interface().(T)
 		if err := in.DecodePayload(req); err != nil {
 			return err
 		}
@@ -420,5 +536,8 @@ func (m *Manager) CreateSession(ctx context.Context, connID uuid.UUID, userID in
 	sess.SetSkill(skillSt)
 	sess.SetBestiary(best)
 	sess.SetEvents(evSt)
+	if err := sess.LoadEquipment(ctx, database.Queries); err != nil {
+		return nil, err
+	}
 	return sess, nil
 }

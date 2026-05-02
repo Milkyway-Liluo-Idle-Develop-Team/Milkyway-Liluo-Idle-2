@@ -13,6 +13,7 @@ package wsx
 
 import (
 	"context"
+	"reflect"
 
 	"github.com/edrowsluo/new-mli/backend/internal/apperror"
 	"google.golang.org/protobuf/encoding/protojson"
@@ -61,6 +62,7 @@ type TypedHandler[T proto.Message] func(ctx context.Context, c *Conn, req T) err
 func HandleTyped[T proto.Message](h *Hub, typ string, fn TypedHandler[T]) {
 	h.Handle(typ, func(ctx context.Context, c *Conn, in Inbound) error {
 		var req T
+		req = reflect.New(reflect.TypeOf(req).Elem()).Interface().(T)
 		if err := in.DecodePayload(req); err != nil {
 			return err
 		}

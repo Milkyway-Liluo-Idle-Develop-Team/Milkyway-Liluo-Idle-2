@@ -7,28 +7,47 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
+type changeEntry struct {
+	qty    float64
+	reason pb.InventoryChangeReason
+}
+
 // Bucket collects InventoryChangeRecords within a single namespace.
 // Records with the same item.Item identity are automatically merged.
 type Bucket struct {
-	changes map[item.Item]float64
+	changes map[item.Item]*changeEntry
 }
 
 var _ record.RecordBucket = (*Bucket)(nil)
 
 func newBucket() *Bucket {
-	return &Bucket{changes: make(map[item.Item]float64)}
+	return &Bucket{changes: make(map[item.Item]*changeEntry)}
 }
 
-func (b *Bucket) add(it item.Item, qty float64) {
-	b.changes[it] += qty
+func (b *Bucket) add(it item.Item, qty float64, reason pb.InventoryChangeReason) {
+	if e, ok := b.changes[it]; ok {
+		e.qty += qty
+		if e.qty == 0 {
+			delete(b.changes, it)
+		}
+	} else {
+		b.changes[it] = &changeEntry{qty: qty, reason: reason}
+	}
 }
 
 func (b *Bucket) SystemName() string { return "inventory" }
 
 func (b *Bucket) MergeInPlace(other record.RecordBucket) {
 	ob := other.(*Bucket)
-	for it, qty := range ob.changes {
-		b.changes[it] += qty
+	for it, e := range ob.changes {
+		if existing, ok := b.changes[it]; ok {
+			existing.qty += e.qty
+			if existing.qty == 0 {
+				delete(b.changes, it)
+			}
+		} else {
+			b.changes[it] = &changeEntry{qty: e.qty, reason: e.reason}
+		}
 	}
 }
 
@@ -37,11 +56,12 @@ func (b *Bucket) SerializeDiff() (proto.Message, error) {
 		return nil, nil
 	}
 	diffs := make([]*pb.InventoryDiff, 0, len(b.changes))
-	for it, qty := range b.changes {
+	for it, e := range b.changes {
 		diffs = append(diffs, &pb.InventoryDiff{
 			ItemId:        int32(it.ID),
 			ItemState:     int32(it.State),
-			QuantityDelta: qty,
+			QuantityDelta: e.qty,
+			Reason:        e.reason,
 		})
 	}
 	return &pb.StateDiff{Inventory: diffs}, nil

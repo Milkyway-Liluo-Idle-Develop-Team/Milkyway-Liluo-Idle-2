@@ -74,10 +74,20 @@ CREATE TABLE IF NOT EXISTS player_active_events (
     PRIMARY KEY (user_id, queue_id, position)
 );
 
+-- Player equipment. One item per slot per user.
+CREATE TABLE IF NOT EXISTS player_equipment (
+    user_id    INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    slot       TEXT    NOT NULL,
+    item_id    INTEGER NOT NULL,
+    item_state INTEGER NOT NULL DEFAULT 0,
+    PRIMARY KEY (user_id, slot)
+);
+
 -- +goose StatementEnd
 
 -- +goose Down
 -- +goose StatementBegin
+DROP TABLE IF EXISTS player_equipment;
 DROP TABLE IF EXISTS player_active_events;
 DROP TABLE IF EXISTS player_unlocked_events;
 DROP TABLE IF EXISTS player_inventory;

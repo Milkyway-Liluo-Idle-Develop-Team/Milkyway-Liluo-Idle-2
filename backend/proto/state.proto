@@ -4,11 +4,24 @@ package mli.v1;
 
 option go_package = "github.com/edrowsluo/new-mli/backend/internal/pb";
 
+enum InventoryChangeReason {
+  INVENTORY_CHANGE_UNSPECIFIED = 0;
+  EVENT = 1;
+  EQUIP = 2;
+  UNEQUIP = 3;
+}
+
+message ItemIdentity {
+  int32 item_id = 1;
+  int32 item_state = 2;
+}
+
 // -- Inventory --
 message InventoryDiff {
   int32 item_id = 1;
   int32 item_state = 2;
   double quantity_delta = 3;
+  InventoryChangeReason reason = 4;
 }
 
 message InventoryFull {
@@ -108,4 +121,5 @@ message StateFull {
   repeated SkillXPFull skill_xp = 3;
   repeated BestiaryFull bestiary = 4;
   repeated EventExecutionFull event_execution = 5;
+  map<string, ItemIdentity> equipment = 6;
 }
