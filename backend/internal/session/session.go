@@ -46,6 +46,7 @@ type PlayerSession struct {
 	best   *bestiary.State
 	ev     *event.State
 	eq     *equipment.State
+	battle *Instance
 
 	logger *slog.Logger
 
@@ -165,6 +166,12 @@ func (s *PlayerSession) SetEvents(st *event.State) { s.ev = st }
 
 // Equipment returns the equipment state, or nil if not yet loaded.
 func (s *PlayerSession) Equipment() *equipment.State { return s.eq }
+
+// Battle returns the battle instance, or nil if not yet attached.
+func (s *PlayerSession) Battle() *Instance { return s.battle }
+
+// SetBattle attaches a battle instance.
+func (s *PlayerSession) SetBattle(b *Instance) { s.battle = b }
 
 // SetEquipment attaches an equipment state (called after DB load).
 func (s *PlayerSession) SetEquipment(st *equipment.State) {
@@ -373,6 +380,22 @@ func (m *Manager) LockSession(userID int64) (*PlayerSession, bool) {
 
 // UnlockSession releases the lock acquired by LockSession.
 func (m *Manager) UnlockSession(s *PlayerSession) { s.unlock() }
+
+// RLockSession returns the session for userID, already read-locked.
+// Call RUnlockSession after the operation.
+func (m *Manager) RLockSession(userID int64) (*PlayerSession, bool) {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+	s, ok := m.sessions[userID]
+	if !ok {
+		return nil, false
+	}
+	s.RLock()
+	return s, true
+}
+
+// RUnlockSession releases the read lock acquired by RLockSession.
+func (m *Manager) RUnlockSession(s *PlayerSession) { s.RUnlock() }
 
 // Add registers a new PlayerSession. Called on WebSocket connect.
 // If a session already exists for the same user, the old one is closed
