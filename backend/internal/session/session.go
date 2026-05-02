@@ -13,6 +13,7 @@ import (
 	"context"
 	"log/slog"
 	"reflect"
+	"runtime"
 	"sync"
 	"time"
 
@@ -66,6 +67,9 @@ type PlayerSession struct {
 	graceTimer    *time.Timer
 	graceMu       sync.Mutex
 	onGraceExpire func()
+
+	lastTick     time.Time
+	elapsedAccum float64
 }
 
 // New creates a PlayerSession. The attribute instance is constructed bare;
@@ -351,19 +355,37 @@ func isStateDiffEmpty(d *pb.StateDiff) bool {
 // Manager is the thread-safe registry of all active PlayerSessions,
 // keyed by user ID. It owns all session locking.
 type Manager struct {
-	mu       sync.RWMutex
-	sessions map[int64]*PlayerSession
-	reg      *record.Registry
-	database *db.DB
+	mu          sync.RWMutex
+	sessions    map[int64]*PlayerSession
+	reg         *record.Registry
+	database    *db.DB
+	workerCount int
 }
 
 // NewManager creates a Manager backed by the given record Registry.
+// It auto-starts the global TickAll goroutine if tickInterval > 0.
 // database is used for flush and may be nil in tests.
-func NewManager(reg *record.Registry, database *db.DB) *Manager {
+func NewManager(ctx context.Context, reg *record.Registry, database *db.DB, tickInterval time.Duration) *Manager {
+	m := &Manager{
+		sessions:    make(map[int64]*PlayerSession),
+		reg:         reg,
+		database:    database,
+		workerCount: runtime.NumCPU(),
+	}
+	if tickInterval > 0 {
+		go m.TickAll(ctx, database, tickInterval)
+	}
+	return m
+}
+
+// NewManagerWithoutTick is a convenience constructor for tests and callers
+// that do not need the global tick loop.
+func NewManagerWithoutTick(reg *record.Registry, database *db.DB) *Manager {
 	return &Manager{
-		sessions: make(map[int64]*PlayerSession),
-		reg:      reg,
-		database: database,
+		sessions:    make(map[int64]*PlayerSession),
+		reg:         reg,
+		database:    database,
+		workerCount: runtime.NumCPU(),
 	}
 }
 

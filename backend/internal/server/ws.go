@@ -69,8 +69,6 @@ func wsHandler(hub *wsx.Hub, mw *auth.Middleware, httpCfg config.HTTP, wsCfg con
 					)
 				})
 
-				go sess.RunLoop(context.Background(), sessMgr, database, wsCfg.GameLoopTick)
-
 				logger.Info("player session created",
 					"conn", c.ID,
 					"user_id", userID,

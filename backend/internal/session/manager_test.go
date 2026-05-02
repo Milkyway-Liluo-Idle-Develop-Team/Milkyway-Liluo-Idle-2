@@ -13,7 +13,7 @@ import (
 func TestSessionConnAttachDetach(t *testing.T) {
 	reg := record.NewRegistry()
 	reg.Register(attribute.Provider)
-	mgr := session.NewManager(reg, nil)
+	mgr := session.NewManagerWithoutTick(reg, nil)
 	sess := session.New(uuid.New(), 42, testLogger())
 	mgr.Add(sess)
 
@@ -36,7 +36,7 @@ func TestSessionConnAttachDetach(t *testing.T) {
 func TestManagerSingleOnline(t *testing.T) {
 	reg := record.NewRegistry()
 	reg.Register(attribute.Provider)
-	mgr := session.NewManager(reg, nil)
+	mgr := session.NewManagerWithoutTick(reg, nil)
 
 	s1 := session.New(uuid.New(), 1, testLogger())
 	s2 := session.New(uuid.New(), 1, testLogger())

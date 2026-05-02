@@ -112,7 +112,7 @@ func newReg() *record.Registry {
 func BenchmarkTick_Producing(b *testing.B) {
 	database := openFullDB(b)
 	reg := newReg()
-	mgr := session.NewManager(reg, nil)
+	mgr := session.NewManagerWithoutTick(reg, nil)
 	s := newSession(b, database, 1)
 	mgr.Add(s)
 
@@ -171,7 +171,7 @@ func BenchmarkTick_Producing(b *testing.B) {
 func BenchmarkTick_Idle(b *testing.B) {
 	database := openFullDB(b)
 	reg := newReg()
-	mgr := session.NewManager(reg, nil)
+	mgr := session.NewManagerWithoutTick(reg, nil)
 	s := newSession(b, database, 1)
 	mgr.Add(s)
 
@@ -211,7 +211,7 @@ func BenchmarkTick_Idle(b *testing.B) {
 func BenchmarkTick_OfflineReturn(b *testing.B) {
 	database := openFullDB(b)
 	reg := newReg()
-	mgr := session.NewManager(reg, nil)
+	mgr := session.NewManagerWithoutTick(reg, nil)
 	s := newSession(b, database, 1)
 	mgr.Add(s)
 
@@ -285,7 +285,7 @@ func BenchmarkTick_OnDisk(b *testing.B) {
 	}
 	database := &db.DB{Conn: conn, Queries: dbgen.New(conn)}
 	reg := newReg()
-	mgr := session.NewManager(reg, nil)
+	mgr := session.NewManagerWithoutTick(reg, nil)
 	s := newSession(b, database, 1)
 	mgr.Add(s)
 
@@ -367,7 +367,7 @@ func BenchmarkTick_OnDisk_FullSync(b *testing.B) {
 	}
 	database := &db.DB{Conn: conn, Queries: dbgen.New(conn)}
 	reg := newReg()
-	mgr := session.NewManager(reg, nil)
+	mgr := session.NewManagerWithoutTick(reg, nil)
 	s := newSession(b, database, 1)
 	mgr.Add(s)
 
@@ -421,7 +421,7 @@ func BenchmarkSettle_Only(b *testing.B) {
 	reg := record.NewRegistry()
 	reg.Register(event.ExecProvider)
 	reg.Register(event.QueueProvider)
-	mgr := session.NewManager(reg, nil)
+	mgr := session.NewManagerWithoutTick(reg, nil)
 	s := newSession(b, database, 1)
 	mgr.Add(s)
 

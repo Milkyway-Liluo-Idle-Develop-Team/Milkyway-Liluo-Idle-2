@@ -108,7 +108,7 @@ func run() error {
 	auth.RegisterWS(hub, authSvc)
 
 	// --- Session manager ---
-	sessMgr := session.NewManager(recordReg, database)
+	sessMgr := session.NewManager(rootCtx, recordReg, database, cfg.WS.GameLoopTick)
 
 	// --- WS game handlers ---
 	registerGameHandlers(hub, sessMgr)

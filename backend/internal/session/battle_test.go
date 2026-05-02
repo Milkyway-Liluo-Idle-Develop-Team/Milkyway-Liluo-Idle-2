@@ -30,7 +30,7 @@ func TestBattleInstanceAttachDetach(t *testing.T) {
 func TestRLockSession(t *testing.T) {
 	reg := record.NewRegistry()
 	reg.Register(attribute.Provider)
-	mgr := session.NewManager(reg, nil)
+	mgr := session.NewManagerWithoutTick(reg, nil)
 	s := session.New(uuid.New(), 1, testLogger())
 	mgr.Add(s)
 
@@ -47,7 +47,7 @@ func TestRLockSession(t *testing.T) {
 func TestGraceExtendedDuringBattle(t *testing.T) {
 	reg := record.NewRegistry()
 	reg.Register(attribute.Provider)
-	mgr := session.NewManager(reg, nil)
+	mgr := session.NewManagerWithoutTick(reg, nil)
 	s := session.New(uuid.New(), 1, testLogger())
 	mgr.Add(s)
 

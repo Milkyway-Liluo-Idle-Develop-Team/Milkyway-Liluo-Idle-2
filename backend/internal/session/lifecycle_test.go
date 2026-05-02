@@ -14,7 +14,7 @@ import (
 func TestGracePeriodExpires(t *testing.T) {
 	reg := record.NewRegistry()
 	reg.Register(attribute.Provider)
-	mgr := session.NewManager(reg, nil)
+	mgr := session.NewManagerWithoutTick(reg, nil)
 
 	sess := session.New(uuid.New(), 1, testLogger())
 	mgr.Add(sess)
@@ -40,7 +40,7 @@ func TestGracePeriodExpires(t *testing.T) {
 func TestReconnectDuringGrace(t *testing.T) {
 	reg := record.NewRegistry()
 	reg.Register(attribute.Provider)
-	mgr := session.NewManager(reg, nil)
+	mgr := session.NewManagerWithoutTick(reg, nil)
 
 	sess := session.New(uuid.New(), 1, testLogger())
 	mgr.Add(sess)

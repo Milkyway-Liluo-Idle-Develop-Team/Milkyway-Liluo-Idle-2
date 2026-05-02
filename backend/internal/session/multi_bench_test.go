@@ -103,7 +103,7 @@ func buildPlayer(b *testing.B, db *sql.DB, userID int64) *sessionWithData {
 	reg.Register(event.ExecProvider)
 	reg.Register(event.QueueProvider)
 
-	mgr := session.NewManager(reg, nil)
+	mgr := session.NewManagerWithoutTick(reg, nil)
 	mgr.Add(s)
 
 	fellingID, _ := gameconfig.StringToEventID("felling_oak_tree")

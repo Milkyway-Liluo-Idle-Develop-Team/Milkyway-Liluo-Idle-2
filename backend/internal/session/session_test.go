@@ -35,7 +35,7 @@ func newTestManager(t *testing.T) *session.Manager {
 	t.Helper()
 	reg := record.NewRegistry()
 	reg.Register(attribute.Provider)
-	return session.NewManager(reg, nil)
+	return session.NewManagerWithoutTick(reg, nil)
 }
 
 // newLockedSession creates a session, adds it to the manager, locks it,
@@ -188,7 +188,7 @@ func TestExecutionCycle(t *testing.T) {
 func TestMultipleExecutionCycles(t *testing.T) {
 	reg := record.NewRegistry()
 	reg.Register(attribute.Provider)
-	mgr := session.NewManager(reg, nil)
+	mgr := session.NewManagerWithoutTick(reg, nil)
 	s, cleanup := newLockedSession(t, mgr, 1)
 	defer cleanup()
 
@@ -227,7 +227,7 @@ func TestMultipleExecutionCycles(t *testing.T) {
 func TestExecutionCycleNoChanges(t *testing.T) {
 	reg := record.NewRegistry()
 	reg.Register(attribute.Provider)
-	mgr := session.NewManager(reg, nil)
+	mgr := session.NewManagerWithoutTick(reg, nil)
 	s, cleanup := newLockedSession(t, mgr, 1)
 	defer cleanup()
 
@@ -251,7 +251,7 @@ func TestExecutionCycleNoChanges(t *testing.T) {
 func TestSessionLifecycleSimulation(t *testing.T) {
 	reg := record.NewRegistry()
 	reg.Register(attribute.Provider)
-	mgr := session.NewManager(reg, nil)
+	mgr := session.NewManagerWithoutTick(reg, nil)
 
 	connID := uuid.New()
 	s := session.New(connID, 42, testLogger())
@@ -347,7 +347,7 @@ func TestContextInSettlement(t *testing.T) {
 func TestFullSnapshotOnConnect(t *testing.T) {
 	reg := record.NewRegistry()
 	reg.Register(attribute.Provider)
-	mgr := session.NewManager(reg, nil)
+	mgr := session.NewManagerWithoutTick(reg, nil)
 	s, cleanup := newLockedSession(t, mgr, 1)
 	defer cleanup()
 
@@ -374,7 +374,7 @@ func TestFullSnapshotOnConnect(t *testing.T) {
 func TestRecorderIsCleanBetweenCycles(t *testing.T) {
 	reg := record.NewRegistry()
 	reg.Register(attribute.Provider)
-	mgr := session.NewManager(reg, nil)
+	mgr := session.NewManagerWithoutTick(reg, nil)
 	s, cleanup := newLockedSession(t, mgr, 1)
 	defer cleanup()
 
@@ -460,7 +460,7 @@ func TestSessionWithInventory(t *testing.T) {
 	reg := record.NewRegistry()
 	reg.Register(attribute.Provider)
 	reg.Register(inventory.Provider)
-	mgr := session.NewManager(reg, nil)
+	mgr := session.NewManagerWithoutTick(reg, nil)
 
 	_, q := openInvDB(t)
 	invSt, err := inventory.Load(context.Background(), q, 1)
@@ -516,7 +516,7 @@ func TestSessionWithInventory(t *testing.T) {
 func TestInventoryFlushInCycle(t *testing.T) {
 	reg := record.NewRegistry()
 	reg.Register(inventory.Provider)
-	mgr := session.NewManager(reg, nil)
+	mgr := session.NewManagerWithoutTick(reg, nil)
 
 	_, q := openInvDB(t)
 	invSt, err := inventory.Load(context.Background(), q, 1)
@@ -582,7 +582,7 @@ func TestFullCycleAllSystems(t *testing.T) {
 	reg.Register(attribute.Provider)
 	reg.Register(inventory.Provider)
 	reg.Register(skill.Provider)
-	mgr := session.NewManager(reg, nil)
+	mgr := session.NewManagerWithoutTick(reg, nil)
 
 	// Load inventory.
 	_, invQ := openInvDB(t)
@@ -764,7 +764,7 @@ func TestEquipInventoryDiffReason(t *testing.T) {
 	invSt.Add(sword, 1)
 	invSt.Add(boots, 1)
 
-	mgr := session.NewManager(reg, nil)
+	mgr := session.NewManagerWithoutTick(reg, nil)
 	s := session.New(uuid.New(), 1, testLogger())
 	s.SetInv(invSt)
 	mgr.Add(s)
@@ -907,7 +907,7 @@ func TestEquipUnequipDiffReason(t *testing.T) {
 	sword := item.Item{ID: 35, State: 0}
 	invSt.Add(sword, 1)
 
-	mgr := session.NewManager(reg, nil)
+	mgr := session.NewManagerWithoutTick(reg, nil)
 	s := session.New(uuid.New(), 1, testLogger())
 	s.SetInv(invSt)
 	mgr.Add(s)
@@ -967,7 +967,7 @@ func TestEquipRepeatedSlot(t *testing.T) {
 	invSt.Add(sword, 1)
 	invSt.Add(staff, 1)
 
-	mgr := session.NewManager(reg, nil)
+	mgr := session.NewManagerWithoutTick(reg, nil)
 	s := session.New(uuid.New(), 1, testLogger())
 	s.SetInv(invSt)
 	mgr.Add(s)
@@ -1007,7 +1007,7 @@ func TestEquipPersistsAcrossTicks(t *testing.T) {
 	sword := item.Item{ID: 35, State: 0}
 	invSt.Add(sword, 1)
 
-	mgr := session.NewManager(reg, nil)
+	mgr := session.NewManagerWithoutTick(reg, nil)
 	s := session.New(uuid.New(), 1, testLogger())
 	s.SetInv(invSt)
 	mgr.Add(s)
@@ -1062,7 +1062,7 @@ func TestEquipPersistsAcrossSessions(t *testing.T) {
 	invSt.Add(sword, 1)
 	invSt.Flush(context.Background(), q)
 
-	mgr := session.NewManager(reg, nil)
+	mgr := session.NewManagerWithoutTick(reg, nil)
 	s := session.New(uuid.New(), 1, testLogger())
 	s.SetInv(invSt)
 	mgr.Add(s)
