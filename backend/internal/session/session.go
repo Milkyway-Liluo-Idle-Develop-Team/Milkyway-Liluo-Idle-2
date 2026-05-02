@@ -118,6 +118,9 @@ func (s *PlayerSession) HasConn() bool {
 func (s *PlayerSession) lock()   { s.mu.Lock() }
 func (s *PlayerSession) unlock() { s.mu.Unlock() }
 
+func (s *PlayerSession) RLock()   { s.mu.RLock() }
+func (s *PlayerSession) RUnlock() { s.mu.RUnlock() }
+
 // ---- game state (caller must hold lock) ----
 
 // Attr returns the attribute instance.
@@ -446,6 +449,46 @@ func HandleSessionTyped[T proto.Message](m *Manager, hub *wsx.Hub, typ string, f
 		s.lock()
 		defer m.UnlockSession(s)
 		return fn(ctx, c, s, req)
+	})
+}
+
+// CommandHandler is a WS message handler that submits a command to the session's RunLoop.
+type CommandHandler func(ctx context.Context, c *wsx.Conn, sess *PlayerSession, in wsx.Inbound) error
+
+// HandleCommand registers a WS message type that is processed as a session command.
+func (m *Manager) HandleCommand(hub *wsx.Hub, typ string, fn CommandHandler) {
+	hub.Handle(typ, func(ctx context.Context, c *wsx.Conn, in wsx.Inbound) error {
+		s, ok := m.Get(c.UserID)
+		if !ok {
+			c.ReplyError(in, apperror.NotFound("session not found"))
+			return nil
+		}
+		return s.SubmitCommand(func(sess *PlayerSession) error {
+			return fn(ctx, c, sess, in)
+		})
+	})
+}
+
+// TypedCommandHandler is a CommandHandler that receives a pre-decoded payload.
+type TypedCommandHandler[T proto.Message] func(ctx context.Context, c *wsx.Conn, sess *PlayerSession, req T) error
+
+// HandleCommandTyped registers a WS message type that is processed as a session command
+// with a typed payload. The payload is automatically decoded and validated before fn is called.
+func HandleCommandTyped[T proto.Message](m *Manager, hub *wsx.Hub, typ string, fn TypedCommandHandler[T]) {
+	hub.Handle(typ, func(ctx context.Context, c *wsx.Conn, in wsx.Inbound) error {
+		var req T
+		req = reflect.New(reflect.TypeOf(req).Elem()).Interface().(T)
+		if err := in.DecodePayload(req); err != nil {
+			return err
+		}
+		s, ok := m.Get(c.UserID)
+		if !ok {
+			c.ReplyError(in, apperror.NotFound("session not found"))
+			return nil
+		}
+		return s.SubmitCommand(func(sess *PlayerSession) error {
+			return fn(ctx, c, sess, req)
+		})
 	})
 }
 

@@ -10,7 +10,7 @@ import (
 )
 
 func registerGameHandlers(hub *wsx.Hub, mgr *session.Manager) {
-	session.HandleSessionTyped(mgr, hub, "inventory.equip", func(ctx context.Context, c *wsx.Conn, sess *session.PlayerSession, req *pb.EquipReq) error {
+	session.HandleCommandTyped(mgr, hub, "inventory.equip", func(ctx context.Context, c *wsx.Conn, sess *session.PlayerSession, req *pb.EquipReq) error {
 		it := item.Item{ID: item.ID(req.ItemId), State: item.State(req.ItemState)}
 		if err := sess.Equip(ctx, it, req.Slot); err != nil {
 			return err
@@ -19,7 +19,7 @@ func registerGameHandlers(hub *wsx.Hub, mgr *session.Manager) {
 		return nil
 	})
 
-	session.HandleSessionTyped(mgr, hub, "inventory.unequip", func(ctx context.Context, c *wsx.Conn, sess *session.PlayerSession, req *pb.UnequipReq) error {
+	session.HandleCommandTyped(mgr, hub, "inventory.unequip", func(ctx context.Context, c *wsx.Conn, sess *session.PlayerSession, req *pb.UnequipReq) error {
 		if err := sess.Unequip(ctx, req.Slot); err != nil {
 			return err
 		}
@@ -29,14 +29,9 @@ func registerGameHandlers(hub *wsx.Hub, mgr *session.Manager) {
 }
 
 func buildEquipResponse(sess *session.PlayerSession) *pb.EquipUnequipResponse {
-	resp := &pb.EquipUnequipResponse{
-		Equipped: make(map[string]*pb.ItemIdentity),
-	}
+	resp := &pb.EquipUnequipResponse{Equipped: make(map[string]*pb.ItemIdentity)}
 	for slot, it := range sess.Equipment().All() {
-		resp.Equipped[slot] = &pb.ItemIdentity{
-			ItemId:    int32(it.ID),
-			ItemState: int32(it.State),
-		}
+		resp.Equipped[slot] = &pb.ItemIdentity{ItemId: int32(it.ID), ItemState: int32(it.State)}
 	}
 	return resp
 }
