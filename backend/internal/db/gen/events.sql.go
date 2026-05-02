@@ -101,6 +101,7 @@ ON CONFLICT(user_id, queue_id, position) DO UPDATE SET
     target_cycles = excluded.target_cycles,
     progress = excluded.progress,
     updated_at = CURRENT_TIMESTAMP
+WHERE event_id IS NOT excluded.event_id OR target_cycles IS NOT excluded.target_cycles OR progress IS NOT excluded.progress
 `
 
 type UpsertActiveEventParams struct {

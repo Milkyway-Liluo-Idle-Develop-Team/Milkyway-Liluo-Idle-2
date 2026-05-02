@@ -22,7 +22,8 @@ ON CONFLICT(user_id, queue_id, position) DO UPDATE SET
     event_id = excluded.event_id,
     target_cycles = excluded.target_cycles,
     progress = excluded.progress,
-    updated_at = CURRENT_TIMESTAMP;
+    updated_at = CURRENT_TIMESTAMP
+WHERE event_id IS NOT excluded.event_id OR target_cycles IS NOT excluded.target_cycles OR progress IS NOT excluded.progress;
 
 -- name: ClearTailPositions :exec
 UPDATE player_active_events

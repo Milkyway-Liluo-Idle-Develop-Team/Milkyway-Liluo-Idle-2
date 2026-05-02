@@ -57,6 +57,7 @@ VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP)
 ON CONFLICT(user_id, item_id, item_state) DO UPDATE SET
     quantity = excluded.quantity,
     updated_at = CURRENT_TIMESTAMP
+WHERE quantity IS NOT excluded.quantity
 `
 
 type UpsertInventoryParams struct {

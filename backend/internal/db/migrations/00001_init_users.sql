@@ -53,8 +53,6 @@ CREATE TABLE IF NOT EXISTS player_inventory (
     PRIMARY KEY (user_id, item_id, item_state)
 );
 
-CREATE INDEX IF NOT EXISTS inv_user_id_idx ON player_inventory (user_id);
-
 -- Unlocked events (type = "upgrade"). event_id is a gameconfig.EventID (1..N).
 CREATE TABLE IF NOT EXISTS player_unlocked_events (
     user_id     INTEGER  NOT NULL REFERENCES users(id) ON DELETE CASCADE,
@@ -76,7 +74,6 @@ CREATE TABLE IF NOT EXISTS player_active_events (
     PRIMARY KEY (user_id, queue_id, position)
 );
 
-CREATE INDEX IF NOT EXISTS active_events_user_idx ON player_active_events (user_id);
 -- +goose StatementEnd
 
 -- +goose Down
