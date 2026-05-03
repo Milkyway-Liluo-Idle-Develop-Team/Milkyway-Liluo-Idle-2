@@ -47,7 +47,7 @@ func TestCommandPanic_ReturnsError(t *testing.T) {
 				"drainCommands recover() is not propagating the panic as an error")
 		}
 	case <-time.After(2 * time.Second):
-		t.Fatal("SubmitCommand blocked forever — drainCommands did not unblock it")
+		t.Fatal("SubmitCommand blocked forever —drainCommands did not unblock it")
 	}
 }
 
@@ -89,7 +89,7 @@ func TestClose_DrainsPendingCommands(t *testing.T) {
 	for i := 0; i < n; i++ {
 		select {
 		case <-done:
-			// ok — goroutine was unblocked
+			// ok —goroutine was unblocked
 		case <-time.After(2 * time.Second):
 			t.Fatalf("goroutine %d leaked: SubmitCommand still blocked after Close", i)
 		}

@@ -169,7 +169,7 @@ func TestFlush(t *testing.T) {
 func TestFlushNoDirty(t *testing.T) {
 	_, q := openTestDB(t)
 	s, _ := inventory.Load(context.Background(), q, 1)
-	// No adds — Flush should be a no-op.
+	// No adds —Flush should be a no-op.
 	if err := s.Flush(context.Background(), q); err != nil {
 		t.Fatal(err)
 	}
@@ -187,7 +187,7 @@ func TestRecordBucket(t *testing.T) {
 
 	rec.PushNamespace("event_execution")
 	s.Add(item.Item{ID: 1, State: 0}, 5)
-	s.Add(item.Item{ID: 1, State: 0}, 3) // same identity — merged in bucket
+	s.Add(item.Item{ID: 1, State: 0}, 3) // same identity —merged in bucket
 	s.Add(item.Item{ID: 2, State: 0}, -2)
 	rec.PopNamespace()
 	s.ClearRecorder()

@@ -13,6 +13,12 @@ var attributesJSON []byte
 //go:embed data/attr_registry.json
 var attrRegistryJSON []byte
 
+// AttributesJSON returns the raw embedded attributes.json bytes.
+func AttributesJSON() []byte { return attributesJSON }
+
+// AttrRegistryJSON returns the raw embedded attr_registry.json bytes.
+func AttrRegistryJSON() []byte { return attrRegistryJSON }
+
 // reg is the global, read-only registry populated at startup.
 var reg *Registry
 
@@ -33,7 +39,7 @@ func Load() error {
 		return fmt.Errorf("attribute: unmarshal attr_registry.json: %w", err)
 	}
 
-	// Convert map[string]int32 → map[string]AttributeID.
+	// Convert map[string]int32 →map[string]AttributeID.
 	attrIDs := make(map[string]AttributeID, len(attrReg.Attributes))
 	for s, id := range attrReg.Attributes {
 		attrIDs[s] = AttributeID(id)

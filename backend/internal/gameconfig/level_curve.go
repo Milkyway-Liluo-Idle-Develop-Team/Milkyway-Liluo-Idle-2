@@ -12,6 +12,9 @@ import (
 //go:embed data/level_exp_requirement.CSV
 var levelCSV []byte
 
+// LevelCurveCSV returns the raw embedded level_exp_requirement.CSV bytes.
+func LevelCurveCSV() []byte { return levelCSV }
+
 // LoadLevelCurve returns the cumulative XP thresholds from the embedded CSV.
 // The CSV format is: level,exp (header) followed by rows. Exp is cumulative.
 func LoadLevelCurve() ([]float64, error) {

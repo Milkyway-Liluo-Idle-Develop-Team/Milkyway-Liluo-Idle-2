@@ -151,7 +151,7 @@ func TestRecordBucket(t *testing.T) {
 
 	rec.PushNamespace("tick")
 	s.AddXP(4, 120)
-	s.AddXP(4, 30) // same skill → merged
+	s.AddXP(4, 30) // same skill →merged
 	rec.PopNamespace()
 	s.ClearRecorder()
 

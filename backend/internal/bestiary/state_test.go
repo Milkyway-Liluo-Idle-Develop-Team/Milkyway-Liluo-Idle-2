@@ -29,7 +29,7 @@ func TestUnlockEvent(t *testing.T) {
 	s := bestiary.New(0)
 	id, _ := gameconfig.StringToEventID("felling_oak_tree")
 	s.UnlockEvent(id)
-	s.UnlockEvent(id) // idempotent — no panic
+	s.UnlockEvent(id) // idempotent —no panic
 }
 
 func TestUnlockItem(t *testing.T) {
@@ -93,14 +93,14 @@ func TestLoadRebuild(t *testing.T) {
 	s.SetRecorder(rec)
 	rec.PushNamespace("tick")
 
-	s.UnlockEvent(eid)                   // already loaded → no record
-	s.UnlockItem(item.Item{ID: 1, State: 0}) // already loaded → no record
+	s.UnlockEvent(eid)                   // already loaded →no record
+	s.UnlockItem(item.Item{ID: 1, State: 0}) // already loaded →no record
 
 	rec.PopNamespace()
 	s.ClearRecorder()
 
 	diff, _ := reg.BuildDiff(rec)
-	// Diff should be empty — no new discoveries.
+	// Diff should be empty —no new discoveries.
 	if len(diff.Bestiary) != 0 {
 		t.Errorf("expected empty diff after loading pre-known data, got %d entries", len(diff.Bestiary))
 	}

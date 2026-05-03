@@ -105,7 +105,7 @@ func TestSettleLoopProduces(t *testing.T) {
 	fellingID, _ := gameconfig.StringToSkillID("felling")
 	ctx.skillLvl[fellingID] = 1
 
-	// Settle 2 seconds → exactly 1 cycle.
+	// Settle 2 seconds →exactly 1 cycle.
 	rec.PushNamespace("tick")
 	st.Settle(ctx, 2.0)
 	rec.PopNamespace()
@@ -137,13 +137,13 @@ func TestSwapWhenRequirementUnmet(t *testing.T) {
 	_, q := openEventDB(t)
 	st, _ := event.Load(context.Background(), q, 1)
 
-	// felling_oak_tree requires felling >= 1 → unsatisfied
+	// felling_oak_tree requires felling >= 1 →unsatisfied
 	fellingID, _ := gameconfig.StringToEventID("felling_oak_tree")
 	// making_oak_plank requires crafting >= 1
 	plankID, _ := gameconfig.StringToEventID("making_oak_plank")
 
-	st.Enqueue(0, fellingID, -1) // position 0 — requires felling (unmet)
-	st.Enqueue(0, plankID, -1)   // position 1 — requires crafting
+	st.Enqueue(0, fellingID, -1) // position 0 —requires felling (unmet)
+	st.Enqueue(0, plankID, -1)   // position 1 —requires crafting
 
 	ctx := newMockCtx()
 	// Only crafting is met, not felling.
@@ -159,10 +159,10 @@ func TestSwapWhenRequirementUnmet(t *testing.T) {
 	st.Settle(ctx, 2.0) // plankID loop_time=4, so <1 cycle
 	rec.PopNamespace()
 
-	// The swap should have occurred: felling unmet → swap with plank
+	// The swap should have occurred: felling unmet →swap with plank
 	// Then plank advances partially (2s of 4s loop_time = 0 cycles).
 	// But the progress should be saved.
-	// Swap moved plank to front. plank loop_time=4, delta=2 → 0 cycles, nothing produced.
+	// Swap moved plank to front. plank loop_time=4, delta=2 →0 cycles, nothing produced.
 	// But verify the swap didn't crash and we can still operate.
 	if len(ctx.unlocked) != 0 {
 		t.Error("0 cycles should not unlock event")
@@ -180,7 +180,7 @@ func TestFiniteTargetCycles(t *testing.T) {
 	fellingID, _ := gameconfig.StringToSkillID("felling")
 	ctx.skillLvl[fellingID] = 1
 
-	// 4 seconds → 2 cycles (loop_time=2).
+	// 4 seconds →2 cycles (loop_time=2).
 	st.Settle(ctx, 4.0)
 
 	oakID, _ := gameconfig.StringToItemID("oak_logs")
@@ -265,7 +265,7 @@ func TestFlushAndReloadKeepsEnqueued(t *testing.T) {
 	ctx.skillLvl[fellingSkill] = 1
 	ctx.skillLvl[miningSkill] = 1
 
-	// 4s: felling (1 cycle=2s) consumed, dirt (loop_time=2) gets 2s → 1 cycle.
+	// 4s: felling (1 cycle=2s) consumed, dirt (loop_time=2) gets 2s →1 cycle.
 	st2.Settle(ctx, 4.0)
 	oakID, _ := gameconfig.StringToItemID("oak_logs")
 	dirtItemID, _ := gameconfig.StringToItemID("dirt")
@@ -311,13 +311,13 @@ func TestFlushAfterMixOfConsumeAndEnqueue(t *testing.T) {
 		t.Error("plank should be produced before flush")
 	}
 
-	// Flush → reload.
+	// Flush →reload.
 	if err := st.Flush(context.Background(), q); err != nil {
 		t.Fatal(err)
 	}
 	st2, _ := event.Load(context.Background(), q, 1)
 
-	// All three consumed → reloaded queue should be empty.
+	// All three consumed →reloaded queue should be empty.
 	ctx2 := newMockCtx()
 	ctx2.skillLvl[fellingSkill] = 1
 	ctx2.skillLvl[miningSkill] = 1
@@ -440,7 +440,7 @@ func TestQueueDiffFullScope(t *testing.T) {
 	rec := record.NewRecorder(reg)
 	st.SetRecorder(rec)
 
-	// Enqueue two events → triggers "full" scope.
+	// Enqueue two events →triggers "full" scope.
 	rec.PushNamespace("edit")
 	st.Enqueue(0, eid, -1)
 	st.Enqueue(0, plankID, -1)
@@ -455,14 +455,14 @@ func TestQueueDiffFullScope(t *testing.T) {
 	if qm.Scope != "full" {
 		t.Errorf("want scope 'full', got %q", qm.Scope)
 	}
-	// Enqueue added 2 events → should have 2 entries.
+	// Enqueue added 2 events →should have 2 entries.
 	if len(qm.Entries) != 2 {
 		t.Errorf("full scope: want 2 entries, got %d", len(qm.Entries))
 	}
 }
 
 func TestMoveEntryToFront(t *testing.T) {
-	// Move the entry at position 1 to position 0 → "full" scope, order reversed.
+	// Move the entry at position 1 to position 0 →"full" scope, order reversed.
 	reg := record.NewRegistry()
 	reg.Register(event.ExecProvider)
 	reg.Register(event.QueueProvider)
@@ -530,7 +530,7 @@ func TestInsertEntryAtPosition(t *testing.T) {
 	rec.PushNamespace("edit")
 	st.Enqueue(0, eid1, -1)     // position 0
 	st.Enqueue(0, eid2, -1)     // position 1
-	st.InsertEntry(0, 1, eid3, -1) // insert at position 1, old 1 → 2
+	st.InsertEntry(0, 1, eid3, -1) // insert at position 1, old 1 →2
 	rec.PopNamespace()
 	st.ClearRecorder()
 
@@ -542,7 +542,7 @@ func TestInsertEntryAtPosition(t *testing.T) {
 	if len(qm.Entries) != 3 {
 		t.Fatalf("want 3 entries, got %d", len(qm.Entries))
 	}
-	// Order: eid1(0) → eid3(1) → eid2(2)
+	// Order: eid1(0) →eid3(1) →eid2(2)
 	if qm.Entries[0].EventId != int64(eid1) {
 		t.Errorf("entry 0: want %d, got %d", eid1, qm.Entries[0].EventId)
 	}
@@ -555,7 +555,7 @@ func TestInsertEntryAtPosition(t *testing.T) {
 }
 
 func TestConsumeHeadByProgress(t *testing.T) {
-	// target_cycles=1 with enough delta → head consumed, queue empty.
+	// target_cycles=1 with enough delta →head consumed, queue empty.
 	reg := record.NewRegistry()
 	reg.Register(event.ExecProvider)
 	reg.Register(event.QueueProvider)
@@ -582,7 +582,7 @@ func TestConsumeHeadByProgress(t *testing.T) {
 	st.Enqueue(0, eid, 1)
 	rec.PopNamespace()
 
-	// Settle 2s → exactly 1 cycle → consumed.
+	// Settle 2s →exactly 1 cycle →consumed.
 	rec.PushNamespace("tick")
 	st.Settle(ctx, 2.0)
 	rec.PopNamespace()
@@ -603,7 +603,7 @@ func TestConsumeHeadByProgress(t *testing.T) {
 }
 
 func TestConsumeTwoHeadByProgress(t *testing.T) {
-	// Two events each target_cycles=1, settle enough → both consumed, queue empty.
+	// Two events each target_cycles=1, settle enough →both consumed, queue empty.
 	reg := record.NewRegistry()
 	reg.Register(event.ExecProvider)
 	reg.Register(event.QueueProvider)
@@ -633,7 +633,7 @@ func TestConsumeTwoHeadByProgress(t *testing.T) {
 	st.Enqueue(0, eid2, 1)
 	rec.PopNamespace()
 
-	// Settle enough for both events (each loop_time ≤ 2, so 4s should cover both).
+	// Settle enough for both events (each loop_time ≈2, so 4s should cover both).
 	rec.PushNamespace("tick")
 	st.Settle(ctx, 10.0)
 	rec.PopNamespace()

@@ -12,6 +12,7 @@ import (
 	"github.com/edrowsluo/new-mli/backend/internal/auth"
 	"github.com/edrowsluo/new-mli/backend/internal/config"
 	"github.com/edrowsluo/new-mli/backend/internal/db"
+	"github.com/edrowsluo/new-mli/backend/internal/gameconfig"
 	"github.com/edrowsluo/new-mli/backend/internal/httpx"
 	"github.com/edrowsluo/new-mli/backend/internal/session"
 	"github.com/edrowsluo/new-mli/backend/internal/wsx"
@@ -56,6 +57,7 @@ func New(d Deps) *Server {
 	// Versioned API mount point. All future modules hang off /api/v1.
 	r.Route("/api/v1", func(r chi.Router) {
 		d.AuthH.Mount(r, d.AuthMW)
+		r.Get("/game/config", gameconfig.ServeConfig)
 	})
 
 	// WebSocket endpoint. Auth is enforced inside the handler so we can
