@@ -1,5 +1,5 @@
 // Package attribute implements the RPG-style attribute system with a modifier
-// stack (ADD → MULTIPLY → OVERRIDE), lazy evaluation, dirty propagation, and
+// stack (ADD →MULTIPLY →OVERRIDE), lazy evaluation, dirty propagation, and
 // temporary computation contexts.
 //
 // The package is split into:
@@ -62,7 +62,7 @@ const (
 )
 
 // Modifier is the smallest unit that changes an attribute's value.
-// Either Value or RefAttr is set — never both.
+// Either Value or RefAttr is set —never both.
 type Modifier struct {
 	AttrID   AttributeID // target attribute
 	Op       OpType

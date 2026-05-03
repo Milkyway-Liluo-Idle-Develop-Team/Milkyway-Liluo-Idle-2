@@ -276,7 +276,7 @@ func toSession(s dbgen.Session, rawToken string) Session {
 
 // isUniqueViolation reports whether err corresponds to a SQLite UNIQUE
 // constraint violation. SQLite drivers don't share a single error type,
-// so we string-match — every driver shapes this message the same way.
+// so we string-match —every driver shapes this message the same way.
 func isUniqueViolation(err error) bool {
 	if err == nil {
 		return false

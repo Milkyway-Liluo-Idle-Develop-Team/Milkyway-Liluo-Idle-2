@@ -7,8 +7,8 @@
 //
 // Inputs:
 //
-//	../base/actions.json    → internal/gameconfig/data/id_registry.json
-//	../base/attributes.json → internal/attribute/data/attr_registry.json
+//	../base/actions.json    →internal/gameconfig/data/id_registry.json
+//	../base/attributes.json →internal/attribute/data/attr_registry.json
 package main
 
 import (

@@ -31,7 +31,7 @@ func (id ID) String() string {
 type State int32
 
 // Item is the complete identity of an item instance.
-// Both ID and State are required — State=0 is the default state,
+// Both ID and State are required —State=0 is the default state,
 // not a sentinel meaning "absent".
 type Item struct {
 	ID    ID

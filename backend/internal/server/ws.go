@@ -49,7 +49,7 @@ func wsHandler(hub *wsx.Hub, mw *auth.Middleware, httpCfg config.HTTP, wsCfg con
 					return
 				}
 
-				// No existing session — create new
+				// No existing session —create new
 				sess, err := sessMgr.CreateSession(r.Context(), c.ID, userID, database, logger)
 				if err != nil {
 					logger.Error("create session", "err", err)

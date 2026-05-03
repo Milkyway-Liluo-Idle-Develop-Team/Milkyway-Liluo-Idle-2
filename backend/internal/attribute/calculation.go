@@ -84,7 +84,7 @@ func (inst *Instance) getFinal(attrID AttributeID, ctx *Context, visited map[Att
 		value *= (1 + multiplier)
 	}
 
-	// Phase 3: OVERRIDE — last one wins.
+	// Phase 3: OVERRIDE —last one wins.
 	for _, m := range mods {
 		if m.Op != OpOverride {
 			continue

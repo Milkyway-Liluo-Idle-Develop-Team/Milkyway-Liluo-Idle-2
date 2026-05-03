@@ -143,7 +143,7 @@ func BenchmarkTick_Producing(b *testing.B) {
 	mgr.UnlockSession(locked)
 
 	// produce events DON'T re-enqueue, settle just accumulates cycles.
-	// But felling consumes oak_logs (wait, no — felling PRODUCES oak_logs, doesn't consume).
+	// But felling consumes oak_logs (wait, no —felling PRODUCES oak_logs, doesn't consume).
 	// making_oak_plank typically consumes oak_logs. So we need to keep refilling.
 	// For simplicity, use a delta that's large enough to produce every time.
 

@@ -88,7 +88,7 @@ func newRegForTick() *record.Registry {
 //
 // Purpose: Verify that PlayerSession.lastTick is initialized to time.Now()
 // in New(), so the first ManualTick computes a sane delta (~milliseconds)
-// instead of ~50 years (zero time → now).
+// instead of ~50 years (zero time →now).
 //
 // What it prevents: If lastTick is zero, the first tick would settle
 // event queues with a delta of decades, producing astronomical amounts of
@@ -103,7 +103,7 @@ func TestTickAll_LastTickInitialized(t *testing.T) {
 	base := time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)
 	s.SetLastTick(base)
 
-	// First tick: small delta, no events → no dirty state, no result.
+	// First tick: small delta, no events →no dirty state, no result.
 	// The key assertion is that this does not panic or compute a
 	// decades-long delta because lastTick was zero.
 	mgr.ManualTick(base.Add(100 * time.Millisecond))
@@ -115,7 +115,7 @@ func TestTickAll_LastTickInitialized(t *testing.T) {
 
 // --- TickAll integration tests ---
 
-// TestTickAll_FullEventCycle verifies the entire TickAll → runTick → Settle
+// TestTickAll_FullEventCycle verifies the entire TickAll →runTick →Settle
 // pipeline for a production event (felling_oak_tree).
 //
 // Purpose: Confirm that a real tick with a loop event produces the expected
@@ -150,7 +150,7 @@ func TestTickAll_FullEventCycle(t *testing.T) {
 	locked.Inv().Add(item.Item{ID: oakID}, 1e6)
 	mgr.UnlockSession(locked)
 
-	// Tick 1: 10 seconds → multiple cycles.
+	// Tick 1: 10 seconds →multiple cycles.
 	mgr.ManualTick(base.Add(10 * time.Second))
 
 	locked, _ = mgr.LockSession(s.UserID)
@@ -242,11 +242,11 @@ func TestTickAll_OfflineCatchup(t *testing.T) {
 	locked.Inv().Add(item.Item{ID: oakID}, 1e6)
 	mgr.UnlockSession(locked)
 
-	// Phase 1: Baseline tick at base time (delta = 0) → 0 cycles.
+	// Phase 1: Baseline tick at base time (delta = 0) →0 cycles.
 	mgr.ManualTick(base)
 	var baselineCycles int32 = 0
 
-	// Phase 2: Session is removed — simulates grace expiry after disconnect.
+	// Phase 2: Session is removed —simulates grace expiry after disconnect.
 	mgr.Remove(s.UserID)
 
 	// Phase 3: 5 seconds "offline". lastTick inside the session object is
@@ -294,7 +294,7 @@ func TestTickAll_OfflineCatchup(t *testing.T) {
 // the background TickAll goroutine is running, then verifies the command
 // is drained before Settle and its effects persist.
 //
-// Purpose: Validate the drainCommands → mu.Lock → Settle ordering inside
+// Purpose: Validate the drainCommands →mu.Lock →Settle ordering inside
 // runTick. Commands must be fully applied before the settlement engine
 // reads player state.
 //

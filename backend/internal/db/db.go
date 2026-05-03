@@ -3,7 +3,7 @@
 // raw connection (for transactions) and the sqlc Queries (for application
 // reads/writes).
 //
-// We use SQLite via the pure-Go modernc.org/sqlite driver — no CGO needed.
+// We use SQLite via the pure-Go modernc.org/sqlite driver —no CGO needed.
 package db
 
 import (
@@ -27,7 +27,7 @@ const driverName = "sqlite"
 
 // DB bundles the *sql.DB with the sqlc Queries handle. Pass DB into any
 // service that needs both transactional access (Conn) and ergonomic CRUD
-// (Queries). Never expose dbgen.Queries directly to handlers — keep
+// (Queries). Never expose dbgen.Queries directly to handlers —keep
 // boundaries at services.
 type DB struct {
 	Conn    *sql.DB
@@ -121,7 +121,7 @@ func (d *DB) InTx(ctx context.Context, fn func(q *dbgen.Queries) error) (err err
 // concurrency, and sets a generous busy timeout so brief writer contention
 // doesn't surface as errors. Pragmas are per-connection in SQLite, so we
 // also apply them to every freshly-opened connection via a connector hook
-// where possible — but here we additionally rely on shared-cache + WAL
+// where possible —but here we additionally rely on shared-cache + WAL
 // behaviour and a small pool to keep things simple.
 func applyPragmas(ctx context.Context, conn *sql.DB) error {
 	stmts := []string{

@@ -1,5 +1,5 @@
 // Package wsx is the WebSocket framework: connection management, message
-// routing, and lifecycle. It is transport-only — it knows nothing about
+// routing, and lifecycle. It is transport-only —it knows nothing about
 // users, auth, or game state. Modules register handlers by message type,
 // and the Hub dispatches inbound frames to them.
 //

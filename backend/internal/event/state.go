@@ -241,6 +241,6 @@ func (st *State) InsertEntry(queueID int, pos int, eventID gameconfig.EventID, t
 	st.markQueueFull(queueID)
 }
 
-// SetRecorder / ClearRecorder — standard lifecycle.
+// SetRecorder / ClearRecorder —standard lifecycle.
 func (st *State) SetRecorder(rec *record.Recorder) { st.recorder = rec }
 func (st *State) ClearRecorder()                    { st.recorder = nil }

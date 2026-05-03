@@ -28,7 +28,7 @@ func (c LevelCurve) Level(xp float64) float64 {
 
 // nextLevel walks forward from oldLevel to find the new level for the
 // given total XP. Since XP growth is small between ticks, this is
-// typically 0–1 steps — effectively O(1) amortized.
+// typically 0— steps —effectively O(1) amortized.
 func (c LevelCurve) nextLevel(oldLevel, totalXP float64) float64 {
 	n := len(c)
 	for l := int(oldLevel); l < n; l++ {
@@ -114,7 +114,7 @@ func (s *State) Flush(ctx context.Context, q *dbgen.Queries) error {
 }
 
 // AddXP adds experience to the given skill. The XP value must already
-// include all external bonuses (equipment, buffs) — this method only
+// include all external bonuses (equipment, buffs) —this method only
 // handles accumulation and level-up detection.
 func (s *State) AddXP(skillID gameconfig.SkillID, xp float64) {
 	slot := s.mustSlot(skillID)

@@ -95,7 +95,7 @@ func (r *Recorder) Active() bool {
 
 // Get is a generic helper that retrieves a typed bucket from the Recorder.
 // The system name is derived from T.SystemName(), so the type itself determines
-// which bucket to fetch — no string argument needed.
+// which bucket to fetch —no string argument needed.
 //
 //	invB := record.Get[*inventory.Bucket](rec)
 //

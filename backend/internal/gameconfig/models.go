@@ -4,7 +4,7 @@
 //
 // Item identity and runtime definition live in the item package
 // (item.ID, item.Item, item.ItemDef). This file only defines the JSON
-// parsing shape — itemJSON — plus the Event/Reward/Requirement types.
+// parsing shape —itemJSON —plus the Event/Reward/Requirement types.
 package gameconfig
 
 import "github.com/edrowsluo/new-mli/backend/internal/item"
@@ -169,7 +169,7 @@ type Event struct {
 	RepeatTime   *float64      `json:"repeat_time,omitempty"`
 	Rewards      []Reward      `json:"rewards,omitempty"`
 
-	// Pre-resolved at load time — never looked up at runtime.
+	// Pre-resolved at load time —never looked up at runtime.
 	ResolvedSkillID      SkillID
 	ProductionAttrName   string // "{NeedSkill}_production_multiplier", set during Load
 }

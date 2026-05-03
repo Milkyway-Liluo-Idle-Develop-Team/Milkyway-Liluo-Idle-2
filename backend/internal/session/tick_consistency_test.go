@@ -25,8 +25,8 @@ func (f *failingDB) InTx(ctx context.Context, fn func(q *dbgen.Queries) error) e
 // TestTickAll_DiffMatchesFlushData verifies that after a tick the diff
 // accurately reflects the in-memory state that was flushed to the DB.
 //
-// Purpose: Ensure the three views of data — in-memory state, diff packet,
-// and flushed DB rows — are mutually consistent for the same tick.
+// Purpose: Ensure the three views of data —in-memory state, diff packet,
+// and flushed DB rows —are mutually consistent for the same tick.
 //
 // What it prevents: Frontend desync caused by diff under-reporting or
 // over-reporting changes, or flush writing different values than what the
@@ -123,7 +123,7 @@ func TestTickAll_FlushFailurePreservesDirtyState(t *testing.T) {
 		t.Fatal("expected flush failure")
 	}
 
-	// State should still be dirty — next tick should be able to flush again.
+	// State should still be dirty —next tick should be able to flush again.
 	// We verify by switching to a working DB and flushing successfully.
 	if err := mgr.BatchFlush(context.Background(), database, results); err != nil {
 		t.Fatalf("retry flush on working db: %v", err)

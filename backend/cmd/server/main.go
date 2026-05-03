@@ -149,7 +149,7 @@ func run() error {
 }
 
 // runSessionCleanup periodically removes expired/old-revoked sessions.
-// Failures are logged and the loop continues — the row volume is bounded
+// Failures are logged and the loop continues —the row volume is bounded
 // and the next tick will retry.
 func runSessionCleanup(ctx context.Context, log *slog.Logger, svc *auth.Service) {
 	const interval = time.Hour

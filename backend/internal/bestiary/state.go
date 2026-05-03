@@ -1,5 +1,5 @@
 // Package bestiary tracks which events, items, and areas the player has
-// discovered. It is purely in-memory — unlocked events are already in DB;
+// discovered. It is purely in-memory —unlocked events are already in DB;
 // discovered items and areas are inferred from inventory and actions.
 package bestiary
 

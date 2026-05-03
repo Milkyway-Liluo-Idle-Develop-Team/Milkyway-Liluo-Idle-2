@@ -39,7 +39,7 @@ type Registry struct {
 	byID     map[AttributeID]AttrDef
 	byString map[string]AttrDef
 
-	// Bidirectional string ↔ numeric mapping.
+	// Bidirectional string →numeric mapping.
 	attrIDs    map[string]AttributeID
 	idToString map[AttributeID]string
 
@@ -64,7 +64,7 @@ func newRegistry(cfg attrsConfig, attrIDs map[string]AttributeID) (*Registry, er
 		reverse:    make(map[AttributeID][]AttributeID),
 	}
 
-	// Build reverse index string → numeric.
+	// Build reverse index string →numeric.
 	for s, id := range attrIDs {
 		r.idToString[id] = s
 	}
