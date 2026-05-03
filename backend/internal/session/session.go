@@ -488,6 +488,26 @@ func (m *Manager) Registry() *record.Registry {
 	return m.reg
 }
 
+// SendFullState builds a full state snapshot and sends it to the session's connection.
+func (m *Manager) SendFullState(sess *PlayerSession) {
+	states := map[string]any{
+		"inventory":      sess.Inv(),
+		"attribute":      sess.Attr(),
+		"skill_xp":       sess.Skill(),
+		"bestiary":       sess.Bestiary(),
+		"event_execution": sess.Events(),
+		"equipment":      sess.Equipment(),
+	}
+	full, err := m.reg.BuildFullSnapshot(states)
+	if err != nil {
+		sess.logger.Error("build full snapshot failed", "err", err)
+		return
+	}
+	if c := sess.Conn(); c != nil {
+		c.Send(wsx.Outbound{Type: "state.full", Payload: full})
+	}
+}
+
 // CommandHandler is a WS message handler that submits a command to the session's RunLoop.
 type CommandHandler func(ctx context.Context, c *wsx.Conn, sess *PlayerSession, in wsx.Inbound) error
 

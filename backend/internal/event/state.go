@@ -241,6 +241,28 @@ func (st *State) InsertEntry(queueID int, pos int, eventID gameconfig.EventID, t
 	st.markQueueFull(queueID)
 }
 
+// RemoveEntry removes the entry at the given position.
+func (st *State) RemoveEntry(queueID int, pos int) {
+	q, ok := st.queues[queueID]
+	if !ok || pos < 0 || pos >= len(q.Entries) {
+		return
+	}
+	st.consume(q, pos)
+}
+
+// ClearQueue removes all entries from a queue.
+func (st *State) ClearQueue(queueID int) {
+	q, ok := st.queues[queueID]
+	if !ok {
+		return
+	}
+	if len(q.Entries) == 0 {
+		return
+	}
+	q.Entries = q.Entries[:0]
+	st.markQueueFull(queueID)
+}
+
 // SetRecorder / ClearRecorder —standard lifecycle.
 func (st *State) SetRecorder(rec *record.Recorder) { st.recorder = rec }
 func (st *State) ClearRecorder()                    { st.recorder = nil }

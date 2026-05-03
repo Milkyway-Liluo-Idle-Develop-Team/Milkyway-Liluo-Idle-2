@@ -1,0 +1,32 @@
+syntax = "proto3";
+
+package mli.v1;
+
+option go_package = "github.com/edrowsluo/new-mli/backend/internal/pb";
+
+message QueueAppendReq {
+  int64 event_id = 1;
+  int32 target_cycles = 2; // -1 = infinite
+  int32 queue_id = 3;
+}
+
+message QueueRemoveReq {
+  int32 position = 1;
+  int32 queue_id = 2;
+}
+
+message QueueMoveReq {
+  int32 from_position = 1;
+  int32 to_position = 2;
+  int32 queue_id = 3;
+}
+
+message QueueSetReq {
+  repeated QueueSetEntry entries = 1;
+  int32 queue_id = 2;
+}
+
+message QueueSetEntry {
+  int64 event_id = 1;
+  int32 target_cycles = 2;
+}

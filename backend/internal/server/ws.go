@@ -42,6 +42,7 @@ func wsHandler(hub *wsx.Hub, mw *auth.Middleware, httpCfg config.HTTP, wsCfg con
 					}
 					existing.AttachConn(c)
 					existing.StopGraceTimer()
+					sessMgr.SendFullState(existing)
 					logger.Info("player session reconnected",
 						"conn", c.ID,
 						"user_id", userID,
@@ -57,6 +58,7 @@ func wsHandler(hub *wsx.Hub, mw *auth.Middleware, httpCfg config.HTTP, wsCfg con
 				}
 				sess.AttachConn(c)
 				sessMgr.Add(sess)
+				sessMgr.SendFullState(sess)
 
 				// Grace expire callback: flush and remove
 				sess.SetOnGraceExpire(func() {
