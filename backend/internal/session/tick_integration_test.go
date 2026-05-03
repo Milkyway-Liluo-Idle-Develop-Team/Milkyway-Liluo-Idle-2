@@ -49,6 +49,9 @@ func openFullDBForTest(t *testing.T) *db.DB {
 		`CREATE TABLE player_equipment (user_id INTEGER NOT NULL, slot TEXT NOT NULL,
 			item_id INTEGER NOT NULL, item_state INTEGER NOT NULL DEFAULT 0,
 			PRIMARY KEY (user_id, slot))`,
+		`CREATE TABLE player_init (user_id INTEGER NOT NULL PRIMARY KEY,
+			initialized INTEGER NOT NULL DEFAULT 0,
+			initialized_at DATETIME, created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP)`,
 	} {
 		if _, err := conn.Exec(s); err != nil {
 			t.Fatalf("schema: %v", err)
@@ -272,13 +275,18 @@ func TestTickAll_OfflineCatchup(t *testing.T) {
 	expectedLogs := float64(totalCycles) * 1.0
 	expectedXP := float64(totalCycles) * 20.0
 
+	// Player is auto-initialized at level 1 on first CreateSession, so the
+	// felling skill already has the baseline XP for level 1 before AddXP(100).
+	curve, _ := skill.LoadCurve()
+	baseXP := curve.XPForLevel(1)
+
 	logs := locked.Inv().Get(item.Item{ID: oakID})
 	if logs != 1e6+expectedLogs {
 		t.Errorf("oak logs: want %v, got %v", 1e6+expectedLogs, logs)
 	}
 	_, xp := locked.Skill().Get(fellingSkill)
-	if xp != 100+expectedXP {
-		t.Errorf("felling xp: want %v, got %v", 100+expectedXP, xp)
+	if xp != baseXP+100+expectedXP {
+		t.Errorf("felling xp: want %v, got %v", baseXP+100+expectedXP, xp)
 	}
 }
 

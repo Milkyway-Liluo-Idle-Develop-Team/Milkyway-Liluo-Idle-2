@@ -11,6 +11,8 @@ package session
 
 import (
 	"context"
+	"database/sql"
+	"errors"
 	"log/slog"
 	"reflect"
 	"runtime"
@@ -27,6 +29,7 @@ import (
 	"github.com/edrowsluo/new-mli/backend/internal/gameconfig"
 	"github.com/edrowsluo/new-mli/backend/internal/inventory"
 	"github.com/edrowsluo/new-mli/backend/internal/item"
+	"github.com/edrowsluo/new-mli/backend/internal/playerinit"
 	pb "github.com/edrowsluo/new-mli/backend/internal/pb"
 	"github.com/edrowsluo/new-mli/backend/internal/record"
 	"github.com/edrowsluo/new-mli/backend/internal/skill"
@@ -530,6 +533,21 @@ func HandleCommandTyped[T proto.Message](m *Manager, hub *wsx.Hub, typ string, f
 // The session is not added to the Manager — caller must call Add.
 func (m *Manager) CreateSession(ctx context.Context, connID uuid.UUID, userID int64, database *db.DB, logger *slog.Logger) (*PlayerSession, error) {
 	q := database.Queries
+
+	// Lazy player initialization: if this user has never entered the game,
+	// seed the default player data (skills, etc.) before loading subsystems.
+	initStatus, err := q.IsPlayerInit(ctx, userID)
+	if err != nil {
+		// sql.ErrNoRows means the row doesn't exist → not initialized yet.
+		if !errors.Is(err, sql.ErrNoRows) {
+			return nil, err
+		}
+	}
+	if initStatus != 1 {
+		if err := playerinit.InitPlayer(ctx, userID, database); err != nil {
+			return nil, apperror.Internal("initialize player").WithCause(err)
+		}
+	}
 
 	// Inventory.
 	invSt, err := inventory.Load(ctx, q, userID)

@@ -25,6 +25,13 @@ type PlayerEquipment struct {
 	ItemState int64  `json:"item_state"`
 }
 
+type PlayerInit struct {
+	UserID        int64        `json:"user_id"`
+	Initialized   int64        `json:"initialized"`
+	InitializedAt sql.NullTime `json:"initialized_at"`
+	CreatedAt     time.Time    `json:"created_at"`
+}
+
 type PlayerInventory struct {
 	UserID    int64     `json:"user_id"`
 	ItemID    int64     `json:"item_id"`

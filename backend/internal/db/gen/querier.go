@@ -17,11 +17,13 @@ type Querier interface {
 	GetSessionByTokenHash(ctx context.Context, tokenHash string) (Session, error)
 	GetUserByID(ctx context.Context, id int64) (User, error)
 	GetUserByUsername(ctx context.Context, username string) (User, error)
+	IsPlayerInit(ctx context.Context, userID int64) (int64, error)
 	LoadActiveEvents(ctx context.Context, userID int64) ([]PlayerActiveEvent, error)
 	LoadEquipment(ctx context.Context, userID int64) ([]LoadEquipmentRow, error)
 	LoadInventory(ctx context.Context, userID int64) ([]LoadInventoryRow, error)
 	LoadSkills(ctx context.Context, userID int64) ([]LoadSkillsRow, error)
 	LoadUnlockedEvents(ctx context.Context, userID int64) ([]PlayerUnlockedEvent, error)
+	MarkPlayerInit(ctx context.Context, userID int64) error
 	RevokeAllSessionsForUser(ctx context.Context, userID int64) error
 	RevokeSession(ctx context.Context, id string) error
 	TouchSession(ctx context.Context, id string) error

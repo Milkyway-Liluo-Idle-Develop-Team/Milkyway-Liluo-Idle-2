@@ -83,10 +83,21 @@ CREATE TABLE IF NOT EXISTS player_equipment (
     PRIMARY KEY (user_id, slot)
 );
 
+-- Player initialization state. A single row per user, created on first
+-- successful player init so CreateSession can detect it with one indexed
+-- lookup instead of scanning child tables.
+CREATE TABLE IF NOT EXISTS player_init (
+    user_id       INTEGER  NOT NULL PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+    initialized   INTEGER  NOT NULL DEFAULT 0,  -- 0 = pending, 1 = done
+    initialized_at DATETIME,
+    created_at    DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
 -- +goose StatementEnd
 
 -- +goose Down
 -- +goose StatementBegin
+DROP TABLE IF EXISTS player_init;
 DROP TABLE IF EXISTS player_equipment;
 DROP TABLE IF EXISTS player_active_events;
 DROP TABLE IF EXISTS player_unlocked_events;
