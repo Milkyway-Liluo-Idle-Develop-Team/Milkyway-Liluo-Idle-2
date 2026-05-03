@@ -3,7 +3,7 @@ package record
 import (
 	"fmt"
 
-	pb "github.com/edrowsluo/new-mli/backend/internal/pb"
+	pb "github.com/edrowsluo/new-mli/backend/pb"
 	"google.golang.org/protobuf/proto"
 )
 

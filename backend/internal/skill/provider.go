@@ -3,7 +3,7 @@ package skill
 import (
 	"sort"
 
-	pb "github.com/edrowsluo/new-mli/backend/internal/pb"
+	pb "github.com/edrowsluo/new-mli/backend/pb"
 	"github.com/edrowsluo/new-mli/backend/internal/gameconfig"
 	"github.com/edrowsluo/new-mli/backend/internal/record"
 	"google.golang.org/protobuf/proto"

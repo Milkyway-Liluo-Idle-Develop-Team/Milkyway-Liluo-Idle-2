@@ -4,15 +4,15 @@ import (
 	"context"
 	"time"
 
-	pb "github.com/edrowsluo/new-mli/backend/internal/pb"
+	pb "github.com/edrowsluo/new-mli/backend/pb"
 	"github.com/edrowsluo/new-mli/backend/internal/wsx"
 )
 
 // RegisterWS registers built-in auth-related WebSocket message handlers on
 // the hub. Currently:
 //
-//   - "auth.whoami" → returns the user attached to the connection (or null)
-//   - "ping"        → responds with "pong" carrying server time
+//   - "auth.whoami" →returns the user attached to the connection (or null)
+//   - "ping"        →responds with "pong" carrying server time
 //
 // Registering more message types should follow this pattern: a small
 // public function that takes the hub and the dependencies it needs.

@@ -3,7 +3,7 @@ package record_test
 import (
 	"testing"
 
-	pb "github.com/edrowsluo/new-mli/backend/internal/pb"
+	pb "github.com/edrowsluo/new-mli/backend/pb"
 	"github.com/edrowsluo/new-mli/backend/internal/record"
 	"google.golang.org/protobuf/proto"
 )
@@ -109,7 +109,7 @@ func TestSingleNamespace(t *testing.T) {
 
 	invB := record.Get[*invBucket](rec)
 	invB.Add(1, 0, 5)
-	invB.Add(1, 0, 3) // same identity → merged
+	invB.Add(1, 0, 3) // same identity →merged
 	invB.Add(2, 0, -2)
 
 	skillB := record.Get[*skillBucket](rec)

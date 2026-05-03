@@ -1,7 +1,7 @@
 package bestiary
 
 import (
-	pb "github.com/edrowsluo/new-mli/backend/internal/pb"
+	pb "github.com/edrowsluo/new-mli/backend/pb"
 	"github.com/edrowsluo/new-mli/backend/internal/gameconfig"
 	"github.com/edrowsluo/new-mli/backend/internal/item"
 	"github.com/edrowsluo/new-mli/backend/internal/record"

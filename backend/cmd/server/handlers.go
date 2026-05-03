@@ -4,7 +4,7 @@ import (
 	"context"
 
 	"github.com/edrowsluo/new-mli/backend/internal/item"
-	pb "github.com/edrowsluo/new-mli/backend/internal/pb"
+	pb "github.com/edrowsluo/new-mli/backend/pb"
 	"github.com/edrowsluo/new-mli/backend/internal/session"
 	"github.com/edrowsluo/new-mli/backend/internal/wsx"
 )

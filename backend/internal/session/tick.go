@@ -9,7 +9,7 @@ import (
 	"github.com/edrowsluo/new-mli/backend/internal/apperror"
 	"github.com/edrowsluo/new-mli/backend/internal/db"
 	dbgen "github.com/edrowsluo/new-mli/backend/internal/db/gen"
-	pb "github.com/edrowsluo/new-mli/backend/internal/pb"
+	pb "github.com/edrowsluo/new-mli/backend/pb"
 	"github.com/edrowsluo/new-mli/backend/internal/wsx"
 )
 
@@ -120,8 +120,8 @@ func (m *Manager) parallelTick(sessions []*PlayerSession, now time.Time) []TickR
 // runTick processes commands and settlement for one session.
 // It returns true if the session has dirty state that needs flushing.
 // Diffs are pushed immediately from inside this function:
-//   1. After draining commands — command diff is built and pushed.
-//   2. After settlement — settle diff is built and pushed only if it
+//   1. After draining commands —command diff is built and pushed.
+//   2. After settlement —settle diff is built and pushed only if it
 //      contains actual rewards (not progress-only).
 func runTick(s *PlayerSession, mgr *Manager, delta float64) (dirty bool) {
 	s.mu.Lock()

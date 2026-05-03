@@ -30,7 +30,7 @@ import (
 	"github.com/edrowsluo/new-mli/backend/internal/inventory"
 	"github.com/edrowsluo/new-mli/backend/internal/item"
 	"github.com/edrowsluo/new-mli/backend/internal/playerinit"
-	pb "github.com/edrowsluo/new-mli/backend/internal/pb"
+	pb "github.com/edrowsluo/new-mli/backend/pb"
 	"github.com/edrowsluo/new-mli/backend/internal/record"
 	"github.com/edrowsluo/new-mli/backend/internal/skill"
 	"github.com/edrowsluo/new-mli/backend/internal/wsx"
@@ -151,7 +151,7 @@ func (s *PlayerSession) HasConn() bool {
 	return s.conn != nil
 }
 
-// ---- lock (unexported — only Manager touches these) ----
+// ---- lock (unexported —only Manager touches these) ----
 
 func (s *PlayerSession) lock()   { s.mu.Lock() }
 func (s *PlayerSession) unlock() { s.mu.Unlock() }
@@ -201,7 +201,7 @@ func (s *PlayerSession) SetBattle(b *Instance) { s.battle = b }
 func (s *PlayerSession) SetEquipment(st *equipment.State) {
 	s.eq = st
 	// Replay equipment modifiers on the attribute system. equipment.Load is
-	// pure DB → State; attribute coupling is the session's job.
+	// pure DB →State; attribute coupling is the session's job.
 	for _, it := range st.All() {
 		def, ok := gameconfig.GetItemDefByID(it.ID)
 		if !ok {
@@ -530,7 +530,7 @@ func HandleCommandTyped[T proto.Message](m *Manager, hub *wsx.Hub, typ string, f
 
 // CreateSession builds a fully-loaded PlayerSession from the database.
 // All subsystems (inventory, skill, bestiary) are loaded and attached.
-// The session is not added to the Manager — caller must call Add.
+// The session is not added to the Manager —caller must call Add.
 func (m *Manager) CreateSession(ctx context.Context, connID uuid.UUID, userID int64, database *db.DB, logger *slog.Logger) (*PlayerSession, error) {
 	q := database.Queries
 
@@ -538,7 +538,7 @@ func (m *Manager) CreateSession(ctx context.Context, connID uuid.UUID, userID in
 	// seed the default player data (skills, etc.) before loading subsystems.
 	initStatus, err := q.IsPlayerInit(ctx, userID)
 	if err != nil {
-		// sql.ErrNoRows means the row doesn't exist → not initialized yet.
+		// sql.ErrNoRows means the row doesn't exist →not initialized yet.
 		if !errors.Is(err, sql.ErrNoRows) {
 			return nil, err
 		}

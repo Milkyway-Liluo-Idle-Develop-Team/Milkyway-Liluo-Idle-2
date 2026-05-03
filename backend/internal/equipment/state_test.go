@@ -8,7 +8,7 @@ import (
 	dbgen "github.com/edrowsluo/new-mli/backend/internal/db/gen"
 	"github.com/edrowsluo/new-mli/backend/internal/equipment"
 	"github.com/edrowsluo/new-mli/backend/internal/item"
-	pb "github.com/edrowsluo/new-mli/backend/internal/pb"
+	pb "github.com/edrowsluo/new-mli/backend/pb"
 	"github.com/edrowsluo/new-mli/backend/internal/record"
 	_ "modernc.org/sqlite"
 )

@@ -1,7 +1,7 @@
 package event
 
 import (
-	pb "github.com/edrowsluo/new-mli/backend/internal/pb"
+	pb "github.com/edrowsluo/new-mli/backend/pb"
 	"github.com/edrowsluo/new-mli/backend/internal/gameconfig"
 	"github.com/edrowsluo/new-mli/backend/internal/record"
 	"google.golang.org/protobuf/proto"
@@ -50,7 +50,7 @@ func (b *execBucket) IsEmpty() bool { return len(b.cycles) == 0 }
 
 type queueBucket struct {
 	st    *State       // set by State when marking; read in SerializeDiff
-	marks map[int]bool // queueID → full=true
+	marks map[int]bool // queueID →full=true
 }
 
 var _ record.RecordBucket = (*queueBucket)(nil)

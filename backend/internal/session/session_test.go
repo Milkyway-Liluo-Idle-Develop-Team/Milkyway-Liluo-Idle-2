@@ -10,7 +10,7 @@ import (
 	"github.com/edrowsluo/new-mli/backend/internal/attribute"
 	dbgen "github.com/edrowsluo/new-mli/backend/internal/db/gen"
 	"github.com/edrowsluo/new-mli/backend/internal/equipment"
-	pb "github.com/edrowsluo/new-mli/backend/internal/pb"
+	pb "github.com/edrowsluo/new-mli/backend/pb"
 	"github.com/edrowsluo/new-mli/backend/internal/gameconfig"
 	"github.com/edrowsluo/new-mli/backend/internal/inventory"
 	"github.com/edrowsluo/new-mli/backend/internal/item"
@@ -265,7 +265,7 @@ func TestSessionLifecycleSimulation(t *testing.T) {
 	physID, _ := r.AttrID("physical_power")
 	fellingID, _ := r.AttrID("felling_production_multiplier")
 
-	// Lock → operate → unlock
+	// Lock →operate →unlock
 	{
 		locked, ok := mgr.LockSession(42)
 		if !ok {
@@ -482,7 +482,7 @@ func TestSessionWithInventory(t *testing.T) {
 	locked.SetRecorder(rec)
 	rec.PushNamespace("tick")
 
-	// Equip sword → attribute change.
+	// Equip sword →attribute change.
 	locked.Attr().AddModifiers("equipment:sword", []attribute.Modifier{
 		{AttrID: physID, Op: attribute.OpAdd, Value: 15, Display: attribute.DisplayFixed, Source: "equipment:sword"},
 	})
@@ -978,7 +978,7 @@ func TestEquipRepeatedSlot(t *testing.T) {
 	locked.ClearRecorder()
 
 	diff, _ := reg.BuildDiff(rec)
-	// sword: EQUIP (-1), then returned (+1) = net 0 → dropped
+	// sword: EQUIP (-1), then returned (+1) = net 0 →dropped
 	// staff: EQUIP (-1)
 	if len(diff.Inventory) != 1 {
 		t.Fatalf("want 1 net change (staff equip), got %d", len(diff.Inventory))
@@ -1022,10 +1022,10 @@ func TestEquipPersistsAcrossTicks(t *testing.T) {
 
 	valAfterEquip := locked.Attr().GetFinal(physID)
 	if valAfterEquip <= valBefore {
-		t.Errorf("modifier should increase after equip: %v → %v", valBefore, valAfterEquip)
+		t.Errorf("modifier should increase after equip: %v →%v", valBefore, valAfterEquip)
 	}
 
-	// Tick 2: idle — no equipment changes.
+	// Tick 2: idle —no equipment changes.
 	rec2 := mgr.NewRecorder()
 	locked.SetRecorder(rec2)
 	rec2.PushNamespace("tick_2")

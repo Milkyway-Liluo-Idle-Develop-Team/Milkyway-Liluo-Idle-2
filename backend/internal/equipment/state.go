@@ -8,7 +8,7 @@ import (
 
 	dbgen "github.com/edrowsluo/new-mli/backend/internal/db/gen"
 	"github.com/edrowsluo/new-mli/backend/internal/item"
-	pb "github.com/edrowsluo/new-mli/backend/internal/pb"
+	pb "github.com/edrowsluo/new-mli/backend/pb"
 	"github.com/edrowsluo/new-mli/backend/internal/record"
 )
 
@@ -34,7 +34,7 @@ func NewState(userID int64) *State {
 }
 
 // Load reads all equipment rows for the given user into a new State.
-// Does not write records — used on connect/reconnect.
+// Does not write records —used on connect/reconnect.
 func Load(ctx context.Context, q *dbgen.Queries, userID int64) (*State, error) {
 	rows, err := q.LoadEquipment(ctx, userID)
 	if err != nil {
