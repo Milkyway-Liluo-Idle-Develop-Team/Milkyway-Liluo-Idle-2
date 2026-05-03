@@ -1349,7 +1349,7 @@ const file_state_proto_rawDesc = "" +
 	"\vEquipAction\x12\x1c\n" +
 	"\x18EQUIP_ACTION_UNSPECIFIED\x10\x00\x12\x16\n" +
 	"\x12EQUIP_ACTION_EQUIP\x10\x01\x12\x18\n" +
-	"\x14EQUIP_ACTION_UNEQUIP\x10\x02B2Z0github.com/edrowsluo/new-mli/backend/internal/pbb\x06proto3"
+	"\x14EQUIP_ACTION_UNEQUIP\x10\x02B)Z'github.com/edrowsluo/new-mli/backend/pbb\x06proto3"
 
 var (
 	file_state_proto_rawDescOnce sync.Once

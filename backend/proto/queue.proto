@@ -2,7 +2,7 @@ syntax = "proto3";
 
 package mli.v1;
 
-option go_package = "github.com/edrowsluo/new-mli/backend/internal/pb";
+option go_package = "github.com/edrowsluo/new-mli/backend/pb";
 
 message QueueAppendReq {
   int64 event_id = 1;
