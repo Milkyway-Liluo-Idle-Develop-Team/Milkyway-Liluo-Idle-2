@@ -13,9 +13,12 @@ import (
 	"github.com/edrowsluo/new-mli/backend/internal/wsx"
 )
 
+// TickResult holds a session that produced dirty state during a tick.
+// Diff is no longer produced at the tick-round level; individual diffs
+// are pushed immediately from inside runTick (command diff right after
+// commands drain, settle diff right after settlement).
 type TickResult struct {
 	Sess *PlayerSession
-	Diff *pb.StateDiff
 }
 
 func (m *Manager) TickAll(ctx context.Context, database *db.DB, tickInterval time.Duration) {
@@ -32,7 +35,8 @@ func (m *Manager) TickAll(ctx context.Context, database *db.DB, tickInterval tim
 	}
 }
 
-// tickRound executes a single round of tick+flush+push for all sessions.
+// tickRound executes a single round of tick+flush for all sessions.
+// Diff pushing is now done inside runTick; tickRound only batches flushes.
 func (m *Manager) tickRound(ctx context.Context, database *db.DB, now time.Time) {
 	sessions := m.getAllSessions()
 	if len(sessions) == 0 {
@@ -44,15 +48,6 @@ func (m *Manager) tickRound(ctx context.Context, database *db.DB, now time.Time)
 	if database != nil {
 		if err := m.BatchFlush(ctx, database, results); err != nil {
 			slog.Default().Error("batch flush failed", "err", err)
-		}
-	}
-
-	for _, r := range results {
-		if r.Diff == nil || isStateDiffEmpty(r.Diff) {
-			continue
-		}
-		if c := r.Sess.Conn(); c != nil {
-			c.Send(wsx.Outbound{Type: "state.diff", Payload: r.Diff})
 		}
 	}
 }
@@ -108,17 +103,12 @@ func (m *Manager) parallelTick(sessions []*PlayerSession, now time.Time) []TickR
 				s.lastTick = now
 				s.elapsedAccum += delta
 
-				diff, err := runTick(s, m, s.elapsedAccum)
-				s.elapsedAccum = 0
-				if err != nil {
-					s.logger.Error("runTick failed", "err", err)
-				}
-
-				if diff != nil {
+				if runTick(s, m, s.elapsedAccum) {
 					mu.Lock()
-					results = append(results, TickResult{Sess: s, Diff: diff})
+					results = append(results, TickResult{Sess: s})
 					mu.Unlock()
 				}
+				s.elapsedAccum = 0
 			}
 		}(sessions[start:end])
 	}
@@ -127,14 +117,42 @@ func (m *Manager) parallelTick(sessions []*PlayerSession, now time.Time) []TickR
 	return results
 }
 
-func runTick(s *PlayerSession, mgr *Manager, delta float64) (*pb.StateDiff, error) {
-	s.drainCommands()
-
+// runTick processes commands and settlement for one session.
+// It returns true if the session has dirty state that needs flushing.
+// Diffs are pushed immediately from inside this function:
+//   1. After draining commands — command diff is built and pushed.
+//   2. After settlement — settle diff is built and pushed only if it
+//      contains actual rewards (not progress-only).
+func runTick(s *PlayerSession, mgr *Manager, delta float64) (dirty bool) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	defer s.ClearRecorder()
 
-	diff, err := func() (diff *pb.StateDiff, err error) {
+	// Phase 1: drain commands (inside lock so changes are recorded).
+	// Only create a recorder and build diff if there were actually commands.
+	rec := mgr.NewRecorder()
+	s.SetRecorder(rec)
+	hasCmds := s.drainCommandsLocked()
+	s.ClearRecorder()
+	if hasCmds {
+		cmdDiff, _ := mgr.Registry().BuildDiff(rec)
+		if cmdDiff != nil && !isStateDiffEmpty(cmdDiff) {
+			dirty = true
+			if c := s.Conn(); c != nil {
+				c.Send(wsx.Outbound{Type: "state.diff", Payload: cmdDiff})
+			}
+		}
+	}
+
+	// Phase 2: settle (only when there are active events).
+	if s.ev == nil || !s.ev.HasActive() {
+		return dirty
+	}
+
+	rec = mgr.NewRecorder()
+	s.SetRecorder(rec)
+	rec.PushNamespace("action_queue")
+
+	settleDiff, err := func() (diff *pb.StateDiff, err error) {
 		defer func() {
 			if r := recover(); r != nil {
 				s.logger.Error("tick panic", "recover", r)
@@ -142,13 +160,7 @@ func runTick(s *PlayerSession, mgr *Manager, delta float64) (*pb.StateDiff, erro
 			}
 		}()
 
-		rec := mgr.NewRecorder()
-		s.SetRecorder(rec)
-		rec.PushNamespace("action_queue")
-		if s.ev != nil {
-			s.ev.Settle(s, delta)
-		}
-		rec.PopNamespace()
+		s.ev.Settle(s, delta)
 
 		if s.battle != nil && s.battle.Active() {
 			// Placeholder: battle simulation runs here.
@@ -157,10 +169,52 @@ func runTick(s *PlayerSession, mgr *Manager, delta float64) (*pb.StateDiff, erro
 		return mgr.Registry().BuildDiff(rec)
 	}()
 
+	s.ClearRecorder()
+
 	if err != nil {
 		s.logger.Error("tick failed", "err", err)
 	}
-	return diff, err
+
+	if settleDiff != nil && !isStateDiffEmpty(settleDiff) {
+		dirty = true
+		if !isProgressOnlyDiff(settleDiff) {
+			if c := s.Conn(); c != nil {
+				c.Send(wsx.Outbound{Type: "state.diff", Payload: settleDiff})
+			}
+		}
+		// Progress-only diffs are intentionally NOT pushed.
+		// The client can locally interpolate progress between ticks.
+	}
+
+	return dirty
+}
+
+// isProgressOnlyDiff returns true when the diff contains only event-queue
+// progress updates with no actual rewards (items, XP, executions, etc.) and
+// no queue structural changes (enqueue, consume, reorder).
+//
+// A "current" scope EventQueueDiff only updates the head entry's progress.
+// A "full" scope EventQueueDiff means the queue structure changed and must be
+// pushed to the client immediately.
+func isProgressOnlyDiff(d *pb.StateDiff) bool {
+	if d == nil || isStateDiffEmpty(d) {
+		return true
+	}
+	// Any tangible reward or state change means it is NOT progress-only.
+	if len(d.EventExecution) > 0 || len(d.Inventory) > 0 ||
+		len(d.SkillXp) > 0 || len(d.Attribute) > 0 ||
+		len(d.Bestiary) > 0 || len(d.Equipment) > 0 {
+		return false
+	}
+	// If any EventQueue diff has "full" scope (enqueue, consume, reorder),
+	// it is NOT progress-only.
+	for _, qd := range d.EventQueue {
+		if qd.Scope != "current" {
+			return false
+		}
+	}
+	// Only "current" scope EventQueue changes = pure progress update.
+	return len(d.EventQueue) > 0
 }
 
 type dbFlusher interface {
@@ -225,6 +279,31 @@ func (s *PlayerSession) drainCommands() {
 			cmd.resp <- err
 		default:
 			return
+		}
+	}
+}
+
+// drainCommandsLocked is the lock-holding variant used by runTick.
+// s.mu must be held by the caller.
+// It returns true if at least one command was processed.
+func (s *PlayerSession) drainCommandsLocked() bool {
+	processed := false
+	for {
+		select {
+		case cmd := <-s.commandCh:
+			processed = true
+			err := func() (err error) {
+				defer func() {
+					if r := recover(); r != nil {
+						s.logger.Error("command panic", "recover", r)
+						err = apperror.Internal("command panic")
+					}
+				}()
+				return cmd.fn(s)
+			}()
+			cmd.resp <- err
+		default:
+			return processed
 		}
 	}
 }

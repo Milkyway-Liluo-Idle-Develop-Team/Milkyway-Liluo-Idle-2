@@ -45,6 +45,16 @@ func (q *Queue) firstActive() int {
 	return 0
 }
 
+// HasActive returns true if any queue has at least one event entry.
+func (st *State) HasActive() bool {
+	for _, q := range st.queues {
+		if len(q.Entries) > 0 {
+			return true
+		}
+	}
+	return false
+}
+
 // Load reads all active events for the given user, grouped by queue.
 // Rows with event_id=0 are skipped (old tombstones from tail cleanup).
 func Load(ctx context.Context, q *dbgen.Queries, userID int64) (*State, error) {
