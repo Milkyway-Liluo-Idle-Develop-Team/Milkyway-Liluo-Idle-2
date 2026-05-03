@@ -290,13 +290,9 @@ func TestSessionLifecycleSimulation(t *testing.T) {
 			t.Fatal(err)
 		}
 
-				_ = diff // was json.Unmarshal
-		// was raw ok
-		if !ok {
+		if len(diff.Attribute) == 0 {
 			t.Fatal("missing attribute_changes")
 		}
-		// was changes struct AttrID string `json:"attr_id"` }
-		// was raw unmarshal
 
 		attrIDs := make(map[string]bool)
 		for _, c := range diff.Attribute {
@@ -502,7 +498,6 @@ func TestSessionWithInventory(t *testing.T) {
 		t.Fatal(err)
 	}
 
-		_ = diff // was json.Unmarshal
 
 	if len(diff.Attribute) == 0 {
 		t.Error("missing attribute_changes")
@@ -639,7 +634,6 @@ func TestFullCycleAllSystems(t *testing.T) {
 		t.Fatal(err)
 	}
 
-		_ = diff // was json.Unmarshal
 
 	if len(diff.Attribute) == 0 {
 		t.Error("missing attribute_changes")

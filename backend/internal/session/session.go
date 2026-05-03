@@ -72,6 +72,11 @@ type PlayerSession struct {
 	elapsedAccum float64
 }
 
+// SetLastTick overrides lastTick for deterministic tests.
+func (s *PlayerSession) SetLastTick(t time.Time) {
+	s.lastTick = t
+}
+
 // New creates a PlayerSession. The attribute instance is constructed bare;
 // subsystems (inventory, etc.) are attached later via setters once loaded
 // from the database.
@@ -85,6 +90,7 @@ func New(connID uuid.UUID, userID int64, logger *slog.Logger) *PlayerSession {
 		commandCh: make(chan command, 64),
 		done:      make(chan struct{}),
 		state:     StateActive,
+		lastTick:  time.Now(),
 	}
 }
 
@@ -101,6 +107,15 @@ func (s *PlayerSession) Close() {
 	case <-s.done:
 	default:
 		close(s.done)
+	}
+	// Fail any pending commands so their goroutines don't leak.
+	for {
+		select {
+		case cmd := <-s.commandCh:
+			cmd.resp <- apperror.Unavailable("session closed")
+		default:
+			return
+		}
 	}
 }
 

@@ -40,11 +40,18 @@ func TestTickAllStopsOnContextCancel(t *testing.T) {
 	reg := record.NewRegistry()
 	reg.Register(attribute.Provider)
 	ctx, cancel := context.WithCancel(context.Background())
-	mgr := session.NewManager(ctx, reg, nil, 50*time.Millisecond)
+	mgr := session.NewManager(ctx, reg, nil, 20*time.Millisecond)
 	s := session.New(uuid.New(), 1, testLogger())
 	mgr.Add(s)
 
+	// Let at least one tick fire to confirm the goroutine is running.
+	time.Sleep(30 * time.Millisecond)
+
 	cancel()
-	time.Sleep(100 * time.Millisecond)
-	// TickAll exited; no panic means success.
+
+	// Wait for the tick goroutine to observe cancellation and exit.
+	time.Sleep(50 * time.Millisecond)
+
+	// After TickAll exits, ManualTick must still work (no panic, no deadlock).
+	mgr.ManualTick(time.Now())
 }

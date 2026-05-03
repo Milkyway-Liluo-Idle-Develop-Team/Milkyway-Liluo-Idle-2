@@ -8,10 +8,20 @@ type command struct {
 }
 
 func (s *PlayerSession) SubmitCommand(fn func(*PlayerSession) error) error {
+	if s.State() == StateClosed {
+		return apperror.Unavailable("session closed")
+	}
 	cmd := command{fn: fn, resp: make(chan error, 1)}
 	select {
 	case s.commandCh <- cmd:
-		return <-cmd.resp
+		select {
+		case err := <-cmd.resp:
+			return err
+		case <-s.done:
+			return apperror.Unavailable("session closed")
+		}
+	case <-s.done:
+		return apperror.Unavailable("session closed")
 	default:
 		return apperror.Unavailable("session command channel full")
 	}
