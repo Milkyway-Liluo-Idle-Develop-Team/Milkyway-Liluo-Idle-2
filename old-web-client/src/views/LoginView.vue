@@ -48,14 +48,14 @@ const password = ref('')
 const loading = ref(false)
 const error = ref('')
 
-type LoginResponse = { success: true; uid: number; token: string; username: string; email: string; created_at: number }
+type LoginResponse = { user: { uid: number; username: string; email: string; created_at: number }; session?: string; expires_at?: string }
 
 const onSubmit = async () => {
   error.value = ''
   loading.value = true
   try {
     const res = await postJson<LoginResponse>(
-      '/api/login',
+      '/api/v1/auth/login',
       { username: username.value, password: password.value },
       { credentials: 'include' },
     )
@@ -64,9 +64,14 @@ const onSubmit = async () => {
       return
     }
     clearAuthCache()
-    setUserProfile(res.data)
+    setUserProfile({
+      uid: res.data.user.uid,
+      username: res.data.user.username,
+      email: res.data.user.email,
+      created_at: 0,
+    })
     const redirect = typeof route.query.redirect === 'string' ? route.query.redirect : '/main'
-    await router.replace(redirect)
+    window.location.href = redirect
   } finally {
     loading.value = false
   }

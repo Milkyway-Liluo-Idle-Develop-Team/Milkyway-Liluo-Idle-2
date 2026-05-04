@@ -9,12 +9,14 @@
 CREATE TABLE IF NOT EXISTS users (
     id            INTEGER  PRIMARY KEY AUTOINCREMENT,
     username      TEXT     NOT NULL UNIQUE,
+    email         TEXT     NOT NULL DEFAULT '',
     password_hash TEXT     NOT NULL,
     created_at    DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at    DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
 CREATE INDEX IF NOT EXISTS users_username_idx ON users (username);
+CREATE UNIQUE INDEX IF NOT EXISTS users_email_idx ON users (email) WHERE email <> '';
 
 CREATE TABLE IF NOT EXISTS sessions (
     id           TEXT     PRIMARY KEY,

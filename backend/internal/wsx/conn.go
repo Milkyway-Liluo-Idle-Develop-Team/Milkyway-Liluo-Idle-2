@@ -244,9 +244,10 @@ func (c *Conn) readLoop(ctx context.Context) {
 			}
 		}
 		in := Inbound{
-			ID:      env.Id,
-			Type:    env.Type,
-			Payload: env.Payload,
+			ID:        env.Id,
+			Type:      env.Type,
+			Payload:   env.Payload,
+			JSONCodec: c.jsonCodec,
 		}
 		c.hub.dispatch(ctx, c, in)
 	}

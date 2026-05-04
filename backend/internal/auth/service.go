@@ -12,6 +12,7 @@ import (
 	"encoding/base64"
 	"encoding/hex"
 	"errors"
+	"net/mail"
 	"strings"
 	"time"
 	"unicode/utf8"
@@ -35,8 +36,9 @@ const (
 
 // User is the public user record. Never include PasswordHash here.
 type User struct {
-	ID        int64     `json:"id"`
+	ID        int64     `json:"uid"`
 	Username  string    `json:"username"`
+	Email     string    `json:"email"`
 	CreatedAt time.Time `json:"created_at"`
 }
 
@@ -68,9 +70,12 @@ func NewService(database *db.DB, cfg config.Auth) *Service {
 func (s *Service) SessionTTL() time.Duration { return s.cfg.SessionTTL }
 
 // Register creates a new user. Returns Conflict if the username is taken.
-func (s *Service) Register(ctx context.Context, username, password string) (User, error) {
+func (s *Service) Register(ctx context.Context, username, email, password string) (User, error) {
 	username, err := normalizeUsername(username)
 	if err != nil {
+		return User{}, err
+	}
+	if err := validateEmail(email); err != nil {
 		return User{}, err
 	}
 	if err := validatePassword(password); err != nil {
@@ -84,11 +89,12 @@ func (s *Service) Register(ctx context.Context, username, password string) (User
 
 	u, err := s.db.Queries.CreateUser(ctx, dbgen.CreateUserParams{
 		Username:     username,
+		Email:        email,
 		PasswordHash: string(hash),
 	})
 	if err != nil {
 		if isUniqueViolation(err) {
-			return User{}, apperror.Conflict("username already taken")
+			return User{}, apperror.Conflict("username or email already taken")
 		}
 		return User{}, apperror.Internal("create user").WithCause(err)
 	}
@@ -248,6 +254,17 @@ func normalizeUsername(s string) (string, error) {
 	return s, nil
 }
 
+func validateEmail(s string) error {
+	s = strings.TrimSpace(s)
+	if s == "" {
+		return apperror.Validation("email is required")
+	}
+	if _, err := mail.ParseAddress(s); err != nil {
+		return apperror.Validation("invalid email address")
+	}
+	return nil
+}
+
 func validatePassword(s string) error {
 	n := len(s)
 	if n < minPasswordLen || n > maxPasswordLen {
@@ -260,6 +277,7 @@ func toUser(u dbgen.User) User {
 	return User{
 		ID:        u.ID,
 		Username:  u.Username,
+		Email:     u.Email,
 		CreatedAt: u.CreatedAt,
 	}
 }

@@ -122,7 +122,8 @@
 
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
-import { sendAndWait, onStatusChange, WsMessageType } from '@/lib/ws'
+import { onStatusChange } from '@/lib/ws'
+import * as battleActions from '@/lib/actions'
 import type { BattleListItem, BattleState } from '@/types/BattleResponse'
 
 const battles = ref<BattleListItem[]>([])
@@ -479,8 +480,7 @@ const startVisualPlayer = () => {
 const syncBattleState = async () => {
   if (!running.value || loading.value) return
   try {
-    const msg = await sendAndWait(WsMessageType.BATTLE_STATE, {}, WsMessageType.BATTLE_STATE)
-    const state = msg.data as BattleState | null
+    const state = await battleActions.syncBattleState()
     if (state) {
       applyState(state)
     } else {
@@ -509,8 +509,7 @@ const stopSyncTimer = () => {
 
 const fetchBattleList = async () => {
   try {
-    const msg = await sendAndWait(WsMessageType.BATTLE_LIST, { map: 'village' }, WsMessageType.BATTLE_LIST)
-    battles.value = (msg.data as BattleListItem[]) ?? []
+    battles.value = await battleActions.fetchBattleList()
     if (!selectedBattleId.value) {
       selectedBattleId.value = battles.value[0]?.id ?? ''
     }
@@ -521,8 +520,7 @@ const fetchBattleList = async () => {
 
 const fetchBattleState = async () => {
   try {
-    const msg = await sendAndWait(WsMessageType.BATTLE_STATE, {}, WsMessageType.BATTLE_STATE)
-    const state = msg.data as BattleState | null
+    const state = await battleActions.syncBattleState()
     if (state) {
       applyState(state)
     } else {
@@ -542,15 +540,11 @@ const startBattle = async () => {
   error.value = ''
   loading.value = true
   try {
-    const msg = await sendAndWait(
-      WsMessageType.BATTLE_START,
-      { battle_id: selectedBattleId.value, player_skills: [] },
-      WsMessageType.BATTLE_STATE,
-    )
+    const state = await battleActions.startBattle(selectedBattleId.value)
     running.value = true
     logLines.value = []
     pendingVisualLogs.value = []
-    applyState(msg.data as BattleState)
+    applyState(state)
     startSyncTimer()
   } catch (e: any) {
     error.value = e.message || '请求失败'
@@ -565,8 +559,8 @@ const stopBattle = async () => {
   loading.value = true
   error.value = ''
   try {
-    const msg = await sendAndWait(WsMessageType.BATTLE_STOP, {}, WsMessageType.BATTLE_STATE)
-    applyState(msg.data as BattleState)
+    const state = await battleActions.stopBattle()
+    applyState(state)
     running.value = false
     stopSyncTimer()
   } catch (e: any) {

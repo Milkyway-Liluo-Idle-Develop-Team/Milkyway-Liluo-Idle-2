@@ -64,7 +64,7 @@ const confirmPassword = ref('')
 const loading = ref(false)
 const error = ref('')
 
-type RegisterResponse = { success: true; uid: number; token: string; username: string; email: string; created_at: number }
+type RegisterResponse = { uid: number; username: string; email: string; created_at: number }
 
 const onSubmit = async () => {
   error.value = ''
@@ -80,7 +80,7 @@ const onSubmit = async () => {
   loading.value = true
   try {
     const res = await postJson<RegisterResponse>(
-      '/api/register',
+      '/api/v1/auth/register',
       { username: username.value, email: email.value, password: password.value },
       { credentials: 'include' },
     )
@@ -89,8 +89,13 @@ const onSubmit = async () => {
       return
     }
     clearAuthCache()
-    setUserProfile(res.data)
-    await router.replace('/main')
+    setUserProfile({
+      uid: res.data.uid,
+      username: res.data.username,
+      email: res.data.email,
+      created_at: res.data.created_at,
+    })
+    window.location.href = '/main'
   } finally {
     loading.value = false
   }

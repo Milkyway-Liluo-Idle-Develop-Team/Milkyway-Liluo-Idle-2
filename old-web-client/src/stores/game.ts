@@ -1,5 +1,5 @@
 import { defineStore } from 'pinia'
-import { computed, reactive, ref, shallowRef, triggerRef } from 'vue'
+import { computed, reactive, ref, shallowRef } from 'vue'
 import type { RawState } from '@/types/State'
 import type {
   GameplayData,
@@ -9,11 +9,13 @@ import type {
   GameplayProfileBattleAttribute,
   QueueItem,
 } from '@/types/GameplayResponse'
-import type { Item, Event } from '@/types/ActionResponse'
+import type { Item, Event, ActionsResponse } from '@/types/ActionResponse'
 import type { BattleListItem, BattleState } from '@/types/BattleResponse'
 import { getJson, apiUrl } from '@/lib/api'
 import { applyPatch } from '@/lib/patch'
-import { onMessage, onStatusChange, WsMessageType } from '@/lib/ws'
+import { onMessage, onStatusChange } from '@/lib/ws'
+import { USE_JSON } from '@/lib/config'
+import { StateFull, StateDiff, EquipAction } from '@/pb/state'
 import * as actions from '@/lib/actions'
 import {
   checkUnlockRequirements,
@@ -26,7 +28,26 @@ import {
   getLevelProductionMultiplier,
 } from '@/lib/gameplayCompute'
 
+
+
 export const useGameStore = defineStore('game', () => {
+  // ========================================================================
+  // ID Registry (new backend numeric ↔ string mapping)
+  // ========================================================================
+  const idRegistry = ref<{
+    items: Record<string, number>
+    events: Record<string, number>
+    skills: Record<string, number>
+    maps: Record<string, number>
+  } | null>(null)
+
+  function numToStringId(map: Record<string, number>, numId: number): string | undefined {
+    for (const [str, num] of Object.entries(map)) {
+      if (num === numId) return str
+    }
+    return undefined
+  }
+
   // ========================================================================
   // Static data (loaded once at startup)
   // ========================================================================
@@ -217,11 +238,20 @@ export const useGameStore = defineStore('game', () => {
     staticLoading.value = true
     staticError.value = ''
     try {
-      const response = await fetch(apiUrl('/api/actions'))
-      if (!response.ok) throw new Error(`HTTP ${response.status}`)
-      const data = await response.json()
-      const rawItems: Item[] = data.items || []
-      const rawEvents: Event[] = data.events || []
+      const res = await getJson<{
+        actions: { items: Item[]; events: Event[] }
+        id_registry: { items: Record<string, number>; events: Record<string, number>; skills: Record<string, number>; maps: Record<string, number> }
+        level_curve_csv: string
+      }>('/api/v1/game/config')
+      if (!res.ok) {
+        staticError.value = res.error
+        return
+      }
+      const data = res.data
+
+      // Parse items
+      const rawItems: Item[] = data.actions.items || []
+      const rawEvents: Event[] = data.actions.events || []
       const itemMap: Record<string, Item> = {}
       for (const item of rawItems) {
         itemMap[item.id] = item
@@ -232,8 +262,27 @@ export const useGameStore = defineStore('game', () => {
       }
       items.value = itemMap
       events.value = eventMap
-      levelProduction.value = data.level_production || []
 
+      // Parse id registry
+      idRegistry.value = data.id_registry
+      actions.setActionIdRegistry(data.id_registry)
+
+      // Parse level curve from CSV
+      const csv = data.level_curve_csv || ''
+      const lines = csv.trim().split(/\r?\n/)
+      const curve: number[] = []
+      for (let i = 1; i < lines.length; i++) {
+        const line = lines[i]
+        if (!line) continue
+        const parts = line.split(',')
+        if (parts.length >= 2) {
+          const v = parseFloat(parts[1]!.trim())
+          if (!isNaN(v)) curve.push(v)
+        }
+      }
+      levelProduction.value = curve
+
+      // Build map list
       const seenMaps = new Set<string>()
       maps.value = []
       for (const event of rawEvents) {
@@ -253,37 +302,182 @@ export const useGameStore = defineStore('game', () => {
   }
 
   async function fetchGameplayData() {
+    // New backend pushes initial state via WS state.full on connect.
+    // No explicit HTTP fetch is needed.
     stateLoading.value = true
     stateError.value = ''
-    try {
-      const res = await getJson<{ success: true; data: GameplayData }>('/api/gameplay', {
-        credentials: 'include',
-      })
-      if (!res.ok) {
-        stateError.value = res.error
-        return
-      }
-      const data = res.data.data
-      // Merge full payload into raw state
-      Object.assign(state.skills, data.skills || {})
-      state.inventory = (data.inventory || []) as RawState['inventory']
-      Object.assign(state.equipment, data.equipment || {})
-      Object.assign(state.tools, data.tools || {})
-      Object.assign(state.event_counts, data.event_counts || {})
-      state.seen_items = data.seen_items || []
-      state.unlocked_events = data.unlocked_events || []
-      Object.assign(state.attributes, data.attributes || {})
-      state.queue_items = data.queue_items || []
-      state.queue_index = data.queue_index ?? 0
-      state.queue_progress_seconds = data.queue_progress_seconds ?? 0
-    } finally {
-      stateLoading.value = false
-    }
+    // Give a brief moment for state.full to arrive if not yet received
+    await new Promise((r) => setTimeout(r, 300))
+    stateLoading.value = false
   }
 
   // ========================================================================
-  // Delta application
+  // State application (new backend format → old RawState)
   // ========================================================================
+  function applyStateFull(full: StateFull) {
+    if (!idRegistry.value) return
+
+    // Skills
+    state.skills = {}
+    for (const sk of full.skillXp ?? []) {
+      const strId = numToStringId(idRegistry.value.skills, sk.skillId ?? 0)
+      if (strId) {
+        state.skills[strId] = { level: sk.level ?? 0, exp: sk.xp ?? 0 }
+      }
+    }
+
+    // Inventory
+    state.inventory = []
+    for (const it of full.inventory ?? []) {
+      const strId = numToStringId(idRegistry.value.items, it.itemId ?? 0)
+      if (strId && (it.quantity ?? 0) > 0) {
+        state.inventory.push({ id: strId, state: it.itemState ?? 0, qty: it.quantity ?? 0 })
+      }
+    }
+
+    // Equipment / Tools
+    state.equipment = {}
+    state.tools = {}
+    const toolSlots = new Set(['felling', 'mining', 'planting', 'crafting', 'forging', 'enhancing'])
+    for (const [slot, it] of Object.entries(full.equipment ?? {})) {
+      const strId = numToStringId(idRegistry.value.items, it?.itemId ?? 0)
+      if (strId) {
+        if (toolSlots.has(slot)) {
+          state.tools[slot] = strId
+        } else {
+          state.equipment[slot] = strId
+        }
+      }
+    }
+
+    // Bestiary → unlocked_events
+    state.unlocked_events = []
+    for (const b of full.bestiary ?? []) {
+      if (b.type === 'event') {
+        const strId = numToStringId(idRegistry.value.events, parseInt(b.id ?? '', 10))
+        if (strId) state.unlocked_events.push(strId)
+      }
+    }
+
+    // Attributes
+    state.attributes = {}
+    for (const attr of full.attribute ?? []) {
+      state.attributes[attr.attrId ?? ''] = attr.finalValue ?? 0
+    }
+
+    // Queue
+    state.queue_items = []
+    for (const ex of full.eventExecution ?? []) {
+      const strId = numToStringId(idRegistry.value.events, ex.eventId ?? 0)
+      if (strId) {
+        state.queue_items.push({
+          event_id: strId,
+          iterations: (ex.targetCycles ?? 0) > 0 ? ex.targetCycles ?? 0 : null,
+          completed: 0,
+        })
+      }
+    }
+    state.queue_index = 0
+    state.queue_progress_seconds = full.eventExecution?.[0]?.progress ?? 0
+  }
+
+  function applyStateDiff(diff: StateDiff) {
+    if (!idRegistry.value) return
+
+    if (diff.inventory) {
+      for (const d of diff.inventory) {
+        const strId = numToStringId(idRegistry.value.items, d.itemId ?? 0)
+        if (!strId) continue
+        const idx = state.inventory.findIndex((e) => e.id === strId && (e.state ?? 0) === (d.itemState ?? 0))
+        if (idx >= 0) {
+          const entry = state.inventory[idx]!
+          const nextQty = entry.qty + (d.quantityDelta ?? 0)
+          if (nextQty <= 0) {
+            state.inventory.splice(idx, 1)
+          } else {
+            state.inventory[idx] = { id: entry.id, state: entry.state, qty: nextQty }
+          }
+        } else if ((d.quantityDelta ?? 0) > 0) {
+          state.inventory.push({ id: strId, state: d.itemState ?? 0, qty: d.quantityDelta ?? 0 })
+        }
+      }
+    }
+
+    if (diff.skillXp) {
+      for (const d of diff.skillXp) {
+        const strId = numToStringId(idRegistry.value.skills, d.skillId ?? 0)
+        if (strId) {
+          const existing = state.skills[strId]
+          state.skills[strId] = {
+            level: d.newLevel ?? 0,
+            exp: existing ? existing.exp + (d.xpDelta ?? 0) : (d.xpDelta ?? 0),
+          }
+        }
+      }
+    }
+
+    if (diff.attribute) {
+      for (const d of diff.attribute) {
+        state.attributes[d.attrId ?? ''] = d.finalValue ?? 0
+      }
+    }
+
+    if (diff.bestiary) {
+      const existing = new Set(state.unlocked_events)
+      for (const b of diff.bestiary) {
+        if (b.type === 'event') {
+          const strId = numToStringId(idRegistry.value.events, parseInt(b.id ?? '', 10))
+          if (strId) existing.add(strId)
+        }
+      }
+      state.unlocked_events = Array.from(existing)
+    }
+
+    if (diff.eventQueue) {
+      for (const qd of diff.eventQueue) {
+        if (qd.scope === 'full') {
+          state.queue_items = []
+          for (const e of qd.entries ?? []) {
+            const strId = numToStringId(idRegistry.value.events, e.eventId ?? 0)
+            if (strId) {
+              state.queue_items.push({
+                event_id: strId,
+                iterations: (e.targetCycles ?? 0) > 0 ? e.targetCycles ?? 0 : null,
+                completed: 0,
+              })
+            }
+          }
+        } else if (qd.scope === 'current' && (qd.entries?.length ?? 0) > 0) {
+          state.queue_progress_seconds = qd.entries![0]!.progress ?? 0
+        }
+      }
+    }
+
+    if (diff.equipment) {
+      const toolSlots = new Set(['felling', 'mining', 'planting', 'crafting', 'forging', 'enhancing'])
+      for (const d of diff.equipment) {
+        const isUnequip = d.action === EquipAction.EQUIP_ACTION_UNEQUIP || (d.itemId ?? 0) === 0
+        if (isUnequip) {
+          if (toolSlots.has(d.slot ?? '')) {
+            delete state.tools[d.slot ?? '']
+          } else {
+            delete state.equipment[d.slot ?? '']
+          }
+        } else {
+          const strId = numToStringId(idRegistry.value.items, d.itemId ?? 0)
+          if (strId) {
+            if (toolSlots.has(d.slot ?? '')) {
+              state.tools[d.slot ?? ''] = strId
+            } else {
+              state.equipment[d.slot ?? ''] = strId
+            }
+          }
+        }
+      }
+    }
+  }
+
+  // Legacy delta patch (kept for compat, not used with new backend)
   function applyDelta(patch: Record<string, unknown>) {
     applyPatch(state, patch)
   }
@@ -466,36 +660,51 @@ export const useGameStore = defineStore('game', () => {
   // ========================================================================
   // WS subscriptions (initiated once)
   // ========================================================================
+  let unsubFull: (() => void) | null = null
   let unsubDelta: (() => void) | null = null
   let unsubError: (() => void) | null = null
   let unsubStatus: (() => void) | null = null
 
   function initWsListeners() {
-    if (unsubDelta) return // already initialized
+    if (unsubFull) return // already initialized
 
-    unsubDelta = onMessage(WsMessageType.DELTA, (msg) => {
-      const payload = msg.data as { patch?: Record<string, unknown> } | undefined
-      if (payload?.patch) {
-        applyDelta(payload.patch)
+    unsubFull = onMessage('state.full', (_type, payload) => {
+      try {
+        const full = USE_JSON ? StateFull.fromJSON(payload) : StateFull.decode(payload as Uint8Array)
+        applyStateFull(full)
+      } catch (e) {
+        console.error('Failed to decode state.full', e)
       }
     })
 
-    unsubError = onMessage(WsMessageType.ERROR, (msg) => {
-      actionError.value = String(msg.message || '服务器错误')
+    unsubDelta = onMessage('state.diff', (_type, payload) => {
+      try {
+        const diff = USE_JSON ? StateDiff.fromJSON(payload) : StateDiff.decode(payload as Uint8Array)
+        applyStateDiff(diff)
+      } catch (e) {
+        console.error('Failed to decode state.diff', e)
+      }
+    })
+
+    unsubError = onMessage('error', (_type, _payload, envelope) => {
+      actionError.value = String(envelope.error?.message || '服务器错误')
     })
 
     unsubStatus = onStatusChange((status) => {
       if (status === 'open') {
-        syncBattleState().catch((e) => console.warn('syncBattleState failed:', e))
-        fetchBattleList().catch((e) => console.warn('fetchBattleList failed:', e))
+        // Battle stubs disabled until backend implements battle handlers
+        // syncBattleState().catch((e) => console.warn('syncBattleState failed:', e))
+        // fetchBattleList().catch((e) => console.warn('fetchBattleList failed:', e))
       }
     })
   }
 
   function disposeWsListeners() {
+    unsubFull?.()
     unsubDelta?.()
     unsubError?.()
     unsubStatus?.()
+    unsubFull = null
     unsubDelta = null
     unsubError = null
     unsubStatus = null

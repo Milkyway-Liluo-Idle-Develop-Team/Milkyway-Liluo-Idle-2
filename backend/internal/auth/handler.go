@@ -40,6 +40,7 @@ func (h *Handler) Mount(r chi.Router, mw *Middleware) {
 
 type registerReq struct {
 	Username string `json:"username"`
+	Email    string `json:"email"`
 	Password string `json:"password"`
 }
 
@@ -49,7 +50,7 @@ func (h *Handler) register(w http.ResponseWriter, r *http.Request) {
 		httpx.Error(w, r, err)
 		return
 	}
-	u, err := h.svc.Register(r.Context(), req.Username, req.Password)
+	u, err := h.svc.Register(r.Context(), req.Username, req.Email, req.Password)
 	if err != nil {
 		httpx.Error(w, r, err)
 		return

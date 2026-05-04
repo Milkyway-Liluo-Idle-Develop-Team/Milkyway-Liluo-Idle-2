@@ -85,7 +85,7 @@ All HTTP responses use the same envelope:
 
 | Method | Path           | Auth    | Body                                  | Returns                  |
 |--------|----------------|---------|---------------------------------------|--------------------------|
-| POST   | `/auth/register` | none  | `{ "username", "password" }`          | `{ "id", "username", ... }` |
+| POST   | `/auth/register` | none  | `{ "username", "email", "password" }` | `{ "id", "username", "email", ... }` |
 | POST   | `/auth/login`    | none  | `{ "username", "password" }`          | `{ "user", "session" }`; sets `sid` cookie |
 | POST   | `/auth/logout`   | any   | —                                     | 204; clears cookie       |
 | POST   | `/auth/logout-all` | required | —                                | 204                      |

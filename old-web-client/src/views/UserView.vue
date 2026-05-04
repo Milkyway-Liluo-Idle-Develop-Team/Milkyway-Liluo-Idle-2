@@ -133,12 +133,12 @@ const formatExp = (value: unknown) => {
 const loadMe = async () => {
   loadingMe.value = true
   try {
-    const res = await getJson<{ success: true; user: Me }>('/api/me', { credentials: 'include' })
+    const res = await getJson<Me>('/api/v1/auth/me', { credentials: 'include' })
     if (!res.ok) {
       error.value = res.error
       return
     }
-    me.value = res.data.user
+    me.value = res.data
   } finally {
     loadingMe.value = false
   }
@@ -157,7 +157,7 @@ const onLogout = async () => {
       error.value = res.error
       return
     }
-    await router.replace('/login')
+    window.location.href = '/login'
   } finally {
     loggingOut.value = false
   }

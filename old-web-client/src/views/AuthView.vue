@@ -560,14 +560,18 @@ const loginPassword = sharedPassword
 const loginLoading = ref(false)
 const loginError = ref('')
 
-type LoginResponse = { success: true; uid: number; token: string; username: string; email: string; created_at: number }
+type LoginResponse = {
+  user: { uid: number; username: string; email: string; created_at: string }
+  session: { id: string; user_id: number; token?: string; expires_at: string; created_at: string }
+  expires_at: string
+}
 
 const onLogin = async () => {
   loginError.value = ''
   loginLoading.value = true
   try {
     const res = await postJson<LoginResponse>(
-      '/api/login',
+      '/api/v1/auth/login',
       { username: loginUsername.value, password: loginPassword.value },
       { credentials: 'include' },
     )
@@ -576,9 +580,16 @@ const onLogin = async () => {
       return
     }
     clearAuthCache()
-    setUserProfile(res.data)
+    setUserProfile({
+      uid: res.data.user.uid,
+      username: res.data.user.username,
+      email: res.data.user.email,
+      created_at: 0,
+    })
     const redirect = typeof route.query.redirect === 'string' ? route.query.redirect : '/main'
     window.location.href = redirect
+  } catch (e: any) {
+    loginError.value = e?.message || '登录处理失败'
   } finally {
     loginLoading.value = false
   }
@@ -599,7 +610,7 @@ watch([loginError, regError], async () => {
   measureHeights()
 })
 
-type RegisterResponse = { success: true; uid: number; token: string; username: string; email: string; created_at: number }
+type RegisterResponse = { uid: number; username: string; email: string; created_at: number }
 
 const onRegister = async () => {
   regError.value = ''
@@ -615,7 +626,7 @@ const onRegister = async () => {
   regLoading.value = true
   try {
     const res = await postJson<RegisterResponse>(
-      '/api/register',
+      '/api/v1/auth/register',
       { username: regUsername.value, email: regEmail.value, password: regPassword.value },
       { credentials: 'include' },
     )
@@ -624,8 +635,15 @@ const onRegister = async () => {
       return
     }
     clearAuthCache()
-    setUserProfile(res.data)
+    setUserProfile({
+      uid: res.data.uid,
+      username: res.data.username,
+      email: res.data.email,
+      created_at: 0,
+    })
     window.location.href = '/main'
+  } catch (e: any) {
+    regError.value = e?.message || '注册处理失败'
   } finally {
     regLoading.value = false
   }

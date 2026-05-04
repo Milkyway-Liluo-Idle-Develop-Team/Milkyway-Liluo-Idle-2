@@ -1,103 +1,159 @@
-import { send, sendAndWait, WsMessageType } from './ws'
-import { postJson } from './api'
+import { send } from './ws'
+import { USE_JSON } from './config'
+import {
+  QueueAppendReq,
+  QueueRemoveReq,
+  QueueMoveReq,
+  type QueueSetEntry,
+  QueueSetReq,
+} from '@/pb/queue'
+import { EquipReq, UnequipReq } from '@/pb/equipment'
 import type { BattleListItem, BattleState } from '@/types/BattleResponse'
 
+// ---------------------------------------------------------------------------
+// ID Registry — populated by the store after loading static config
+// ---------------------------------------------------------------------------
+let idRegistry: {
+  items: Record<string, number>
+  events: Record<string, number>
+  skills: Record<string, number>
+} | null = null
+
+export function setActionIdRegistry(registry: {
+  items: Record<string, number>
+  events: Record<string, number>
+  skills: Record<string, number>
+}) {
+  idRegistry = registry
+}
+
+function itemNumId(strId: string): number {
+  if (!idRegistry) throw new Error('ID registry not loaded')
+  const num = idRegistry.items[strId]
+  if (num === undefined) throw new Error(`Unknown item ID: ${strId}`)
+  return num
+}
+
+function eventNumId(strId: string): number {
+  if (!idRegistry) throw new Error('ID registry not loaded')
+  const num = idRegistry.events[strId]
+  if (num === undefined) throw new Error(`Unknown event ID: ${strId}`)
+  return num
+}
+
+// ---------------------------------------------------------------------------
+// State sync (new backend: state comes via WS push, no explicit sync needed)
+// ---------------------------------------------------------------------------
 export async function syncAndSettle(): Promise<Record<string, unknown> | undefined> {
-  const msg = await sendAndWait(WsMessageType.SYNC, {}, WsMessageType.DELTA)
-  const payload = msg.data as { patch?: Record<string, unknown> } | undefined
-  return payload?.patch
+  return undefined
 }
 
 export async function requestSync(): Promise<void> {
-  await send(WsMessageType.SYNC, {})
+  // No-op in new backend
+}
+
+// ---------------------------------------------------------------------------
+// Loop / Instant / Upgrade — all map to queue operations in new backend
+// ---------------------------------------------------------------------------
+function queueAppendPayload(eventId: string, iterations?: number) {
+  const data = {
+    eventId: eventNumId(eventId),
+    targetCycles: iterations ?? -1,
+    queueId: 0,
+  }
+  return USE_JSON ? data : QueueAppendReq.encode(data).finish()
 }
 
 export async function startLoop(eventId: string, iterations?: number): Promise<void> {
-  await send(WsMessageType.ACTION_LOOP, { event_id: eventId, iterations })
+  await send('queue.append', queueAppendPayload(eventId, iterations))
 }
 
 export async function stopLoop(): Promise<void> {
-  await send(WsMessageType.ACTION_LOOP_STOP, {})
+  // New backend auto-executes queue; no explicit stop.
 }
 
 export async function queueAppend(eventId: string, iterations?: number): Promise<void> {
-  await send(WsMessageType.QUEUE_APPEND, { event_id: eventId, iterations })
+  await send('queue.append', queueAppendPayload(eventId, iterations))
 }
 
 export async function queueRemove(index: number): Promise<void> {
-  await send(WsMessageType.QUEUE_REMOVE, { index })
+  const data = { position: index, queueId: 0 }
+  await send('queue.remove', USE_JSON ? data : QueueRemoveReq.encode(data).finish())
 }
 
 export async function queueSwap(fromIndex: number, toIndex: number): Promise<void> {
-  await send(WsMessageType.QUEUE_SWAP, { from_index: fromIndex, to_index: toIndex })
+  const data = { fromPosition: fromIndex, toPosition: toIndex, queueId: 0 }
+  await send('queue.move', USE_JSON ? data : QueueMoveReq.encode(data).finish())
 }
 
 export async function queueBringToFront(index: number): Promise<void> {
-  await send(WsMessageType.QUEUE_BRING_TO_FRONT, { index })
+  const data = { fromPosition: index, toPosition: 0, queueId: 0 }
+  await send('queue.move', USE_JSON ? data : QueueMoveReq.encode(data).finish())
 }
 
 export async function executeInstant(eventId: string): Promise<void> {
-  await send(WsMessageType.INSTANT, { event_id: eventId })
+  await send('queue.append', queueAppendPayload(eventId, 1))
 }
 
 export async function executeUpgrade(eventId: string): Promise<void> {
-  await send(WsMessageType.UPGRADE, { event_id: eventId })
+  await send('queue.append', queueAppendPayload(eventId, 1))
 }
 
+export async function queueSet(entries: Array<{ eventId: string; targetCycles: number }>): Promise<void> {
+  const pbEntries: QueueSetEntry[] = entries.map((e) => ({
+    eventId: eventNumId(e.eventId),
+    targetCycles: e.targetCycles,
+  }))
+  const data = { entries: pbEntries, queueId: 0 }
+  await send('queue.set', USE_JSON ? data : QueueSetReq.encode(data).finish())
+}
+
+// ---------------------------------------------------------------------------
+// Equipment
+// ---------------------------------------------------------------------------
 export async function equipItem(itemId: string, slot: string): Promise<void> {
-  await send(WsMessageType.EQUIP, { item_id: itemId, slot })
+  const data = { itemId: itemNumId(itemId), itemState: 0, slot }
+  await send('inventory.equip', USE_JSON ? data : EquipReq.encode(data).finish())
 }
 
 export async function unequipItem(slot: string): Promise<void> {
-  await send(WsMessageType.UNEQUIP, { slot })
+  const data = { slot }
+  await send('inventory.unequip', USE_JSON ? data : UnequipReq.encode(data).finish())
 }
 
+// ---------------------------------------------------------------------------
+// Battle (backend placeholder — return empty to keep UI from crashing)
+// ---------------------------------------------------------------------------
 export async function fetchBattleList(): Promise<BattleListItem[]> {
-  const msg = await sendAndWait(WsMessageType.BATTLE_LIST, {}, WsMessageType.BATTLE_LIST)
-  return (msg.data as BattleListItem[]) ?? []
+  return []
 }
 
 export async function syncBattleState(): Promise<BattleState | null> {
-  const msg = await sendAndWait(WsMessageType.BATTLE_STATE, {}, WsMessageType.BATTLE_STATE)
-  return (msg.data as BattleState | null) ?? null
+  return null
 }
 
 export async function startBattle(battleId: string): Promise<BattleState> {
-  const msg = await sendAndWait(
-    WsMessageType.BATTLE_START,
-    { battle_id: battleId, player_skills: [] },
-    WsMessageType.BATTLE_STATE,
-  )
-  return msg.data as BattleState
+  throw new Error('Battle system not yet implemented in new backend')
 }
 
 export async function stopBattle(): Promise<BattleState> {
-  const msg = await sendAndWait(WsMessageType.BATTLE_STOP, {}, WsMessageType.BATTLE_STATE)
-  return msg.data as BattleState
+  throw new Error('Battle system not yet implemented in new backend')
 }
 
+// ---------------------------------------------------------------------------
+// Enhance (backend not yet implemented)
+// ---------------------------------------------------------------------------
 export async function enhancePreview(slotType: string, anchorSlot: string): Promise<unknown> {
-  const msg = await sendAndWait(
-    WsMessageType.ENHANCE_PREVIEW,
-    { slot_type: slotType, anchor_slot: anchorSlot },
-    WsMessageType.ENHANCE_PREVIEW,
-  )
-  return msg.data
+  throw new Error('Enhance system not yet implemented in new backend')
 }
 
 export async function enhanceExecute(slotType: string, anchorSlot: string): Promise<unknown> {
-  const msg = await sendAndWait(
-    WsMessageType.ENHANCE_EXECUTE,
-    { slot_type: slotType, anchor_slot: anchorSlot },
-    WsMessageType.ENHANCE_EXECUTE,
-  )
-  return msg.data
+  throw new Error('Enhance system not yet implemented in new backend')
 }
 
+// ---------------------------------------------------------------------------
+// Debug
+// ---------------------------------------------------------------------------
 export async function skipTime(seconds: number): Promise<{ log: Array<{ event_id: string; iterations: number; experience: number }> }> {
-  const res = await postJson<{ log: Array<{ event_id: string; iterations: number; experience: number }> }>('/api/debug/skip_time', { seconds }, { credentials: 'include' })
-  if (!res.ok) {
-    throw new Error(res.error)
-  }
-  return res.data
+  throw new Error('skip_time not available in new backend')
 }

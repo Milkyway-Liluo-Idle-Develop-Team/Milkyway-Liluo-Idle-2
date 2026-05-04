@@ -1,5 +1,5 @@
 import { reactive } from 'vue'
-import { apiUrl, postJson } from './api'
+import { apiUrl, postJson, getJson } from './api'
 
 const AUTH_TTL_MS = 30_000
 
@@ -33,11 +33,18 @@ export async function isAuthenticated(): Promise<boolean> {
   if (cachedAuth && Date.now() - cachedAuth.checkedAt < AUTH_TTL_MS) return cachedAuth.ok
 
   try {
-    const res = await fetch(apiUrl('/api/heartbeat'), {
-      method: 'POST',
+    const res = await getJson<{ uid: number; username: string; email: string; created_at: number }>('/api/v1/auth/me', {
       credentials: 'include',
     })
     const ok = res.ok
+    if (ok) {
+      setUserProfile({
+        uid: res.data.uid,
+        username: res.data.username,
+        email: res.data.email,
+        created_at: res.data.created_at,
+      })
+    }
     cachedAuth = { ok, checkedAt: Date.now() }
     return ok
   } catch {
@@ -47,9 +54,8 @@ export async function isAuthenticated(): Promise<boolean> {
 }
 
 export async function logout(): Promise<{ ok: true } | { ok: false; error: string }> {
-  const res = await postJson<{ success: true }>('/api/logout', {}, { credentials: 'include' })
+  const res = await postJson<Record<string, unknown>>('/api/v1/auth/logout', {}, { credentials: 'include' })
   clearAuthCache()
   if (!res.ok) return { ok: false, error: res.error }
   return { ok: true }
 }
-

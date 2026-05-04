@@ -1,90 +1,22 @@
 import { API_BASE_URL } from './api'
+import { Envelope } from '@/pb/envelope'
+import type { Error as PbError } from '@/pb/envelope'
+import { USE_JSON } from './config'
 
-function getWsUrl(): string {
-  const base = API_BASE_URL
-  return base.replace(/^http/, 'ws') + '/ws'
-}
-
-// ============================================================================
-// Message type enum — mirrors proto WsMessageType
-// Switching to protobuf later only requires changing encode/decode below.
-// ============================================================================
-export enum WsMessageType {
-  UNKNOWN = 'unknown',
-  ERROR = 'error',
-  DELTA = 'delta',
-  GAMEPLAY = 'gameplay',
-  GAMEPLAY_LIGHT = 'gameplay_light',
-
-  ACTION_LOOP = 'action_loop',
-  ACTION_LOOP_STOP = 'action_loop_stop',
-  SYNC = 'sync',
-  INSTANT = 'instant',
-  UPGRADE = 'upgrade',
-  EQUIP = 'equip',
-  UNEQUIP = 'unequip',
-  ENHANCE_PREVIEW = 'enhance_preview',
-  ENHANCE_EXECUTE = 'enhance_execute',
-  SET_QUEUE = 'set_queue',
-  QUEUE_APPEND = 'queue_append',
-  QUEUE_REMOVE = 'queue_remove',
-  QUEUE_INSERT = 'queue_insert',
-  QUEUE_REPLACE = 'queue_replace',
-  QUEUE_SWAP = 'queue_swap',
-  QUEUE_BRING_TO_FRONT = 'queue_bring_to_front',
-
-  BATTLE_LIST = 'battle_list',
-  BATTLE_START = 'battle_start',
-  BATTLE_STATE = 'battle_state',
-  BATTLE_STOP = 'battle_stop',
-}
+const WS_URL = API_BASE_URL.replace(/^http/, 'ws') + '/ws'
 
 // ============================================================================
-// Serialization abstraction
-// Today: JSON. Tomorrow: protobuf WsMessage.encode / decode.
+// Connection state
 // ============================================================================
-export type WsPayload = Record<string, unknown>
-
-export interface WsMessage {
-  type: WsMessageType
-  req_id?: number
-  [key: string]: unknown
-}
-
-function encodeMessage(msg: WsMessage): string {
-  // TODO(protobuf): replace with protobuf.serialize(msg)
-  return JSON.stringify(msg)
-}
-
-function decodeMessage(raw: string): WsMessage | undefined {
-  // TODO(protobuf): replace with protobuf.deserialize(raw)
-  try {
-    return JSON.parse(raw) as WsMessage
-  } catch {
-    return undefined
-  }
-}
-
 let ws: WebSocket | null = null
 let reconnectDelay = 1000
 let reconnectAttempts = 0
 const MAX_RECONNECT_ATTEMPTS = 20
 let reconnectTimer: ReturnType<typeof setTimeout> | null = null
-let reqIdSeq = 0
-const pending = new Map<
-  number,
-  {
-    resolve: (value: unknown) => void
-    reject: (reason: Error) => void
-    timer: ReturnType<typeof setTimeout>
-  }
->()
-const handlers = new Map<WsMessageType, Set<(msg: WsMessage, reqId?: number) => void>>()
 let intentionalClose = false
 let connectingPromise: Promise<void> | null = null
 
 export type WsStatus = 'closed' | 'connecting' | 'open'
-
 let currentStatus: WsStatus = 'closed'
 const statusListeners = new Set<(s: WsStatus) => void>()
 
@@ -102,6 +34,18 @@ export function onStatusChange(fn: (s: WsStatus) => void): () => void {
   return () => statusListeners.delete(fn)
 }
 
+// ============================================================================
+// Request/response correlation
+// ============================================================================
+const pending = new Map<
+  string,
+  {
+    resolve: (env: Envelope) => void
+    reject: (reason: Error) => void
+    timer: ReturnType<typeof setTimeout>
+  }
+>()
+
 function rejectPending(reason: Error) {
   for (const p of pending.values()) {
     clearTimeout(p.timer)
@@ -110,6 +54,22 @@ function rejectPending(reason: Error) {
   pending.clear()
 }
 
+// ============================================================================
+// Message handlers (broadcast / server-push)
+// ============================================================================
+export type PushHandler = (type: string, payload: Uint8Array | unknown, envelope: Envelope) => void
+
+const pushHandlers = new Map<string, Set<PushHandler>>()
+
+export function onMessage(type: string, handler: PushHandler): () => void {
+  if (!pushHandlers.has(type)) pushHandlers.set(type, new Set())
+  pushHandlers.get(type)!.add(handler)
+  return () => pushHandlers.get(type)?.delete(handler)
+}
+
+// ============================================================================
+// Low-level connection
+// ============================================================================
 function cleanupSocket() {
   if (ws) {
     ws.onopen = null
@@ -130,7 +90,7 @@ function cleanupSocket() {
 function tryReconnect() {
   if (intentionalClose) return
   if (reconnectAttempts >= MAX_RECONNECT_ATTEMPTS) {
-    console.error(`WS reconnect limit (${MAX_RECONNECT_ATTEMPTS}) reached, giving up`)
+    console.error(`WS reconnect limit (${MAX_RECONNECT_ATTEMPTS}) reached`)
     return
   }
   const delay = reconnectDelay * (0.8 + Math.random() * 0.4)
@@ -142,11 +102,30 @@ function tryReconnect() {
   reconnectDelay = Math.min(reconnectDelay * 2, 30000)
 }
 
+/** Decode incoming frame. JSON mode returns parsed payload as rawPayload; binary mode uses envelope.payload. */
+function decodeEnvelope(data: string | ArrayBuffer): { envelope: Envelope; rawPayload?: unknown } {
+  if (USE_JSON) {
+    const parsed = JSON.parse(data as string)
+    return {
+      envelope: {
+        id: parsed.id ?? '',
+        type: parsed.type ?? '',
+        payload: undefined,
+        error: parsed.error
+          ? { code: parsed.error.code ?? '', message: parsed.error.message ?? '', fields: parsed.error.fields }
+          : undefined,
+      },
+      rawPayload: parsed.payload,
+    }
+  }
+  const envelope = Envelope.decode(new Uint8Array(data as ArrayBuffer))
+  return { envelope, rawPayload: envelope.payload }
+}
+
 function connectInternal(): Promise<void> {
   if (connectingPromise) return connectingPromise
 
-  let promise: Promise<void>
-  promise = new Promise((resolve, reject) => {
+  const promise = new Promise<void>((resolve, reject) => {
     if (ws?.readyState === WebSocket.OPEN) {
       resolve()
       return
@@ -173,7 +152,10 @@ function connectInternal(): Promise<void> {
     }
 
     setStatus('connecting')
-    const socket = new WebSocket(getWsUrl())
+    const socket = new WebSocket(WS_URL)
+    if (!USE_JSON) {
+      socket.binaryType = 'arraybuffer'
+    }
     ws = socket
 
     socket.onopen = () => {
@@ -185,23 +167,36 @@ function connectInternal(): Promise<void> {
     }
 
     socket.onmessage = (event) => {
-      const msg = decodeMessage(String(event.data))
-      if (!msg) return
-      const reqId = typeof msg.req_id === 'number' ? msg.req_id : undefined
-      if (reqId !== undefined && pending.has(reqId)) {
-        const p = pending.get(reqId)!
+      let envelope: Envelope
+      let rawPayload: unknown
+      try {
+        const decoded = decodeEnvelope(event.data as string | ArrayBuffer)
+        envelope = decoded.envelope
+        rawPayload = decoded.rawPayload
+      } catch (e) {
+        console.error('WS decode error', e)
+        return
+      }
+
+      // Correlated response
+      if (envelope.id && pending.has(envelope.id)) {
+        const p = pending.get(envelope.id)!
         clearTimeout(p.timer)
-        pending.delete(reqId)
-        if (msg.type === WsMessageType.ERROR) {
-          p.reject(new Error(String(msg.message || 'Server error')))
+        pending.delete(envelope.id)
+        if (envelope.error) {
+          p.reject(new Error(envelope.error.message || 'Server error'))
         } else {
-          p.resolve(msg)
+          p.resolve(envelope)
         }
         return
       }
-      const type = (msg.type as WsMessageType) || WsMessageType.UNKNOWN
-      if (type && handlers.has(type)) {
-        handlers.get(type)!.forEach((h) => h(msg, reqId))
+
+      // Broadcast push
+      const type = envelope.type || 'unknown'
+      const payload = USE_JSON ? rawPayload : (envelope.payload || new Uint8Array(0))
+      const handlers = pushHandlers.get(type)
+      if (handlers) {
+        handlers.forEach((h) => h(type, payload, envelope))
       }
     }
 
@@ -221,7 +216,6 @@ function connectInternal(): Promise<void> {
   promise.finally(() => {
     connectingPromise = null
   })
-
   return promise
 }
 
@@ -235,51 +229,47 @@ export function disconnect(): void {
   rejectPending(new Error('Disconnected'))
 }
 
-export async function send(type: WsMessageType, payload: WsPayload = {}): Promise<void> {
+// ============================================================================
+// Send helpers — unified interface, transport-layer switch only
+// ============================================================================
+
+/** Send a message. `payload` is a JS object in JSON mode, Uint8Array in binary mode. */
+export async function send(type: string, payload: unknown): Promise<void> {
   await connect()
   if (!ws || ws.readyState !== WebSocket.OPEN) {
     throw new Error('WebSocket is not open')
   }
-  ws.send(encodeMessage({ type, ...payload }))
+  const id = crypto.randomUUID()
+  if (USE_JSON) {
+    ws.send(JSON.stringify({ id, type, payload }))
+  } else {
+    ws.send(Envelope.encode({ id, type, payload: payload as Uint8Array }).finish())
+  }
 }
 
+/** Send and wait for correlated response. */
 export async function sendAndWait(
-  type: WsMessageType,
-  payload: WsPayload = {},
-  _responseType: WsMessageType,
+  type: string,
+  payload: unknown,
   timeoutMs = 10000,
-): Promise<WsMessage> {
+): Promise<Envelope> {
   await connect()
   return new Promise((resolve, reject) => {
     if (!ws || ws.readyState !== WebSocket.OPEN) {
       reject(new Error('WebSocket is not open'))
       return
     }
-    const reqId = ++reqIdSeq
+    const id = crypto.randomUUID()
     const timer = setTimeout(() => {
-      pending.delete(reqId)
+      pending.delete(id)
       reject(new Error(`Request timeout: ${type}`))
     }, timeoutMs)
 
-    pending.set(reqId, {
-      resolve: resolve as (value: unknown) => void,
-      reject,
-      timer,
-    })
-
-    ws.send(encodeMessage({ type, ...payload, req_id: reqId }))
+    pending.set(id, { resolve, reject, timer })
+    if (USE_JSON) {
+      ws.send(JSON.stringify({ id, type, payload }))
+    } else {
+      ws.send(Envelope.encode({ id, type, payload: payload as Uint8Array }).finish())
+    }
   })
-}
-
-export function onMessage(
-  type: WsMessageType,
-  handler: (msg: WsMessage, reqId?: number) => void,
-): () => void {
-  if (!handlers.has(type)) {
-    handlers.set(type, new Set())
-  }
-  handlers.get(type)!.add(handler)
-  return () => {
-    handlers.get(type)?.delete(handler)
-  }
 }

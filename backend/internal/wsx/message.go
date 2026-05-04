@@ -22,9 +22,10 @@ import (
 
 // Inbound is a message received from a client.
 type Inbound struct {
-	ID      string
-	Type    string
-	Payload []byte
+	ID       string
+	Type     string
+	Payload  []byte
+	JSONCodec bool // true = payload is protojson, false = protobuf binary
 }
 
 // Outbound is a message sent to a client. Either Payload or Error is set,
@@ -37,16 +38,20 @@ type Outbound struct {
 	Error   *apperror.AppError
 }
 
-// DecodePayload unmarshals an Inbound's payload into dst. Tries proto binary
-// first, then protojson (dev mode) as fallback.
+// DecodePayload unmarshals an Inbound's payload into dst.
+// Uses protojson when JSONCodec is set, otherwise strict protobuf binary.
 func (in Inbound) DecodePayload(dst proto.Message) error {
 	if len(in.Payload) == 0 {
 		return nil
 	}
-	if err := proto.Unmarshal(in.Payload, dst); err != nil {
-		if err2 := protojson.Unmarshal(in.Payload, dst); err2 != nil {
-			return apperror.BadRequest("invalid message payload").WithCause(err)
+	if in.JSONCodec {
+		if err := protojson.Unmarshal(in.Payload, dst); err != nil {
+			return apperror.BadRequest("invalid JSON payload").WithCause(err)
 		}
+		return nil
+	}
+	if err := proto.Unmarshal(in.Payload, dst); err != nil {
+		return apperror.BadRequest("invalid binary payload").WithCause(err)
 	}
 	return nil
 }

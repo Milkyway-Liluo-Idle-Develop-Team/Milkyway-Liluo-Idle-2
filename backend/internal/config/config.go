@@ -72,8 +72,8 @@ type WS struct {
 	SendBuffer int `env:"WS_SEND_BUFFER" envDefault:"64"`
 	// AllowAnonymous allows unauthenticated WebSocket connections.
 	AllowAnonymous bool `env:"WS_ALLOW_ANONYMOUS" envDefault:"false"`
-	// Codec: "proto" (binary, default) or "json" (protojson text, for dev).
-	Codec string `env:"WS_CODEC" envDefault:"proto"`
+	// Codec: "proto" (binary, prod default) or "json" (protojson text, for dev).
+	Codec string `env:"WS_CODEC" envDefault:"json"`
 	// SessionGracePeriod is how long a session stays in memory after disconnect.
 	SessionGracePeriod time.Duration `env:"WS_SESSION_GRACE_PERIOD" envDefault:"30s"`
 	// GameLoopTick is the main session ticker interval.

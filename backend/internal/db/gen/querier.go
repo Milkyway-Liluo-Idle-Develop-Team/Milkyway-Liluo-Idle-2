@@ -27,6 +27,7 @@ type Querier interface {
 	RevokeAllSessionsForUser(ctx context.Context, userID int64) error
 	RevokeSession(ctx context.Context, id string) error
 	TouchSession(ctx context.Context, id string) error
+	UpdateUserEmail(ctx context.Context, arg UpdateUserEmailParams) error
 	UpdateUserPassword(ctx context.Context, arg UpdateUserPasswordParams) error
 	UpsertActiveEvent(ctx context.Context, arg UpsertActiveEventParams) error
 	UpsertEquipment(ctx context.Context, arg UpsertEquipmentParams) error
