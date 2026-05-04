@@ -130,9 +130,11 @@ func runTick(s *PlayerSession, mgr *Manager, delta float64) (dirty bool) {
 	// Phase 1: drain commands (inside lock so changes are recorded).
 	// Only create a recorder and build diff if there were actually commands.
 	rec := mgr.NewRecorder()
+	rec.PushNamespace("cmd")
 	s.SetRecorder(rec)
 	hasCmds := s.drainCommandsLocked()
 	s.ClearRecorder()
+	rec.PopNamespace()
 	if hasCmds {
 		cmdDiff, _ := mgr.Registry().BuildDiff(rec)
 		if cmdDiff != nil && !isStateDiffEmpty(cmdDiff) {

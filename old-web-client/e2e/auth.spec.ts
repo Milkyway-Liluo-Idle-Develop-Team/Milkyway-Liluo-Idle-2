@@ -1,39 +1,52 @@
 import { test, expect } from './fixtures'
 
-test.describe('Auth pages', () => {
-  test('login page loads', async ({ page }) => {
-    await page.goto('/login')
-    await expect(page.locator('h1')).toContainText('登录')
-  })
+test.describe('Auth flow', () => {
+  test('register → auto login → redirect to /main', async ({ page }) => {
+    const username = `reg_${Date.now()}`
 
-  test('register page loads', async ({ page }) => {
     await page.goto('/register')
     await expect(page.locator('h1')).toContainText('注册')
+
+    // Use #register-form scope to avoid collision with login form inputs
+    await page.fill('#register-form input[aria-label="用户名"]', username)
+    await page.fill('#register-form input[aria-label="邮箱"]', `${username}@t.com`)
+    await page.fill('#register-form input[aria-label="密码"]', 'testpass123')
+    await page.fill('#register-form input[aria-label="确认密码"]', 'testpass123')
+    await page.click('button:has-text("注册")')
+
+    // Should redirect to /main after successful registration
+    await page.waitForURL('/main', { timeout: 10000 })
+    await expect(page.locator('body')).toBeVisible()
+
+    // Cleanup
+    await page.request.post('http://localhost:8080/api/v1/test/delete-user', {
+      data: { username },
+    })
   })
 
-  test('login with invalid credentials shows error', async ({ page }) => {
+  test('login with bad credentials shows error', async ({ page }) => {
     await page.goto('/login')
-    await page.fill('input[aria-label="用户名"]', 'nonexistent_user')
-    await page.fill('input[aria-label="密码"]', 'wrongpassword')
-    await page.click('button[type="submit"]')
+    await page.fill('#login-form input[aria-label="用户名"]', 'nobody_' + Date.now())
+    await page.fill('#login-form input[aria-label="密码"]', 'wrongpass')
+    await page.click('button:has-text("登录")')
 
-    // Error toast or inline message should appear
     await expect(page.locator('body')).toContainText('invalid credentials', { timeout: 5000 })
   })
 
-  test('authenticated user is redirected from login to main', async ({ page }) => {
-    // This test assumes the user is already logged in (cookie present).
-    // In a real suite you would log in via API first.
-    test.skip(true, 'requires pre-authenticated session')
-    await page.goto('/login')
-    await page.waitForURL('/main', { timeout: 5000 })
-    await expect(page.locator('body')).toContainText('主界面')
-  })
-
-  test('unauthenticated user is blocked from main', async ({ page, context }) => {
-    // Clear any existing cookies to ensure unauthenticated state
+  test('unauthenticated user is blocked from /main', async ({ page, context }) => {
     await context.clearCookies()
     await page.goto('/main')
+    await page.waitForURL('/login**', { timeout: 5000 })
+  })
+
+  test('logout redirects to login', async ({ authPage, context }) => {
+    const { page } = authPage
+
+    // Call logout API then clear cookies
+    await page.request.post('http://localhost:8080/api/v1/auth/logout')
+    await context.clearCookies()
+
+    await page.reload()
     await page.waitForURL('/login**', { timeout: 5000 })
   })
 })

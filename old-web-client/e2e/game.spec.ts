@@ -1,38 +1,93 @@
 import { test, expect } from './fixtures'
 
-test.describe('Game main page', () => {
-  // In a real suite you would log in via API in a global-setup or fixture
-  // and store the auth cookie so every test starts authenticated.
-  test.skip('WS connects and receives state.full push', async ({ page }) => {
-    await page.goto('/main')
+test.describe('Game session + WebSocket', () => {
+  test('WS connects and state is populated', async ({ authPage }) => {
+    const { page, ws } = authPage
+    expect(ws.url()).toContain('ws://')
 
-    // Wait for the WebSocket to open
-    const wsPromise = page.waitForEvent('websocket', { timeout: 10000 })
-    await page.waitForTimeout(500) // give router guard time to connect
-    const ws = await wsPromise
-
-    // Verify the WS URL points to our backend
-    expect(ws.url()).toContain('/ws')
-
-    // Wait for a state.full message to arrive
-    const msgPromise = ws.waitForEvent('framereceived', {
-      predicate: (frame) => {
-        try {
-          const payload = JSON.parse(frame.payload as string)
-          return payload.type === 'state.full'
-        } catch {
-          return false
-        }
-      },
-      timeout: 15000,
+    const hasSkills = await page.evaluate(() => {
+      const store = (window as any).__gameStore
+      return store && Object.keys(store.state.skills).length > 0
     })
-    await msgPromise
+    expect(hasSkills).toBe(true)
   })
 
-  test('main page renders navigation tabs', async ({ page }) => {
-    await page.goto('/main')
-    // Even if not authenticated, the page should at least attempt to render
-    // (router guard will redirect, but we check the auth page shows)
-    await expect(page.locator('body')).toBeVisible()
+  test('execute instant event without error', async ({ authPage }) => {
+    const { page, ws } = authPage
+
+    // Collect WS messages for 3s
+    const messages: Array<{ type: string }> = []
+    const handler = (f: any) => {
+      try {
+        const msg = JSON.parse(f.payload as string)
+        messages.push({ type: msg.type })
+      } catch {
+        // ignore non-json frames
+      }
+    }
+    ws.on('framereceived', handler)
+
+    const result = await page.evaluate(() => {
+      const store = (window as any).__gameStore
+      const actions = (window as any).__actions
+
+      const events = store.loopEvents as Array<{ id: string; name: string }>
+      const target = events[0]
+      if (!target) return { ok: false, reason: 'no events in config', eventsCount: events.length }
+
+      try {
+        actions.executeInstant(target.id)
+        return { ok: true, eventId: target.id }
+      } catch (e: any) {
+        return { ok: false, reason: e?.message || String(e), eventId: target.id }
+      }
+    })
+
+    expect(result.ok).toBe(true)
+
+    await page.waitForTimeout(3000)
+    ws.off('framereceived', handler)
+
+    console.log('WS messages (instant):', messages.map((m) => m.type))
+    const stateMessages = messages.filter((m) => m.type === 'state.diff' || m.type === 'state.full')
+    expect(stateMessages.length).toBeGreaterThan(0)
+  })
+
+  test('queue append without error', async ({ authPage }) => {
+    const { page, ws } = authPage
+
+    const messages: Array<{ type: string }> = []
+    const handler = (f: any) => {
+      try {
+        const msg = JSON.parse(f.payload as string)
+        messages.push({ type: msg.type })
+      } catch {}
+    }
+    ws.on('framereceived', handler)
+
+    const result = await page.evaluate(() => {
+      const store = (window as any).__gameStore
+      const actions = (window as any).__actions
+
+      const events = store.loopEvents as Array<{ id: string; name: string }>
+      const target = events[0]
+      if (!target) return { ok: false, reason: 'no events in config' }
+
+      try {
+        actions.queueAppend(target.id, 5)
+        return { ok: true, eventId: target.id }
+      } catch (e: any) {
+        return { ok: false, reason: e?.message || String(e) }
+      }
+    })
+
+    expect(result.ok).toBe(true)
+
+    await page.waitForTimeout(3000)
+    ws.off('framereceived', handler)
+
+    console.log('WS messages (queue):', messages.map((m) => m.type))
+    const stateMessages = messages.filter((m) => m.type === 'state.diff' || m.type === 'state.full')
+    expect(stateMessages.length).toBeGreaterThan(0)
   })
 })
