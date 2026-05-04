@@ -18,7 +18,9 @@ func event(id gameconfig.EventID) unlockEntry {
 }
 
 func itemUnlock(it item.Item) unlockEntry {
-	// Use numeric encoding: "item_id/item_state"
+	if def, ok := gameconfig.GetItemDefByID(it.ID); ok {
+		return unlockEntry{typ: "item", id: def.StringID()}
+	}
 	return unlockEntry{typ: "item", id: it.String()}
 }
 

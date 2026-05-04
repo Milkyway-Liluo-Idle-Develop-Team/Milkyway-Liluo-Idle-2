@@ -1,6 +1,5 @@
 // Package bestiary tracks which events, items, and areas the player has
-// discovered. It is purely in-memory —unlocked events are already in DB;
-// discovered items and areas are inferred from inventory and actions.
+// discovered. Events and items are persisted to DB; areas are inferred.
 package bestiary
 
 import (
@@ -22,6 +21,8 @@ type State struct {
 
 	// dirtyEvents tracks events newly unlocked this cycle, for Flush.
 	dirtyEvents map[gameconfig.EventID]bool
+	// dirtyItems tracks items newly discovered this cycle, for Flush.
+	dirtyItems map[item.Item]bool
 
 	recorder *record.Recorder
 }
@@ -34,6 +35,7 @@ func New(userID int64) *State {
 		items:       make(map[item.Item]bool),
 		areas:       make(map[gameconfig.MapID]bool),
 		dirtyEvents: make(map[gameconfig.EventID]bool),
+		dirtyItems:  make(map[item.Item]bool),
 	}
 }
 
@@ -53,6 +55,14 @@ func (s *State) LoadItems(items []item.Item) {
 	}
 }
 
+// LoadDiscoveredItems bulk-adds already-discovered items from the database.
+func (s *State) LoadDiscoveredItems(rows []dbgen.PlayerDiscoveredItem) {
+	for _, r := range rows {
+		it := item.Item{ID: item.ID(r.ItemID), State: 0}
+		s.items[it] = true
+	}
+}
+
 // LoadAreas bulk-adds already-visited areas without writing records.
 func (s *State) LoadAreas(ids []gameconfig.MapID) {
 	for _, id := range ids {
@@ -68,11 +78,8 @@ func (s *State) UnlockEvent(id gameconfig.EventID) {
 	s.record(event(id))
 }
 
-// Flush writes newly unlocked events to the database.
+// Flush writes newly unlocked events and discovered items to the database.
 func (s *State) Flush(ctx context.Context, q *dbgen.Queries) error {
-	if len(s.dirtyEvents) == 0 {
-		return nil
-	}
 	for id := range s.dirtyEvents {
 		if err := q.UpsertUnlockedEvent(ctx, dbgen.UpsertUnlockedEventParams{
 			UserID:  s.userID,
@@ -82,6 +89,16 @@ func (s *State) Flush(ctx context.Context, q *dbgen.Queries) error {
 		}
 	}
 	s.dirtyEvents = make(map[gameconfig.EventID]bool)
+
+	for it := range s.dirtyItems {
+		if err := q.UpsertDiscoveredItem(ctx, dbgen.UpsertDiscoveredItemParams{
+			UserID: s.userID,
+			ItemID: int64(it.ID),
+		}); err != nil {
+			return fmt.Errorf("bestiary: upsert item %v: %w", it, err)
+		}
+	}
+	s.dirtyItems = make(map[item.Item]bool)
 	return nil
 }
 
@@ -89,6 +106,7 @@ func (s *State) Flush(ctx context.Context, q *dbgen.Queries) error {
 func (s *State) UnlockItem(it item.Item) {
 	if s.items[it] { return }
 	s.items[it] = true
+	s.dirtyItems[it] = true
 	s.record(itemUnlock(it))
 }
 

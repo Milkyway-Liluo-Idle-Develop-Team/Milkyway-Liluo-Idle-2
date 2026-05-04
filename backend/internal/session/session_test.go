@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"github.com/edrowsluo/new-mli/backend/internal/attribute"
+	"github.com/edrowsluo/new-mli/backend/internal/bestiary"
 	dbgen "github.com/edrowsluo/new-mli/backend/internal/db/gen"
 	"github.com/edrowsluo/new-mli/backend/internal/equipment"
 	pb "github.com/edrowsluo/new-mli/backend/pb"
@@ -44,6 +45,7 @@ func newLockedSession(t *testing.T, mgr *session.Manager, userID int64) (*sessio
 	t.Helper()
 	id := uuid.New()
 	s := session.New(id, userID, testLogger())
+	s.SetBestiary(bestiary.New(userID))
 	mgr.Add(s)
 	locked, ok := mgr.LockSession(userID)
 	if !ok {
@@ -466,6 +468,7 @@ func TestSessionWithInventory(t *testing.T) {
 
 	s := session.New(uuid.New(), 1, testLogger())
 	s.SetInv(invSt)
+	s.SetBestiary(bestiary.New(1))
 	mgr.Add(s)
 
 	r := attribute.Get()
@@ -761,6 +764,7 @@ func TestEquipInventoryDiffReason(t *testing.T) {
 	mgr := session.NewManagerWithoutTick(reg, nil)
 	s := session.New(uuid.New(), 1, testLogger())
 	s.SetInv(invSt)
+	s.SetBestiary(bestiary.New(1))
 	mgr.Add(s)
 
 	locked, _ := mgr.LockSession(s.UserID)
@@ -904,6 +908,7 @@ func TestEquipUnequipDiffReason(t *testing.T) {
 	mgr := session.NewManagerWithoutTick(reg, nil)
 	s := session.New(uuid.New(), 1, testLogger())
 	s.SetInv(invSt)
+	s.SetBestiary(bestiary.New(1))
 	mgr.Add(s)
 
 	locked, _ := mgr.LockSession(s.UserID)
@@ -964,6 +969,7 @@ func TestEquipRepeatedSlot(t *testing.T) {
 	mgr := session.NewManagerWithoutTick(reg, nil)
 	s := session.New(uuid.New(), 1, testLogger())
 	s.SetInv(invSt)
+	s.SetBestiary(bestiary.New(1))
 	mgr.Add(s)
 
 	locked, _ := mgr.LockSession(s.UserID)
@@ -1004,6 +1010,7 @@ func TestEquipPersistsAcrossTicks(t *testing.T) {
 	mgr := session.NewManagerWithoutTick(reg, nil)
 	s := session.New(uuid.New(), 1, testLogger())
 	s.SetInv(invSt)
+	s.SetBestiary(bestiary.New(1))
 	mgr.Add(s)
 
 	locked, _ := mgr.LockSession(s.UserID)

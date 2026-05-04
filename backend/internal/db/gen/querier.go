@@ -19,6 +19,7 @@ type Querier interface {
 	GetUserByUsername(ctx context.Context, username string) (User, error)
 	IsPlayerInit(ctx context.Context, userID int64) (int64, error)
 	LoadActiveEvents(ctx context.Context, userID int64) ([]PlayerActiveEvent, error)
+	LoadDiscoveredItems(ctx context.Context, userID int64) ([]PlayerDiscoveredItem, error)
 	LoadEquipment(ctx context.Context, userID int64) ([]LoadEquipmentRow, error)
 	LoadInventory(ctx context.Context, userID int64) ([]LoadInventoryRow, error)
 	LoadSkills(ctx context.Context, userID int64) ([]LoadSkillsRow, error)
@@ -30,6 +31,7 @@ type Querier interface {
 	UpdateUserEmail(ctx context.Context, arg UpdateUserEmailParams) error
 	UpdateUserPassword(ctx context.Context, arg UpdateUserPasswordParams) error
 	UpsertActiveEvent(ctx context.Context, arg UpsertActiveEventParams) error
+	UpsertDiscoveredItem(ctx context.Context, arg UpsertDiscoveredItemParams) error
 	UpsertEquipment(ctx context.Context, arg UpsertEquipmentParams) error
 	UpsertInventory(ctx context.Context, arg UpsertInventoryParams) error
 	UpsertSkill(ctx context.Context, arg UpsertSkillParams) error

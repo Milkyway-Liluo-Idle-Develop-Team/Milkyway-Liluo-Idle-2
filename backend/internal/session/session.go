@@ -221,7 +221,12 @@ func (s *PlayerSession) SetEquipment(st *equipment.State) {
 
 func (s *PlayerSession) HasItem(it item.Item, qty float64) bool    { return s.inv.Has(it, qty) }
 func (s *PlayerSession) GetItemQty(it item.Item) float64           { return s.inv.Get(it) }
-func (s *PlayerSession) AddItem(it item.Item, qty float64)         { s.inv.Add(it, qty) }
+func (s *PlayerSession) AddItem(it item.Item, qty float64) {
+	s.inv.Add(it, qty)
+	if qty > 0 {
+		s.best.UnlockItem(it)
+	}
+}
 func (s *PlayerSession) DeductItem(it item.Item, qty float64)      { s.inv.Deduct(it, qty) }
 func (s *PlayerSession) AddXP(sid gameconfig.SkillID, xp float64)  { s.skill.AddXP(sid, xp) }
 func (s *PlayerSession) GetAttr(id attribute.AttributeID) float64  { return s.attr.GetFinal(id) }
@@ -328,6 +333,7 @@ func (s *PlayerSession) Equip(ctx context.Context, it item.Item, slot string) er
 			s.attr.RemoveModifiers("equipment:" + oldDef.StringID())
 		}
 		s.inv.AddEquipChange(old, 1, false) // returns to inventory, reason=UNEQUIP
+		s.best.UnlockItem(old)
 		s.eq.Unequip(slot)                  // clears + records UNEQUIP
 	}
 
@@ -356,6 +362,7 @@ func (s *PlayerSession) Unequip(ctx context.Context, slot string) error {
 		s.attr.RemoveModifiers("equipment:" + def.StringID())
 	}
 	s.inv.AddEquipChange(it, 1, false)
+	s.best.UnlockItem(it)
 	s.eq.Unequip(slot)
 	return nil
 }
@@ -596,7 +603,7 @@ func (m *Manager) CreateSession(ctx context.Context, connID uuid.UUID, userID in
 		return nil, err
 	}
 
-	// Bestiary from unlocked events.
+	// Bestiary from unlocked events + discovered items.
 	best := bestiary.New(userID)
 	eventRows, err := q.LoadUnlockedEvents(ctx, userID)
 	if err != nil {
@@ -607,6 +614,12 @@ func (m *Manager) CreateSession(ctx context.Context, connID uuid.UUID, userID in
 		ids[i] = gameconfig.EventID(r.EventID)
 	}
 	best.LoadEvents(ids)
+
+	itemRows, err := q.LoadDiscoveredItems(ctx, userID)
+	if err != nil {
+		return nil, err
+	}
+	best.LoadDiscoveredItems(itemRows)
 
 	// Active event queues.
 	evSt, err := event.Load(ctx, q, userID)

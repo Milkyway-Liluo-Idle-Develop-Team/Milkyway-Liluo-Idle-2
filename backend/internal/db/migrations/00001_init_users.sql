@@ -63,6 +63,15 @@ CREATE TABLE IF NOT EXISTS player_unlocked_events (
     PRIMARY KEY (user_id, event_id)
 );
 
+-- Discovered items (bestiary entries). item_id is a gameconfig.ItemID (1..N).
+-- Tracks which item types the player has discovered, independent of inventory.
+CREATE TABLE IF NOT EXISTS player_discovered_items (
+    user_id       INTEGER  NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    item_id       INTEGER  NOT NULL,
+    discovered_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (user_id, item_id)
+);
+
 -- Active event queues. Serial queue per queue_id; events execute in order
 -- of position. progress tracks accumulated seconds for the current head event.
 -- target_cycles: -1 = infinite loop (default), >0 = execute N times then remove.
@@ -102,6 +111,7 @@ CREATE TABLE IF NOT EXISTS player_init (
 DROP TABLE IF EXISTS player_init;
 DROP TABLE IF EXISTS player_equipment;
 DROP TABLE IF EXISTS player_active_events;
+DROP TABLE IF EXISTS player_discovered_items;
 DROP TABLE IF EXISTS player_unlocked_events;
 DROP TABLE IF EXISTS player_inventory;
 DROP TABLE IF EXISTS player_skills;

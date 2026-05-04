@@ -328,10 +328,14 @@ export const useGameStore = defineStore('game', () => {
 
     // Inventory
     state.inventory = []
+    state.seen_items = []
     for (const it of full.inventory ?? []) {
       const strId = numToStringId(idRegistry.value.items, it.itemId ?? 0)
       if (strId && (it.quantity ?? 0) > 0) {
         state.inventory.push({ id: strId, state: it.itemState ?? 0, qty: it.quantity ?? 0 })
+        if (!state.seen_items.includes(strId)) {
+          state.seen_items.push(strId)
+        }
       }
     }
 
@@ -350,12 +354,14 @@ export const useGameStore = defineStore('game', () => {
       }
     }
 
-    // Bestiary → unlocked_events
+    // Bestiary → unlocked_events + seen_items
     // Note: bestiary IDs are already string IDs from the backend.
     state.unlocked_events = []
     for (const b of full.bestiary ?? []) {
       if (b.type === 'event') {
         if (b.id) state.unlocked_events.push(b.id)
+      } else if (b.type === 'item') {
+        if (b.id && !state.seen_items.includes(b.id)) state.seen_items.push(b.id)
       }
     }
 
@@ -400,6 +406,10 @@ export const useGameStore = defineStore('game', () => {
         } else if ((d.quantityDelta ?? 0) > 0) {
           state.inventory.push({ id: strId, state: d.itemState ?? 0, qty: d.quantityDelta ?? 0 })
         }
+        // Track newly seen items so crafting events can unlock.
+        if ((d.quantityDelta ?? 0) > 0 && !state.seen_items.includes(strId)) {
+          state.seen_items.push(strId)
+        }
       }
     }
 
@@ -423,14 +433,18 @@ export const useGameStore = defineStore('game', () => {
     }
 
     if (diff.bestiary) {
-      const existing = new Set(state.unlocked_events)
+      const existingEvents = new Set(state.unlocked_events)
+      const existingItems = new Set(state.seen_items)
       for (const b of diff.bestiary) {
         if (b.type === 'event') {
           // Bestiary IDs are already string IDs from the backend.
-          if (b.id) existing.add(b.id)
+          if (b.id) existingEvents.add(b.id)
+        } else if (b.type === 'item') {
+          if (b.id) existingItems.add(b.id)
         }
       }
-      state.unlocked_events = Array.from(existing)
+      state.unlocked_events = Array.from(existingEvents)
+      state.seen_items = Array.from(existingItems)
     }
 
     if (diff.eventQueue) {

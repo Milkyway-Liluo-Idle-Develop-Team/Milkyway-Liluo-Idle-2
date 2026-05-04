@@ -120,7 +120,28 @@ test.describe('Interactive walkthrough', () => {
     }
     await next('loop-stopped')
 
-    // ── 11. 打印最终状态 ──
+    // ── 11. 切换到制造标签，验证制作橡木木板已解锁 ──
+    for (let i = 0; i < await skillRows.count(); i++) {
+      if ((await skillRows.nth(i).textContent())?.includes('制造')) {
+        await skillRows.nth(i).click()
+        break
+      }
+    }
+    await page.waitForTimeout(500)
+
+    const craftCards = page.locator('.event-card')
+    let foundPlank = false
+    for (let i = 0; i < await craftCards.count(); i++) {
+      const title = await craftCards.nth(i).locator('.event-head strong').textContent()
+      if (title?.includes('制作橡木木板')) {
+        foundPlank = true
+        break
+      }
+    }
+    expect(foundPlank, '获得 oak_logs 后应解锁制作橡木木板').toBe(true)
+    await next('crafting-unlocked')
+
+    // ── 12. 打印最终状态 ──
     const state = await page.evaluate(() => {
       const store = (window as any).__gameStore
       return {
