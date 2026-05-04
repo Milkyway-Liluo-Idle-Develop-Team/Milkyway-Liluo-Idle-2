@@ -471,6 +471,17 @@ func (m *Manager) GetByUser(userID int64) (*PlayerSession, bool) {
 	return m.Get(userID)
 }
 
+// Evict forcibly closes and removes an in-memory session.
+// Used by test cleanup to ensure a user can be deleted safely.
+func (m *Manager) Evict(userID int64) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	if s, ok := m.sessions[userID]; ok {
+		s.Close()
+		delete(m.sessions, userID)
+	}
+}
+
 // NewRecorder creates a Recorder backed by this manager's Registry.
 func (m *Manager) NewRecorder() *record.Recorder {
 	return record.NewRecorder(m.reg)

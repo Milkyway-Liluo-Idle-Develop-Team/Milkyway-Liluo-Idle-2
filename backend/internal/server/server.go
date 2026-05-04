@@ -15,6 +15,7 @@ import (
 	"github.com/edrowsluo/new-mli/backend/internal/gameconfig"
 	"github.com/edrowsluo/new-mli/backend/internal/httpx"
 	"github.com/edrowsluo/new-mli/backend/internal/session"
+	"github.com/edrowsluo/new-mli/backend/internal/testapi"
 	"github.com/edrowsluo/new-mli/backend/internal/wsx"
 	"github.com/go-chi/chi/v5"
 )
@@ -58,6 +59,9 @@ func New(d Deps) *Server {
 	r.Route("/api/v1", func(r chi.Router) {
 		d.AuthH.Mount(r, d.AuthMW)
 		r.Get("/game/config", gameconfig.ServeConfig)
+		if d.Config.IsDev() {
+			testapi.NewHandler(d.DB.Conn, d.SessMgr).Mount(r)
+		}
 	})
 
 	// WebSocket endpoint. Auth is enforced inside the handler so we can
