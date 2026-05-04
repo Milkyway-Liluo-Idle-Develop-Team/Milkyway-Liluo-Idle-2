@@ -351,11 +351,11 @@ export const useGameStore = defineStore('game', () => {
     }
 
     // Bestiary → unlocked_events
+    // Note: bestiary IDs are already string IDs from the backend.
     state.unlocked_events = []
     for (const b of full.bestiary ?? []) {
       if (b.type === 'event') {
-        const strId = numToStringId(idRegistry.value.events, parseInt(b.id ?? '', 10))
-        if (strId) state.unlocked_events.push(strId)
+        if (b.id) state.unlocked_events.push(b.id)
       }
     }
 
@@ -426,8 +426,8 @@ export const useGameStore = defineStore('game', () => {
       const existing = new Set(state.unlocked_events)
       for (const b of diff.bestiary) {
         if (b.type === 'event') {
-          const strId = numToStringId(idRegistry.value.events, parseInt(b.id ?? '', 10))
-          if (strId) existing.add(strId)
+          // Bestiary IDs are already string IDs from the backend.
+          if (b.id) existing.add(b.id)
         }
       }
       state.unlocked_events = Array.from(existing)

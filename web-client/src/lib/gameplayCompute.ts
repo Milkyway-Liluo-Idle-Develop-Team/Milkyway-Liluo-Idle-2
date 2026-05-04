@@ -170,6 +170,8 @@ function fluidQuantity(state: GameplayLikeState, fluidId: string | undefined): n
 
 function eventCount(state: GameplayLikeState, eventId: string | undefined): number {
   if (!eventId) return 0
+  // Fallback to unlocked_events because backend does not yet persist event_counts.
+  if (state.unlocked_events?.includes(eventId)) return 1
   return toFloat(state.event_counts[eventId], 0)
 }
 
@@ -438,7 +440,9 @@ export function buildEventView(
     loop_time: baseLoopTime > 0 ? baseLoopTime : undefined,
     effective_loop_time: etype === 'loop' ? effectiveLoopTime(event, state.attributes) : null,
     experience: displayExperience(event),
-    event_count: toFloat(state.event_counts[eventId], 0),
+    event_count: state.unlocked_events?.includes(eventId)
+      ? 1
+      : toFloat(state.event_counts[eventId], 0),
     max_executions: etype === 'upgrade' ? upgradeMaxExecutions(event) : null,
     required_skills: extractRequiredSkills(requirements),
     cost_items: extractCostItems(requirements, itemsMap),
