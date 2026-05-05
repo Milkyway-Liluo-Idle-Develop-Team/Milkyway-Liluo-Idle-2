@@ -97,6 +97,25 @@ func New(connID uuid.UUID, userID int64, logger *slog.Logger) *PlayerSession {
 	}
 }
 
+// GraceExpireNow synchronously runs the full grace-expiry flow:
+// StateClosing → FlushAll → StateClosed. Used by tests to simulate
+// a natural session shutdown without waiting for the grace timer.
+func (s *PlayerSession) GraceExpireNow(ctx context.Context, database *db.DB) error {
+	s.graceMu.Lock()
+	if s.graceTimer != nil {
+		s.graceTimer.Stop()
+		s.graceTimer = nil
+	}
+	s.graceMu.Unlock()
+
+	s.setState(StateClosing)
+	if err := s.FlushAll(ctx, database); err != nil {
+		return err
+	}
+	s.Close()
+	return nil
+}
+
 // Close shuts down the push loop and releases resources. Idempotent.
 func (s *PlayerSession) Close() {
 	s.graceMu.Lock()

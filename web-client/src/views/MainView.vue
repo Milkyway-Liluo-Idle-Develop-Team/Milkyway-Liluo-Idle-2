@@ -624,6 +624,7 @@ import { useRouter } from 'vue-router'
 import { useTheme } from '@/composables/useTheme'
 import * as actions from '@/lib/actions'
 import { clearAuthCache, logout } from '@/lib/auth'
+import { disconnect } from '@/lib/ws'
 import {
   buyMarketListing,
   cancelMarketListing,
@@ -1215,6 +1216,7 @@ const onLogout = async () => {
     const res = await logout()
     clearAuthCache()
     store.disposeWsListeners()
+    disconnect()
     store.resetState()
     if (!res.ok) {
       marketError.value = res.error
@@ -2064,6 +2066,7 @@ onBeforeUnmount(() => {
   hoveredEquipSlot.value = null
   hoveredInventoryItem.value = null
   store.disposeWsListeners()
+  disconnect()
 })
 </script>
 

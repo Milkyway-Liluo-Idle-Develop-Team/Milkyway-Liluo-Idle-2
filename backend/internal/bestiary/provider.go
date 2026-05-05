@@ -4,6 +4,8 @@ import (
 	"sort"
 
 	pb "github.com/edrowsluo/new-mli/backend/pb"
+	"github.com/edrowsluo/new-mli/backend/internal/gameconfig"
+	"github.com/edrowsluo/new-mli/backend/internal/item"
 	"github.com/edrowsluo/new-mli/backend/internal/record"
 	"google.golang.org/protobuf/proto"
 )
@@ -16,6 +18,13 @@ type provider struct{}
 func (p *provider) SystemName() string            { return "bestiary" }
 func (p *provider) NewBucket() record.RecordBucket { return newBucket() }
 
+func itemBestiaryID(it item.Item) string {
+	if def, ok := gameconfig.GetItemDefByID(it.ID); ok {
+		return def.StringID()
+	}
+	return it.String()
+}
+
 func (p *provider) SerializeFull(state any) (proto.Message, error) {
 	st, ok := state.(*State)
 	if !ok {
@@ -27,7 +36,7 @@ func (p *provider) SerializeFull(state any) (proto.Message, error) {
 		out = append(out, &pb.BestiaryFull{Type: "event", Id: eid.String()})
 	}
 	for it := range st.items {
-		out = append(out, &pb.BestiaryFull{Type: "item", Id: it.String()})
+		out = append(out, &pb.BestiaryFull{Type: "item", Id: itemBestiaryID(it)})
 	}
 	for mid := range st.areas {
 		out = append(out, &pb.BestiaryFull{Type: "area", Id: mid.String()})

@@ -9,6 +9,8 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/edrowsluo/new-mli/backend/internal/db"
+	dbgen "github.com/edrowsluo/new-mli/backend/internal/db/gen"
 	"github.com/edrowsluo/new-mli/backend/internal/httpx"
 	"github.com/edrowsluo/new-mli/backend/internal/session"
 	"github.com/go-chi/chi/v5"
@@ -30,6 +32,7 @@ func (h *Handler) Mount(r chi.Router) {
 	r.Route("/test", func(r chi.Router) {
 		r.Post("/delete-user", h.deleteUser)
 		r.Post("/reset-user", h.resetUser)
+		r.Post("/evict-session", h.evictSession)
 		r.Post("/cleanup-expired", h.cleanupExpired)
 	})
 }
@@ -76,8 +79,43 @@ func (h *Handler) deleteUser(w http.ResponseWriter, r *http.Request) {
 	httpx.NoContent(w)
 }
 
+type evictSessionReq struct {
+	Username string `json:"username"`
+}
+
 type resetUserReq struct {
 	Username string `json:"username"`
+}
+
+func (h *Handler) evictSession(w http.ResponseWriter, r *http.Request) {
+	var req evictSessionReq
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		httpx.JSON(w, http.StatusBadRequest, map[string]string{"error": "invalid JSON"})
+		return
+	}
+	if req.Username == "" {
+		httpx.JSON(w, http.StatusBadRequest, map[string]string{"error": "username required"})
+		return
+	}
+
+	ctx := r.Context()
+	var userID int64
+	if err := h.db.QueryRowContext(ctx, "SELECT id FROM users WHERE username = ?", req.Username).Scan(&userID); err != nil {
+		if err == sql.ErrNoRows {
+			httpx.NoContent(w)
+			return
+		}
+		httpx.JSON(w, http.StatusInternalServerError, map[string]string{"error": err.Error()})
+		return
+	}
+
+	if h.sessMgr != nil {
+		if s, ok := h.sessMgr.Get(userID); ok {
+			_ = s.GraceExpireNow(ctx, &db.DB{Conn: h.db, Queries: dbgen.New(h.db)})
+		}
+		h.sessMgr.Remove(userID)
+	}
+	httpx.NoContent(w)
 }
 
 func (h *Handler) resetUser(w http.ResponseWriter, r *http.Request) {

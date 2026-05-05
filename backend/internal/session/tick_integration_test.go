@@ -339,3 +339,43 @@ func TestTickAll_CommandInterleavedWithSettle(t *testing.T) {
 		t.Fatal("equipment should be applied after tick")
 	}
 }
+
+
+func TestBestiaryItemPersistenceAcrossSessionRestart(t *testing.T) {
+	db := openFullDBForTest(t)
+	reg := newRegForTick()
+	mgr := session.NewManagerWithoutTick(reg, db)
+
+	// 1. Create first session for user 1.
+	s1 := createTestSession(t, mgr, db, 1)
+
+	// 2. Add an item to trigger UnlockItem.
+	oakLogs, _ := gameconfig.StringToItemID("oak_logs")
+	it := item.Item{ID: oakLogs, State: 0}
+	s1.Inv().Add(it, 1)
+	s1.AddItem(it, 1)
+
+	// 3. Flush bestiary dirty state to DB.
+	if err := s1.FlushAll(context.Background(), db); err != nil {
+		t.Fatalf("flush all: %v", err)
+	}
+
+	// 4. Verify item is tracked in memory.
+	if !s1.Bestiary().HasItem(it) {
+		t.Fatal("bestiary should have oak_logs before close")
+	}
+
+	// 5. Grace-expire session and remove from manager.
+	if err := s1.GraceExpireNow(context.Background(), db); err != nil {
+		t.Fatalf("grace expire: %v", err)
+	}
+	mgr.Remove(s1.UserID)
+
+	// 6. Create a brand-new session for the same user.
+	s2 := createTestSession(t, mgr, db, 1)
+
+	// 7. Verify the new session loaded the discovered item from DB.
+	if !s2.Bestiary().HasItem(it) {
+		t.Fatal("new session should load discovered oak_logs from DB")
+	}
+}

@@ -82,6 +82,7 @@ CREATE TABLE IF NOT EXISTS player_active_events (
     position      INTEGER NOT NULL,
     target_cycles INTEGER NOT NULL DEFAULT -1,
     progress      REAL    NOT NULL DEFAULT 0,
+    updated_at    DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     PRIMARY KEY (user_id, queue_id, position)
 );
 

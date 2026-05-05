@@ -103,6 +103,7 @@ import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { getJson } from '@/lib/api'
 import { clearAuthCache, logout } from '@/lib/auth'
+import { disconnect } from '@/lib/ws'
 import { useGameStore } from '@/stores/game'
 
 type Me = { uid: number; username: string; email: string; created_at: number }
@@ -152,6 +153,7 @@ const onLogout = async () => {
     const res = await logout()
     clearAuthCache()
     store.disposeWsListeners()
+    disconnect()
     store.resetState()
     if (!res.ok) {
       error.value = res.error
