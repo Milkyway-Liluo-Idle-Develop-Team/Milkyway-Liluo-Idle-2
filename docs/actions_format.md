@@ -26,7 +26,7 @@
 | `tool` | bool | 是 | 是否为工具 |
 | `equipment` | bool | 是 | 是否为装备 |
 | `upgradable` | bool | 是 | 是否可升级/强化 |
-| `classification` | string | 是 | 分类：`"resources"` / `"equipment"` / ... |
+| `classification` | string | 是 | 分类：`"resources"` / `"equipment"` / `"fuel"` / `"ores"` / `"important"` / `"animal_materials"` / `"fluid"` |
 | `tool_details` | object | 否 | `tool == true` 时必填，见下方 |
 | `equipment_details` | object | 否 | `equipment == true` 时必填，见下方 |
 | `upgrade_details` | object | 否 | `upgradable == true` 时必填，见下方 |
@@ -49,7 +49,7 @@
 | `equipment_position_requirements` | array | 装备位置要求 |
 | `element` | string | 元素属性，如 `"physical"` |
 | `skills` | null / array | 关联技能 |
-| `equipment_basic_data` | object | 基础数值（伤害、命中、攻速等） |
+| `equipment_basic_data` | object | 基础数值（属性 ID → 数值），解析为属性修饰器 |
 | `requirements` | null / array | 穿戴要求 |
 
 ### upgrade_details
@@ -76,9 +76,10 @@
 | `name` | string | 是 | 显示名称 |
 | `description` | string | 是 | 描述文本 |
 | `need_skill` | string | 是 | 关联技能 ID，`"none"` 表示无 |
-| `requirements` | null / array | 是 | 执行前提条件，见下方 Requirement 格式 |
-| `experience` | number | 是 | 完成后获得的经验值 |
+| `requirements` | null / array | 是 | 执行前提条件，见 Requirement 格式 |
 | `map` | string | 是 | 所属地图/场景 |
+
+> 注：早期版本在 Event 顶层有 `experience` 字段，现已移除。经验奖励通过 `rewards` 数组中 `type: "experience"` 的条目发放。
 
 ### type = "loop" 特有字段
 
@@ -119,7 +120,7 @@
 
 ### 结算规则
 
-- **`item` / `fluid` 且 `comparison_types` 为 `null`**：视为**消耗**。执行时会从玩家库存/流体中扣除 `value` 数量。
+- **`item` / `fluid` 且 `comparison_types` 为 `null`**：视为**消耗**。执行时会从玩家库存中扣除 `value` 数量。
 - **其他情况**：视为**门槛检查**。满足条件即可执行，不会扣除。
 
 ---
@@ -128,16 +129,27 @@
 
 用于 `rewards` 数组。
 
+### 物品奖励
+
 | 字段 | 类型 | 必填 | 说明 |
 |------|------|------|------|
 | `id` | string | 是 | 物品 ID |
 | `num` | number | 是 | 产出数量（优先读取） |
 | `value` | number | 否 | 兼容字段，`num` 为 null 时回退读取 |
 
+### 经验奖励
+
+| 字段 | 类型 | 必填 | 说明 |
+|------|------|------|------|
+| `type` | string | 是 | 固定为 `"experience"` |
+| `value` | number | 是 | 经验数值 |
+| `skill_id` | string | 是 | 经验归属的技能 ID |
+
 ---
 
 ## 后端读取方式
 
-- 启动时不预加载整个文件。
-- `game/settlement.py` 中的 `get_events_map()` 首次调用时懒加载并缓存到内存中的全局变量 `_events_map`。
-- 事件查找通过 `events_map[event_id]` 进行 O(1) 访问。
+- 启动时通过 `gameconfig.Load()` 加载并校验 `actions.json`，所有数据常驻内存，查询为 O(1)。
+- 所有字符串 ID（物品、事件、技能、地图）在加载时被预解析为稳定的数字 ID（来自 `id_registry.json`）。
+- 运行时不再进行字符串查找，全部使用数字 ID 操作。
+- `actions.json` 变更后需运行 `go run ./cmd/genregistry` 重新生成数字 ID 映射。
