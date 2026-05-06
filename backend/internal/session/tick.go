@@ -6,11 +6,11 @@ import (
 	"sync"
 	"time"
 
-	"github.com/edrowsluo/new-mli/backend/internal/apperror"
-	"github.com/edrowsluo/new-mli/backend/internal/db"
-	dbgen "github.com/edrowsluo/new-mli/backend/internal/db/gen"
-	pb "github.com/edrowsluo/new-mli/backend/pb"
-	"github.com/edrowsluo/new-mli/backend/internal/wsx"
+	"github.com/Milkyway-Liluo-Idle-Develop-Team/Milkyway-Liluo-Idle-2/backend/internal/apperror"
+	"github.com/Milkyway-Liluo-Idle-Develop-Team/Milkyway-Liluo-Idle-2/backend/internal/db"
+	dbgen "github.com/Milkyway-Liluo-Idle-Develop-Team/Milkyway-Liluo-Idle-2/backend/internal/db/gen"
+	pb "github.com/Milkyway-Liluo-Idle-Develop-Team/Milkyway-Liluo-Idle-2/backend/pb"
+	"github.com/Milkyway-Liluo-Idle-Develop-Team/Milkyway-Liluo-Idle-2/backend/internal/wsx"
 )
 
 // TickResult holds a session that produced dirty state during a tick.

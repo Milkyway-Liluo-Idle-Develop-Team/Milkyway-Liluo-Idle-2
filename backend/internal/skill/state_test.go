@@ -5,11 +5,11 @@ import (
 	"database/sql"
 	"testing"
 
-	"github.com/edrowsluo/new-mli/backend/internal/attribute"
-	dbgen "github.com/edrowsluo/new-mli/backend/internal/db/gen"
-	"github.com/edrowsluo/new-mli/backend/internal/gameconfig"
-	"github.com/edrowsluo/new-mli/backend/internal/record"
-	"github.com/edrowsluo/new-mli/backend/internal/skill"
+	"github.com/Milkyway-Liluo-Idle-Develop-Team/Milkyway-Liluo-Idle-2/backend/internal/attribute"
+	dbgen "github.com/Milkyway-Liluo-Idle-Develop-Team/Milkyway-Liluo-Idle-2/backend/internal/db/gen"
+	"github.com/Milkyway-Liluo-Idle-Develop-Team/Milkyway-Liluo-Idle-2/backend/internal/gameconfig"
+	"github.com/Milkyway-Liluo-Idle-Develop-Team/Milkyway-Liluo-Idle-2/backend/internal/record"
+	"github.com/Milkyway-Liluo-Idle-Develop-Team/Milkyway-Liluo-Idle-2/backend/internal/skill"
 	_ "modernc.org/sqlite"
 )
 

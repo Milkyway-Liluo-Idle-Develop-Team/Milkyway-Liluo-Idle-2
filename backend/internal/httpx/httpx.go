@@ -8,8 +8,8 @@ import (
 	"errors"
 	"net/http"
 
-	"github.com/edrowsluo/new-mli/backend/internal/apperror"
-	"github.com/edrowsluo/new-mli/backend/internal/logging"
+	"github.com/Milkyway-Liluo-Idle-Develop-Team/Milkyway-Liluo-Idle-2/backend/internal/apperror"
+	"github.com/Milkyway-Liluo-Idle-Develop-Team/Milkyway-Liluo-Idle-2/backend/internal/logging"
 )
 
 // envelope is the single JSON shape every HTTP response uses.

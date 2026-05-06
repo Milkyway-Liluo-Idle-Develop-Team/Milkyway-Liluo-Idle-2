@@ -5,11 +5,11 @@ import (
 	"database/sql"
 	"testing"
 
-	dbgen "github.com/edrowsluo/new-mli/backend/internal/db/gen"
-	"github.com/edrowsluo/new-mli/backend/internal/equipment"
-	"github.com/edrowsluo/new-mli/backend/internal/item"
-	pb "github.com/edrowsluo/new-mli/backend/pb"
-	"github.com/edrowsluo/new-mli/backend/internal/record"
+	dbgen "github.com/Milkyway-Liluo-Idle-Develop-Team/Milkyway-Liluo-Idle-2/backend/internal/db/gen"
+	"github.com/Milkyway-Liluo-Idle-Develop-Team/Milkyway-Liluo-Idle-2/backend/internal/equipment"
+	"github.com/Milkyway-Liluo-Idle-Develop-Team/Milkyway-Liluo-Idle-2/backend/internal/item"
+	pb "github.com/Milkyway-Liluo-Idle-Develop-Team/Milkyway-Liluo-Idle-2/backend/pb"
+	"github.com/Milkyway-Liluo-Idle-Develop-Team/Milkyway-Liluo-Idle-2/backend/internal/record"
 	_ "modernc.org/sqlite"
 )
 

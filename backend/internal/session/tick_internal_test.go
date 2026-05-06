@@ -3,7 +3,7 @@ package session
 import (
 	"testing"
 
-	pb "github.com/edrowsluo/new-mli/backend/pb"
+	pb "github.com/Milkyway-Liluo-Idle-Develop-Team/Milkyway-Liluo-Idle-2/backend/pb"
 )
 
 func TestIsProgressOnlyDiff(t *testing.T) {

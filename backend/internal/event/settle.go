@@ -1,9 +1,9 @@
 package event
 
 import (
-	"github.com/edrowsluo/new-mli/backend/internal/attribute"
-	"github.com/edrowsluo/new-mli/backend/internal/gameconfig"
-	"github.com/edrowsluo/new-mli/backend/internal/item"
+	"github.com/Milkyway-Liluo-Idle-Develop-Team/Milkyway-Liluo-Idle-2/backend/internal/attribute"
+	"github.com/Milkyway-Liluo-Idle-Develop-Team/Milkyway-Liluo-Idle-2/backend/internal/gameconfig"
+	"github.com/Milkyway-Liluo-Idle-Develop-Team/Milkyway-Liluo-Idle-2/backend/internal/item"
 )
 
 // SettlementHook is a callback invoked around each Settle call.

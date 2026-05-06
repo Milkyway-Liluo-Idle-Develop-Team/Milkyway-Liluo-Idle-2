@@ -1,6 +1,6 @@
 package session
 
-import "github.com/edrowsluo/new-mli/backend/internal/apperror"
+import "github.com/Milkyway-Liluo-Idle-Develop-Team/Milkyway-Liluo-Idle-2/backend/internal/apperror"
 
 type command struct {
 	fn   func(*PlayerSession) error

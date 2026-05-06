@@ -3,4 +3,4 @@ plugins:
   - local: protoc-gen-go
     out: .
     opt:
-      - module=github.com/edrowsluo/new-mli/backend
+      - module=github.com/Milkyway-Liluo-Idle-Develop-Team/Milkyway-Liluo-Idle-2/backend

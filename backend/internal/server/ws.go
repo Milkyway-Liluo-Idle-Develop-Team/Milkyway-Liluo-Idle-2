@@ -4,13 +4,13 @@ import (
 	"context"
 	"net/http"
 
-	"github.com/edrowsluo/new-mli/backend/internal/auth"
-	"github.com/edrowsluo/new-mli/backend/internal/config"
-	"github.com/edrowsluo/new-mli/backend/internal/db"
-	"github.com/edrowsluo/new-mli/backend/internal/httpx"
-	"github.com/edrowsluo/new-mli/backend/internal/logging"
-	"github.com/edrowsluo/new-mli/backend/internal/session"
-	"github.com/edrowsluo/new-mli/backend/internal/wsx"
+	"github.com/Milkyway-Liluo-Idle-Develop-Team/Milkyway-Liluo-Idle-2/backend/internal/auth"
+	"github.com/Milkyway-Liluo-Idle-Develop-Team/Milkyway-Liluo-Idle-2/backend/internal/config"
+	"github.com/Milkyway-Liluo-Idle-Develop-Team/Milkyway-Liluo-Idle-2/backend/internal/db"
+	"github.com/Milkyway-Liluo-Idle-Develop-Team/Milkyway-Liluo-Idle-2/backend/internal/httpx"
+	"github.com/Milkyway-Liluo-Idle-Develop-Team/Milkyway-Liluo-Idle-2/backend/internal/logging"
+	"github.com/Milkyway-Liluo-Idle-Develop-Team/Milkyway-Liluo-Idle-2/backend/internal/session"
+	"github.com/Milkyway-Liluo-Idle-Develop-Team/Milkyway-Liluo-Idle-2/backend/internal/wsx"
 )
 
 func wsHandler(hub *wsx.Hub, mw *auth.Middleware, httpCfg config.HTTP, wsCfg config.WS, sessMgr *session.Manager, database *db.DB) http.Handler {

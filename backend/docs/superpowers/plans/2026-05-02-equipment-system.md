@@ -64,7 +64,7 @@ Create `proto/equipment.proto`:
 ```proto
 syntax = "proto3";
 package mli.v1;
-option go_package = "github.com/edrowsluo/new-mli/backend/internal/pb";
+option go_package = "github.com/Milkyway-Liluo-Idle-Develop-Team/Milkyway-Liluo-Idle-2/backend/internal/pb";
 
 import "proto/state.proto";
 
@@ -483,10 +483,10 @@ package inventory
 
 import (
 	"context"
-	"github.com/edrowsluo/new-mli/backend/internal/item"
-	pb "github.com/edrowsluo/new-mli/backend/internal/pb"
-	"github.com/edrowsluo/new-mli/backend/internal/session"
-	"github.com/edrowsluo/new-mli/backend/internal/wsx"
+	"github.com/Milkyway-Liluo-Idle-Develop-Team/Milkyway-Liluo-Idle-2/backend/internal/item"
+	pb "github.com/Milkyway-Liluo-Idle-Develop-Team/Milkyway-Liluo-Idle-2/backend/internal/pb"
+	"github.com/Milkyway-Liluo-Idle-Develop-Team/Milkyway-Liluo-Idle-2/backend/internal/session"
+	"github.com/Milkyway-Liluo-Idle-Develop-Team/Milkyway-Liluo-Idle-2/backend/internal/wsx"
 	"google.golang.org/protobuf/proto"
 )
 

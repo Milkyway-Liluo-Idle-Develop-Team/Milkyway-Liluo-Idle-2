@@ -2,7 +2,7 @@ syntax = "proto3";
 
 package mli.v1;
 
-option go_package = "github.com/edrowsluo/new-mli/backend/pb";
+option go_package = "github.com/Milkyway-Liluo-Idle-Develop-Team/Milkyway-Liluo-Idle-2/backend/pb";
 
 message QueueAppendReq {
   int64 event_id = 1;

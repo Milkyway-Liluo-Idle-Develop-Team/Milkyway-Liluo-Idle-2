@@ -5,12 +5,12 @@ import (
 	"testing"
 	"time"
 
-	"github.com/edrowsluo/new-mli/backend/internal/attribute"
-	"github.com/edrowsluo/new-mli/backend/internal/equipment"
-	"github.com/edrowsluo/new-mli/backend/internal/inventory"
-	"github.com/edrowsluo/new-mli/backend/internal/item"
-	"github.com/edrowsluo/new-mli/backend/internal/record"
-	"github.com/edrowsluo/new-mli/backend/internal/session"
+	"github.com/Milkyway-Liluo-Idle-Develop-Team/Milkyway-Liluo-Idle-2/backend/internal/attribute"
+	"github.com/Milkyway-Liluo-Idle-Develop-Team/Milkyway-Liluo-Idle-2/backend/internal/equipment"
+	"github.com/Milkyway-Liluo-Idle-Develop-Team/Milkyway-Liluo-Idle-2/backend/internal/inventory"
+	"github.com/Milkyway-Liluo-Idle-Develop-Team/Milkyway-Liluo-Idle-2/backend/internal/item"
+	"github.com/Milkyway-Liluo-Idle-Develop-Team/Milkyway-Liluo-Idle-2/backend/internal/record"
+	"github.com/Milkyway-Liluo-Idle-Develop-Team/Milkyway-Liluo-Idle-2/backend/internal/session"
 	"github.com/google/uuid"
 )
 

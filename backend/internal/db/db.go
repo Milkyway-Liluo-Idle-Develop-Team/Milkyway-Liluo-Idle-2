@@ -13,8 +13,8 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/edrowsluo/new-mli/backend/internal/config"
-	"github.com/edrowsluo/new-mli/backend/internal/db/gen"
+	"github.com/Milkyway-Liluo-Idle-Develop-Team/Milkyway-Liluo-Idle-2/backend/internal/config"
+	"github.com/Milkyway-Liluo-Idle-Develop-Team/Milkyway-Liluo-Idle-2/backend/internal/db/gen"
 	"github.com/pressly/goose/v3"
 	_ "modernc.org/sqlite"
 )

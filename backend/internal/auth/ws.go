@@ -4,8 +4,8 @@ import (
 	"context"
 	"time"
 
-	pb "github.com/edrowsluo/new-mli/backend/pb"
-	"github.com/edrowsluo/new-mli/backend/internal/wsx"
+	pb "github.com/Milkyway-Liluo-Idle-Develop-Team/Milkyway-Liluo-Idle-2/backend/pb"
+	"github.com/Milkyway-Liluo-Idle-Develop-Team/Milkyway-Liluo-Idle-2/backend/internal/wsx"
 )
 
 // RegisterWS registers built-in auth-related WebSocket message handlers on

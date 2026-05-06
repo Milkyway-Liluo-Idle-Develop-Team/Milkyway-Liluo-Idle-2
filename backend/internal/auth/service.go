@@ -17,10 +17,10 @@ import (
 	"time"
 	"unicode/utf8"
 
-	"github.com/edrowsluo/new-mli/backend/internal/apperror"
-	"github.com/edrowsluo/new-mli/backend/internal/config"
-	"github.com/edrowsluo/new-mli/backend/internal/db"
-	"github.com/edrowsluo/new-mli/backend/internal/db/gen"
+	"github.com/Milkyway-Liluo-Idle-Develop-Team/Milkyway-Liluo-Idle-2/backend/internal/apperror"
+	"github.com/Milkyway-Liluo-Idle-Develop-Team/Milkyway-Liluo-Idle-2/backend/internal/config"
+	"github.com/Milkyway-Liluo-Idle-Develop-Team/Milkyway-Liluo-Idle-2/backend/internal/db"
+	"github.com/Milkyway-Liluo-Idle-Develop-Team/Milkyway-Liluo-Idle-2/backend/internal/db/gen"
 	"github.com/google/uuid"
 	"golang.org/x/crypto/bcrypt"
 )

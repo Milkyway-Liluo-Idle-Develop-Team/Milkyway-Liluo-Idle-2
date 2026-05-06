@@ -9,10 +9,10 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/edrowsluo/new-mli/backend/internal/db"
-	dbgen "github.com/edrowsluo/new-mli/backend/internal/db/gen"
-	"github.com/edrowsluo/new-mli/backend/internal/httpx"
-	"github.com/edrowsluo/new-mli/backend/internal/session"
+	"github.com/Milkyway-Liluo-Idle-Develop-Team/Milkyway-Liluo-Idle-2/backend/internal/db"
+	dbgen "github.com/Milkyway-Liluo-Idle-Develop-Team/Milkyway-Liluo-Idle-2/backend/internal/db/gen"
+	"github.com/Milkyway-Liluo-Idle-Develop-Team/Milkyway-Liluo-Idle-2/backend/internal/httpx"
+	"github.com/Milkyway-Liluo-Idle-Develop-Team/Milkyway-Liluo-Idle-2/backend/internal/session"
 	"github.com/go-chi/chi/v5"
 )
 

@@ -6,10 +6,10 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/edrowsluo/new-mli/backend/internal/db"
-	dbgen "github.com/edrowsluo/new-mli/backend/internal/db/gen"
-	"github.com/edrowsluo/new-mli/backend/internal/gameconfig"
-	"github.com/edrowsluo/new-mli/backend/internal/skill"
+	"github.com/Milkyway-Liluo-Idle-Develop-Team/Milkyway-Liluo-Idle-2/backend/internal/db"
+	dbgen "github.com/Milkyway-Liluo-Idle-Develop-Team/Milkyway-Liluo-Idle-2/backend/internal/db/gen"
+	"github.com/Milkyway-Liluo-Idle-Develop-Team/Milkyway-Liluo-Idle-2/backend/internal/gameconfig"
+	"github.com/Milkyway-Liluo-Idle-Develop-Team/Milkyway-Liluo-Idle-2/backend/internal/skill"
 )
 
 // InitPlayer initializes a brand-new player in the database.

@@ -6,10 +6,10 @@ import (
 	"context"
 	"fmt"
 
-	dbgen "github.com/edrowsluo/new-mli/backend/internal/db/gen"
-	"github.com/edrowsluo/new-mli/backend/internal/gameconfig"
-	"github.com/edrowsluo/new-mli/backend/internal/item"
-	"github.com/edrowsluo/new-mli/backend/internal/record"
+	dbgen "github.com/Milkyway-Liluo-Idle-Develop-Team/Milkyway-Liluo-Idle-2/backend/internal/db/gen"
+	"github.com/Milkyway-Liluo-Idle-Develop-Team/Milkyway-Liluo-Idle-2/backend/internal/gameconfig"
+	"github.com/Milkyway-Liluo-Idle-Develop-Team/Milkyway-Liluo-Idle-2/backend/internal/item"
+	"github.com/Milkyway-Liluo-Idle-Develop-Team/Milkyway-Liluo-Idle-2/backend/internal/record"
 )
 
 // State holds the player's discovered content.

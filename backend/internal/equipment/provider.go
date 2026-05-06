@@ -1,8 +1,8 @@
 package equipment
 
 import (
-	pb "github.com/edrowsluo/new-mli/backend/pb"
-	"github.com/edrowsluo/new-mli/backend/internal/record"
+	pb "github.com/Milkyway-Liluo-Idle-Develop-Team/Milkyway-Liluo-Idle-2/backend/pb"
+	"github.com/Milkyway-Liluo-Idle-Develop-Team/Milkyway-Liluo-Idle-2/backend/internal/record"
 	"google.golang.org/protobuf/proto"
 )
 

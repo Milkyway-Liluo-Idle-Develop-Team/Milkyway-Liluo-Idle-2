@@ -9,14 +9,14 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/edrowsluo/new-mli/backend/internal/auth"
-	"github.com/edrowsluo/new-mli/backend/internal/config"
-	"github.com/edrowsluo/new-mli/backend/internal/db"
-	"github.com/edrowsluo/new-mli/backend/internal/gameconfig"
-	"github.com/edrowsluo/new-mli/backend/internal/httpx"
-	"github.com/edrowsluo/new-mli/backend/internal/session"
-	"github.com/edrowsluo/new-mli/backend/internal/testapi"
-	"github.com/edrowsluo/new-mli/backend/internal/wsx"
+	"github.com/Milkyway-Liluo-Idle-Develop-Team/Milkyway-Liluo-Idle-2/backend/internal/auth"
+	"github.com/Milkyway-Liluo-Idle-Develop-Team/Milkyway-Liluo-Idle-2/backend/internal/config"
+	"github.com/Milkyway-Liluo-Idle-Develop-Team/Milkyway-Liluo-Idle-2/backend/internal/db"
+	"github.com/Milkyway-Liluo-Idle-Develop-Team/Milkyway-Liluo-Idle-2/backend/internal/gameconfig"
+	"github.com/Milkyway-Liluo-Idle-Develop-Team/Milkyway-Liluo-Idle-2/backend/internal/httpx"
+	"github.com/Milkyway-Liluo-Idle-Develop-Team/Milkyway-Liluo-Idle-2/backend/internal/session"
+	"github.com/Milkyway-Liluo-Idle-Develop-Team/Milkyway-Liluo-Idle-2/backend/internal/testapi"
+	"github.com/Milkyway-Liluo-Idle-Develop-Team/Milkyway-Liluo-Idle-2/backend/internal/wsx"
 	"github.com/go-chi/chi/v5"
 )
 

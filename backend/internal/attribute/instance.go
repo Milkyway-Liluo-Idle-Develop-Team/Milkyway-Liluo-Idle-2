@@ -1,6 +1,6 @@
 package attribute
 
-import "github.com/edrowsluo/new-mli/backend/internal/record"
+import "github.com/Milkyway-Liluo-Idle-Develop-Team/Milkyway-Liluo-Idle-2/backend/internal/record"
 
 // Instance holds the modifier state, cache, and dirty flags for one player.
 // It is created when a WebSocket connection is established, lives for the

@@ -8,9 +8,9 @@ import (
 	"time"
 
 	"github.com/coder/websocket"
-	"github.com/edrowsluo/new-mli/backend/internal/apperror"
-	"github.com/edrowsluo/new-mli/backend/internal/config"
-	"github.com/edrowsluo/new-mli/backend/internal/logging"
+	"github.com/Milkyway-Liluo-Idle-Develop-Team/Milkyway-Liluo-Idle-2/backend/internal/apperror"
+	"github.com/Milkyway-Liluo-Idle-Develop-Team/Milkyway-Liluo-Idle-2/backend/internal/config"
+	"github.com/Milkyway-Liluo-Idle-Develop-Team/Milkyway-Liluo-Idle-2/backend/internal/logging"
 	"github.com/google/uuid"
 )
 

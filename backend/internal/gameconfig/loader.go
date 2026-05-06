@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"sort"
 
-	"github.com/edrowsluo/new-mli/backend/internal/item"
+	"github.com/Milkyway-Liluo-Idle-Develop-Team/Milkyway-Liluo-Idle-2/backend/internal/item"
 )
 
 // registry holds the parsed config, numeric ID mappings, and indexes.

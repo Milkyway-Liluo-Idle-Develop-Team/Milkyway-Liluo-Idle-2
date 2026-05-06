@@ -7,7 +7,7 @@
 // parsing shape —itemJSON —plus the Event/Reward/Requirement types.
 package gameconfig
 
-import "github.com/edrowsluo/new-mli/backend/internal/item"
+import "github.com/Milkyway-Liluo-Idle-Develop-Team/Milkyway-Liluo-Idle-2/backend/internal/item"
 
 // --- enum-like types ---
 

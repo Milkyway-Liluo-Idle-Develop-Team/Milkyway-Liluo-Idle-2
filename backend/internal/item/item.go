@@ -8,7 +8,7 @@ package item
 import (
 	"fmt"
 
-	"github.com/edrowsluo/new-mli/backend/internal/attribute"
+	"github.com/Milkyway-Liluo-Idle-Develop-Team/Milkyway-Liluo-Idle-2/backend/internal/attribute"
 )
 
 // --- item identity ---

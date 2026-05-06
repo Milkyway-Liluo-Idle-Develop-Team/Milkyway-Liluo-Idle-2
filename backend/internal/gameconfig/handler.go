@@ -4,8 +4,8 @@ import (
 	"encoding/json"
 	"net/http"
 
-	"github.com/edrowsluo/new-mli/backend/internal/attribute"
-	"github.com/edrowsluo/new-mli/backend/internal/httpx"
+	"github.com/Milkyway-Liluo-Idle-Develop-Team/Milkyway-Liluo-Idle-2/backend/internal/attribute"
+	"github.com/Milkyway-Liluo-Idle-Develop-Team/Milkyway-Liluo-Idle-2/backend/internal/httpx"
 )
 
 // ConfigResponse bundles every static data file the client needs.

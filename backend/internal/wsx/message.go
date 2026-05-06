@@ -15,7 +15,7 @@ import (
 	"context"
 	"reflect"
 
-	"github.com/edrowsluo/new-mli/backend/internal/apperror"
+	"github.com/Milkyway-Liluo-Idle-Develop-Team/Milkyway-Liluo-Idle-2/backend/internal/apperror"
 	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/proto"
 )

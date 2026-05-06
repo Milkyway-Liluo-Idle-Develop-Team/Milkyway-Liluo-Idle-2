@@ -4,10 +4,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/edrowsluo/new-mli/backend/internal/attribute"
-	"github.com/edrowsluo/new-mli/backend/internal/record"
-	"github.com/edrowsluo/new-mli/backend/internal/session"
-	"github.com/edrowsluo/new-mli/backend/internal/wsx"
+	"github.com/Milkyway-Liluo-Idle-Develop-Team/Milkyway-Liluo-Idle-2/backend/internal/attribute"
+	"github.com/Milkyway-Liluo-Idle-Develop-Team/Milkyway-Liluo-Idle-2/backend/internal/record"
+	"github.com/Milkyway-Liluo-Idle-Develop-Team/Milkyway-Liluo-Idle-2/backend/internal/session"
+	"github.com/Milkyway-Liluo-Idle-Develop-Team/Milkyway-Liluo-Idle-2/backend/internal/wsx"
 	"github.com/google/uuid"
 )
 

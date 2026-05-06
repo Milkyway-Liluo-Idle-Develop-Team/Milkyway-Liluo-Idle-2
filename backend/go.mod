@@ -1,4 +1,4 @@
-module github.com/edrowsluo/new-mli/backend
+module github.com/Milkyway-Liluo-Idle-Develop-Team/Milkyway-Liluo-Idle-2/backend
 
 go 1.25.7
 
