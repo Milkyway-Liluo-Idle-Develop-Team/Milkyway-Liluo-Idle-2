@@ -1,6 +1,5 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import { isAuthenticated } from '@/lib/auth'
-import { connect } from '@/lib/ws'
 import AuthView from '@/views/AuthView.vue'
 import MainView from '@/views/MainView.vue'
 import BattleView from '@/views/BattleView.vue'
@@ -26,7 +25,8 @@ router.beforeEach(async (to) => {
     if (!ok) {
       return { path: '/login', query: { redirect: to.fullPath } }
     }
-    connect().catch(() => {})
+    // WS 连接延迟到 MainView 加载完静态配置后再建立，
+    // 避免 state.full 在 idRegistry 就绪前到达而被丢弃。
   }
 
   if ((to.path === '/login' || to.path === '/register') && (await isAuthenticated())) {

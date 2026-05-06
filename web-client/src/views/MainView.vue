@@ -624,7 +624,7 @@ import { useRouter } from 'vue-router'
 import { useTheme } from '@/composables/useTheme'
 import * as actions from '@/lib/actions'
 import { clearAuthCache, logout } from '@/lib/auth'
-import { disconnect } from '@/lib/ws'
+import { connect, disconnect } from '@/lib/ws'
 import {
   buyMarketListing,
   cancelMarketListing,
@@ -2049,14 +2049,29 @@ watch(
   },
 )
 
-onMounted(() => {
-  fetchActionsData().catch((e) => console.warn('fetchActionsData failed:', e))
-  fetchData().then(() => {
+onMounted(async () => {
+  // 1. 先注册 WS 消息监听器，确保消息不会丢失
+  store.initWsListeners()
+
+  // 2. 先加载静态配置（idRegistry 等），这是正确解析 state.full 的前提
+  try {
+    await fetchActionsData()
+  } catch (e) {
+    console.warn('fetchActionsData failed:', e)
+  }
+
+  // 3. 静态配置就绪后再建立 WS 连接，避免 state.full 在 idRegistry 加载前到达被丢弃
+  connect().catch((e) => console.warn('ws connect failed:', e))
+
+  // 4. 其他初始化
+  try {
+    await fetchData()
     syncLoopFromServer()
-  }).catch((e) => console.warn('fetchData failed:', e))
+  } catch (e) {
+    console.warn('fetchData failed:', e)
+  }
   store.fetchBattleList().catch((e) => console.warn('fetchBattleList failed:', e))
   store.syncBattleState().catch((e) => console.warn('syncBattleState failed:', e))
-  store.initWsListeners()
 })
 
 onBeforeUnmount(() => {
