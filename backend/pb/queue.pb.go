@@ -319,7 +319,7 @@ const file_queue_proto_rawDesc = "" +
 	"\bqueue_id\x18\x02 \x01(\x05R\aqueueId\"O\n" +
 	"\rQueueSetEntry\x12\x19\n" +
 	"\bevent_id\x18\x01 \x01(\x03R\aeventId\x12#\n" +
-	"\rtarget_cycles\x18\x02 \x01(\x05R\ftargetCyclesB)Z'github.com/Milkyway-Liluo-Idle-Develop-Team/Milkyway-Liluo-Idle-2/backend/pbb\x06proto3"
+	"\rtarget_cycles\x18\x02 \x01(\x05R\ftargetCyclesBNZLgithub.com/Milkyway-Liluo-Idle-Develop-Team/Milkyway-Liluo-Idle-2/backend/pbb\x06proto3"
 
 var (
 	file_queue_proto_rawDescOnce sync.Once

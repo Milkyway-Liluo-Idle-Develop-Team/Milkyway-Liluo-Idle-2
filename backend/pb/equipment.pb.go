@@ -186,7 +186,7 @@ const file_equipment_proto_rawDesc = "" +
 	"\bequipped\x18\x01 \x03(\v2*.mli.v1.EquipUnequipResponse.EquippedEntryR\bequipped\x1aQ\n" +
 	"\rEquippedEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12*\n" +
-	"\x05value\x18\x02 \x01(\v2\x14.mli.v1.ItemIdentityR\x05value:\x028\x01B)Z'github.com/Milkyway-Liluo-Idle-Develop-Team/Milkyway-Liluo-Idle-2/backend/pbb\x06proto3"
+	"\x05value\x18\x02 \x01(\v2\x14.mli.v1.ItemIdentityR\x05value:\x028\x01BNZLgithub.com/Milkyway-Liluo-Idle-Develop-Team/Milkyway-Liluo-Idle-2/backend/pbb\x06proto3"
 
 var (
 	file_equipment_proto_rawDescOnce sync.Once

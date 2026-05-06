@@ -73,7 +73,7 @@ const file_ping_proto_rawDesc = "" +
 	"ping.proto\x12\x06mli.v1\"'\n" +
 	"\x04Pong\x12\x1f\n" +
 	"\vserver_time\x18\x01 \x01(\tR\n" +
-	"serverTimeB)Z'github.com/Milkyway-Liluo-Idle-Develop-Team/Milkyway-Liluo-Idle-2/backend/pbb\x06proto3"
+	"serverTimeBNZLgithub.com/Milkyway-Liluo-Idle-Develop-Team/Milkyway-Liluo-Idle-2/backend/pbb\x06proto3"
 
 var (
 	file_ping_proto_rawDescOnce sync.Once

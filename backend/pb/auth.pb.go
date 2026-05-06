@@ -74,7 +74,7 @@ const file_auth_proto_rawDesc = "" +
 	"\x0eWhoamiResponse\x12\x1c\n" +
 	"\auser_id\x18\x01 \x01(\x03H\x00R\x06userId\x88\x01\x01B\n" +
 	"\n" +
-	"\b_user_idB)Z'github.com/Milkyway-Liluo-Idle-Develop-Team/Milkyway-Liluo-Idle-2/backend/pbb\x06proto3"
+	"\b_user_idBNZLgithub.com/Milkyway-Liluo-Idle-Develop-Team/Milkyway-Liluo-Idle-2/backend/pbb\x06proto3"
 
 var (
 	file_auth_proto_rawDescOnce sync.Once
