@@ -1,0 +1,455 @@
+openapi: "3.0.3"
+info:
+  title: 银河莉萝放置 API
+  description: |
+    银河莉萝放置（Milkyway Liluo Idle）后端 API 文档。
+
+    ## 认证方式
+
+    所有需要认证的接口通过 **HttpOnly Cookie** 进行身份验证。
+    Cookie 名称为 `token`，值为 64 字符的十六进制字符串。
+
+    登录/注册成功后，服务器会在响应中通过 `Set-Cookie` 自动设置该 Cookie。
+    后续请求（包括 HTTP 和 WebSocket）会自动携带此 Cookie。
+
+    Cookie 属性：`HttpOnly`, `SameSite=Lax`
+
+  version: "1.0.0"
+  contact:
+    name: Milkyway Liluo Idle Dev Team
+
+servers:
+  - url: http://localhost:26411
+    description: 本地开发服务器
+
+tags:
+  - name: 公开接口
+    description: 不需要认证的接口
+  - name: 认证
+    description: 用户注册、登录、登出
+  - name: 游戏数据
+    description: 游戏静态数据接口
+  - name: 需认证接口
+    description: 需要 token Cookie 认证的接口
+
+paths:
+  /:
+    get:
+      tags: [公开接口]
+      summary: 服务器状态
+      description: 返回服务器版本信息，用于检测服务器是否在线。
+      responses:
+        "200":
+          description: 服务器正常运行
+          content:
+            text/plain:
+              schema:
+                type: string
+                example: "Milkyway Liluo Idle server v1.0"
+
+  /api/register:
+    post:
+      tags: [认证]
+      summary: 用户注册
+      description: |
+        注册新用户。成功后自动登录，返回 token 并通过 Set-Cookie 设置。
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [username, email, password]
+              properties:
+                username:
+                  type: string
+                  description: 用户名
+                  example: "player1"
+                email:
+                  type: string
+                  format: email
+                  description: 邮箱地址
+                  example: "player1@example.com"
+                password:
+                  type: string
+                  description: 密码
+                  example: "mypassword123"
+      responses:
+        "200":
+          description: 注册成功
+          headers:
+            Set-Cookie:
+              description: "token=<64位hex>; HttpOnly; SameSite=Lax"
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  token:
+                    type: string
+                    description: 64 字符十六进制认证令牌
+                    example: "a1b2c3d4..."
+        "400":
+          description: 参数缺失或用户名/邮箱已存在
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /api/login:
+    post:
+      tags: [认证]
+      summary: 用户登录
+      description: |
+        登录已有用户。成功后返回 token 并通过 Set-Cookie 设置。
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [username, password]
+              properties:
+                username:
+                  type: string
+                  description: 用户名
+                  example: "player1"
+                password:
+                  type: string
+                  description: 密码
+                  example: "mypassword123"
+      responses:
+        "200":
+          description: 登录成功
+          headers:
+            Set-Cookie:
+              description: "token=<64位hex>; HttpOnly; SameSite=Lax"
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  token:
+                    type: string
+        "401":
+          description: 用户名或密码错误
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /api/logout:
+    post:
+      tags: [认证]
+      summary: 用户登出
+      description: |
+        登出当前用户。清除服务器 session 和客户端 Cookie。
+        需要携带有效的 token Cookie。
+      security:
+        - cookieAuth: []
+      responses:
+        "200":
+          description: 登出成功
+          headers:
+            Set-Cookie:
+              description: 清除 token Cookie
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+        "401":
+          description: 未认证
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /api/actions:
+    get:
+      tags: [游戏数据]
+      summary: 获取游戏数据
+      description: |
+        返回完整的 actions.json 文件，包含所有物品定义和行动（事件）定义。
+        此接口不需要认证。
+      responses:
+        "200":
+          description: 游戏数据 JSON
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  items:
+                    type: array
+                    description: 所有物品定义
+                    items:
+                      $ref: "#/components/schemas/ItemDefinition"
+                  events:
+                    type: array
+                    description: 所有行动/事件定义
+                    items:
+                      $ref: "#/components/schemas/EventDefinition"
+
+  /api/heartbeat:
+    post:
+      tags: [需认证接口]
+      summary: 心跳检测
+      description: 验证当前 token 是否有效。
+      security:
+        - cookieAuth: []
+      responses:
+        "200":
+          description: Token 有效
+          content:
+            text/plain:
+              schema:
+                type: string
+                example: "ok"
+        "401":
+          description: Token 无效或缺失
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /api/toutou:
+    post:
+      tags: [需认证接口]
+      summary: 摸头（测试接口）
+      description: 测试用接口，摸头指定目标。
+      security:
+        - cookieAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                target:
+                  type: string
+                  description: 摸头对象
+                  example: "neko"
+      responses:
+        "200":
+          description: 摸头成功
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  msg:
+                    type: string
+                    example: "User 1 has toutoued neko"
+
+components:
+  securitySchemes:
+    cookieAuth:
+      type: apiKey
+      in: cookie
+      name: token
+      description: 64 字符十六进制认证令牌，通过登录/注册接口获取
+
+  schemas:
+    ErrorResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: false
+        error:
+          type: string
+          description: 错误信息
+          example: "Missing username or password"
+
+    ItemDefinition:
+      type: object
+      properties:
+        id:
+          type: string
+          description: 物品唯一标识
+          example: "oak_logs"
+        name:
+          type: string
+          description: 物品显示名称
+          example: "橡木原木"
+        tool:
+          type: boolean
+          description: 是否为工具
+        equipment:
+          type: boolean
+          description: 是否为装备
+        upgradable:
+          type: boolean
+          description: 是否可升级
+        classification:
+          type: string
+          description: 物品分类
+          enum: [resources, ores, fuel, animal_materials, equipment, tool, important]
+        equipment_details:
+          $ref: "#/components/schemas/EquipmentDetails"
+        tool_details:
+          $ref: "#/components/schemas/ToolDetails"
+        upgrade_details:
+          $ref: "#/components/schemas/UpgradeDetails"
+
+    EquipmentDetails:
+      type: object
+      properties:
+        type:
+          type: string
+          description: 装备类型
+          enum: [weapon, wear, relics]
+        equipment_position_requirements:
+          type: array
+          items:
+            type: object
+            properties:
+              position:
+                type: string
+                enum: [main_hand, head, chest, leg, feet, nothing]
+              value:
+                type: integer
+        element:
+          type: string
+          description: 元素属性
+        equipment_basic_data:
+          type: object
+          description: 装备基础属性（键值对）
+          additionalProperties:
+            type: number
+
+    ToolDetails:
+      type: object
+      properties:
+        tool_position_requirement:
+          type: array
+          items:
+            type: object
+            properties:
+              tool_position:
+                type: string
+                enum: [felling, mining, crafting]
+              value:
+                type: integer
+        tool_basic_data:
+          type: object
+          description: 工具基础属性（键值对）
+          additionalProperties:
+            type: number
+        tool_type:
+          type: string
+          description: 工具类型
+          enum: [axe, pickaxe, crafting_table]
+
+    UpgradeDetails:
+      type: object
+      properties:
+        max_upgrade:
+          type: integer
+          description: 最大强化等级
+        enhance_slot:
+          type: integer
+        forge_slot:
+          type: integer
+        upgrade_curve:
+          type: array
+          items:
+            type: object
+            properties:
+              level:
+                type: integer
+              recommend_level:
+                type: integer
+              basic_success_rate:
+                type: number
+              ability_multiplier:
+                type: number
+
+    EventDefinition:
+      type: object
+      properties:
+        id:
+          type: string
+          description: 行动唯一标识
+        type:
+          type: string
+          enum: [loop, instant, upgrade]
+        name:
+          type: string
+        description:
+          type: string
+        need_skill:
+          type: string
+          description: 关联技能，"none"表示无
+        requirements:
+          type: array
+          nullable: true
+          items:
+            $ref: "#/components/schemas/Requirement"
+        loop_time:
+          type: number
+          description: 循环行动基础耗时（秒）
+        combat:
+          type: boolean
+          description: 是否为战斗行动
+        enemy:
+          $ref: "#/components/schemas/EnemyData"
+        rewards:
+          type: array
+          items:
+            type: object
+            properties:
+              id:
+                type: string
+              num:
+                type: integer
+        experience:
+          type: number
+        map:
+          type: string
+
+    Requirement:
+      type: object
+      properties:
+        type:
+          type: string
+          enum: [skill, item, event, fluid]
+        id:
+          type: string
+        value:
+          type: number
+        comparison_types:
+          type: string
+          enum: [bigger, equal, smaller, bigger_or_equal, smaller_or_equal]
+          nullable: true
+
+    EnemyData:
+      type: object
+      properties:
+        name:
+          type: string
+        hp:
+          type: number
+        attack:
+          type: number
+        defense:
+          type: number
+        attack_interval:
+          type: number
