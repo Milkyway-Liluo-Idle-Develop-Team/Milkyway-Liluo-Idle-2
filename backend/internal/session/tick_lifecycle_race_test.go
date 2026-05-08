@@ -100,8 +100,8 @@ func TestTickAfterRemove(t *testing.T) {
 	locked.Skill().AddXP(fellingSkill, 100)
 	mgr.UnlockSession(locked)
 
-	// Tick 1: session is present, should produce results.
-	r1 := mgr.ManualTick(base.Add(1 * time.Second))
+	// Tick 1: session is present, 3s > loop_time (~2s) so event triggers.
+	r1 := mgr.ManualTick(base.Add(3 * time.Second))
 	if len(r1) != 1 {
 		t.Fatalf("expected 1 result before remove, got %d", len(r1))
 	}

@@ -164,6 +164,17 @@ func (st *State) markQueueCurrent(id int) {
 	}
 }
 
+func (st *State) markQueueCurrentDirty(id int) {
+	st.dirty[id] = true
+	if st.recorder == nil { return }
+	b := st.recorder.Bucket("event_queue")
+	if b != nil {
+		qb := b.(*queueBucket)
+		qb.st = st
+		qb.markQueue(id, false)
+	}
+}
+
 func (st *State) markQueueFull(id int) {
 	st.dirty[id] = true
 	if st.recorder == nil { return }

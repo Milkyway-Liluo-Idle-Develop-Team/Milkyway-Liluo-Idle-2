@@ -43,6 +43,72 @@ func (st *State) Settle(ctx SettlementCtx, delta float64) {
 	}
 }
 
+// WillTrigger reports whether any active queue head will complete at least
+// one cycle (or an instant/upgrade event) within the given delta.
+// It is conservative: if requirements are not met it returns true so that
+// Settle can handle swapping or blocking.
+func (st *State) WillTrigger(ctx SettlementCtx, delta float64) bool {
+	for _, q := range st.queues {
+		idx := q.firstActive()
+		if idx < 0 {
+			continue
+		}
+		entry := q.Entries[idx]
+		ev, ok := gameconfig.GetEventByID(entry.EventID)
+		if !ok {
+			continue
+		}
+		switch ev.Type {
+		case gameconfig.EventTypeInstant, gameconfig.EventTypeUpgrade:
+			// Instant events always need Settle to process.
+			return true
+		case gameconfig.EventTypeLoop:
+			lt := derefLoopTime(ev.LoopTime)
+			if lt <= 0 {
+				continue
+			}
+			if !st.checkReqs(ctx, ev) {
+				// Requirements not met — Settle may swap or block.
+				return true
+			}
+			if delta+entry.Progress >= lt {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+// AdvanceProgress accumulates progress in memory without producing diffs or
+// marking dirty.  It caps progress just below one cycle so we never skip a
+// trigger.
+func (st *State) AdvanceProgress(delta float64) {
+	for _, q := range st.queues {
+		idx := q.firstActive()
+		if idx < 0 {
+			continue
+		}
+		ev, ok := gameconfig.GetEventByID(q.Entries[idx].EventID)
+		if !ok {
+			continue
+		}
+		if ev.Type != gameconfig.EventTypeLoop {
+			continue
+		}
+		lt := derefLoopTime(ev.LoopTime)
+		if lt <= 0 {
+			continue
+		}
+		entry := &q.Entries[idx]
+		newProg := entry.Progress + delta
+		if newProg >= lt {
+			// Leave a tiny margin so the next real Settle still sees a trigger.
+			newProg = lt - 1e-9
+		}
+		entry.Progress = newProg
+	}
+}
+
 // BeforeSettle registers a hook that runs before each Settle cycle.
 func (st *State) BeforeSettle(h SettlementHook) {
 	st.beforeHooks = append(st.beforeHooks, h)
@@ -96,7 +162,7 @@ func (st *State) settleLoop(ctx SettlementCtx, q *Queue, idx int, ev gameconfig.
 	timeCycles := int((delta + entry.Progress) / lt)
 	if timeCycles == 0 {
 		entry.Progress += delta
-		st.markQueueCurrent(q.ID)
+		st.markQueueCurrentDirty(q.ID)
 		return delta
 	}
 
@@ -117,7 +183,7 @@ func (st *State) settleLoop(ctx SettlementCtx, q *Queue, idx int, ev gameconfig.
 
 	if actual == 0 {
 		entry.Progress += delta
-		st.markQueueCurrent(q.ID)
+		st.markQueueCurrentDirty(q.ID)
 		return delta
 	}
 
@@ -156,7 +222,7 @@ func (st *State) settleLoop(ctx SettlementCtx, q *Queue, idx int, ev gameconfig.
 		}
 	}
 
-	st.markQueueCurrent(q.ID)
+	st.markQueueCurrentDirty(q.ID)
 	return consumed
 }
 

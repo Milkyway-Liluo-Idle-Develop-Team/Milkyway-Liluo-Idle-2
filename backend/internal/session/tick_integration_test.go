@@ -169,15 +169,14 @@ func TestTickAll_FullEventCycle(t *testing.T) {
 	}
 }
 
-// TestTickAll_IdleTickProducesProgressDiff verifies behavior when the tick
-// delta is smaller than the event's loop_time (no full cycles complete).
+// TestTickAll_IdleTickDoesNotDirty verifies that when the tick delta is
+// smaller than the event's loop_time, the tick runs without panic but does
+// NOT mark the session dirty.  Progress is kept in memory only and will be
+// persisted when the event actually triggers.
 //
-// Purpose: Ensure idle ticks still produce valid diff packets (e.g. progress
-// updates) and do not crash or leak empty diffs.
-//
-// What it prevents: Frontend desync caused by missing progress updates, or
-// unnecessary empty diff pushes wasting bandwidth.
-func TestTickAll_IdleTickProducesProgressDiff(t *testing.T) {
+// Purpose: Validate the fast-path optimization (WillTrigger + AdvanceProgress)
+// that avoids useless diff building and DB flushes on idle ticks.
+func TestTickAll_IdleTickDoesNotDirty(t *testing.T) {
 	database := openFullDBForTest(t)
 	reg := newRegForTick()
 	mgr := session.NewManagerWithoutTick(reg, nil)
@@ -202,12 +201,17 @@ func TestTickAll_IdleTickProducesProgressDiff(t *testing.T) {
 	locked.Inv().Add(item.Item{ID: oakID}, 1e6)
 	mgr.UnlockSession(locked)
 
-	// Tick with 0.1s (< loop_time ~2s): no cycles complete, only progress
-	// advances. Progress-only diffs are intentionally not pushed, but the
-	// tick must still run without panic and mark the session dirty for flush.
+	// Tick with 0.1s (< loop_time ~2s): no cycles complete.
+	// With the WillTrigger optimization this should NOT produce dirty results.
 	results := mgr.ManualTick(base.Add(100 * time.Millisecond))
+	if len(results) != 0 {
+		t.Fatalf("expected session NOT dirty on idle tick, got %d results", len(results))
+	}
+
+	// Tick again with enough time to cross loop_time: should trigger and dirty.
+	results = mgr.ManualTick(base.Add(3 * time.Second))
 	if len(results) != 1 {
-		t.Fatalf("expected session to be dirty (progress updated), got %d results", len(results))
+		t.Fatalf("expected session dirty after trigger tick, got %d results", len(results))
 	}
 }
 

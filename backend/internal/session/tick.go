@@ -150,6 +150,13 @@ func runTick(s *PlayerSession, mgr *Manager, delta float64) (dirty bool) {
 		return dirty
 	}
 
+	// Fast path: if nothing will trigger this tick, just advance in-memory
+	// progress without building diffs or touching the DB.
+	if !s.ev.WillTrigger(s, delta) {
+		s.ev.AdvanceProgress(delta)
+		return dirty
+	}
+
 	rec = mgr.NewRecorder()
 	s.SetRecorder(rec)
 	rec.PushNamespace("action_queue")
