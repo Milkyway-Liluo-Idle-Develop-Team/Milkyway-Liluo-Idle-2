@@ -138,11 +138,11 @@ func (s *State) Get(skillID gameconfig.SkillID) (level, xp float64) {
 	return slot.Level, slot.XP
 }
 
-// All returns all non-zero skills for snapshot serialization.
+// All returns all skills with progress for snapshot serialization.
 func (s *State) All() map[gameconfig.SkillID]skillSlot {
 	out := make(map[gameconfig.SkillID]skillSlot, len(s.skills))
 	for id, slot := range s.skills {
-		if slot.XP > 0 {
+		if slot.Level > 0 || slot.XP > 0 {
 			out[id] = *slot
 		}
 	}
@@ -152,7 +152,7 @@ func (s *State) All() map[gameconfig.SkillID]skillSlot {
 func (s *State) mustSlot(skillID gameconfig.SkillID) *skillSlot {
 	slot, ok := s.skills[skillID]
 	if !ok {
-		slot = &skillSlot{}
+		slot = &skillSlot{Level: 1}
 		s.skills[skillID] = slot
 	}
 	return slot

@@ -322,7 +322,7 @@ export const useGameStore = defineStore('game', () => {
     for (const sk of full.skillXp ?? []) {
       const strId = numToStringId(idRegistry.value.skills, sk.skillId ?? 0)
       if (strId) {
-        state.skills[strId] = { level: sk.level ?? 0, exp: sk.xp ?? 0 }
+        state.skills[strId] = { level: sk.level ?? 1, exp: sk.xp ?? 0 }
       }
     }
 

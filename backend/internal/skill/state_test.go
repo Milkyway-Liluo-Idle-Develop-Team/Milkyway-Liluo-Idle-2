@@ -62,8 +62,8 @@ func TestLoadEmpty(t *testing.T) {
 		t.Fatal(err)
 	}
 	level, xp := s.Get(1)
-	if level != 0 || xp != 0 {
-		t.Errorf("want 0/0, got %v/%v", level, xp)
+	if level != 1 || xp != 0 {
+		t.Errorf("want 1/0, got %v/%v", level, xp)
 	}
 }
 
@@ -82,11 +82,11 @@ func TestAddXPLevelUp(t *testing.T) {
 		newLvl = newLevel
 	}
 
-	// Level 1 requires 80 XP. Add enough to reach it.
+	// Level 2 requires 80 XP. Add enough to reach it.
 	s.AddXP(1, 100)
 	level, xp := s.Get(1)
-	if level != 1 {
-		t.Errorf("want level 1, got %v", level)
+	if level != 2 {
+		t.Errorf("want level 2, got %v", level)
 	}
 	if xp != 100 {
 		t.Errorf("want xp 100, got %v", xp)
@@ -94,8 +94,8 @@ func TestAddXPLevelUp(t *testing.T) {
 	if !leveledUp {
 		t.Error("OnLevelUp should have fired")
 	}
-	if oldLvl != 0 || newLvl != 1 {
-		t.Errorf("OnLevelUp: want 0→1, got %v→%v", oldLvl, newLvl)
+	if oldLvl != 1 || newLvl != 2 {
+		t.Errorf("OnLevelUp: want 1→2, got %v→%v", oldLvl, newLvl)
 	}
 }
 
@@ -108,11 +108,11 @@ func TestAddXPNoLevelUp(t *testing.T) {
 		fired = true
 	}
 
-	// 50 XP is below the 80 XP threshold for level 1.
+	// 50 XP is below the 80 XP threshold for level 2.
 	s.AddXP(1, 50)
 	level, _ := s.Get(1)
-	if level != 0 {
-		t.Errorf("want level 0, got %v", level)
+	if level != 1 {
+		t.Errorf("want level 1, got %v", level)
 	}
 	if fired {
 		t.Error("OnLevelUp should not fire without level-up")

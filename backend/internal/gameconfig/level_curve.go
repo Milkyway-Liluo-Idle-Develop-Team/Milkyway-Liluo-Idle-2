@@ -28,7 +28,9 @@ func LoadLevelCurve() ([]float64, error) {
 	}
 
 	// Skip header.
-	curve := make([]float64, 0, len(rows)-1)
+	// Level 1 requires 0 XP; subsequent entries shift by one.
+	curve := make([]float64, 0, len(rows))
+	curve = append(curve, 0)
 	for _, row := range rows[1:] {
 		if len(row) < 2 {
 			continue
