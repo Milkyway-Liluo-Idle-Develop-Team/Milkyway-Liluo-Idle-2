@@ -85,6 +85,10 @@ type Log struct {
 	Level string `env:"LOG_LEVEL" envDefault:"info"`
 	// Format: "json" | "text"
 	Format string `env:"LOG_FORMAT" envDefault:"text"`
+	// File is the path to a log file. When non-empty, logs are tee'd to both
+	// stdout and the file (like Minecraft's latest.log). The file is truncated
+	// on each startup.
+	File string `env:"LOG_FILE" envDefault:""`
 }
 
 // Load reads .env (if present) then parses environment variables into a Config.

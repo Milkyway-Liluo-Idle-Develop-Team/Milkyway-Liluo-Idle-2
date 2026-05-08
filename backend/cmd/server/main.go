@@ -7,6 +7,7 @@ package main
 import (
 	"context"
 	"errors"
+	"io"
 	"log/slog"
 	"os"
 	"os/signal"
@@ -48,7 +49,21 @@ func run() error {
 		return err
 	}
 
-	logger := logging.New(cfg.Log.Level, cfg.Log.Format, os.Stdout)
+	// --- Logger (tee to stdout + optional log file) ---
+	logWriter := io.Writer(os.Stdout)
+	if cfg.Log.File != "" {
+		f, err := os.OpenFile(cfg.Log.File, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0644)
+		if err != nil {
+			// If we can't open the file, fall back to stdout and log the error
+			// via a temporary logger so the user sees it.
+			tmp := logging.New("warn", cfg.Log.Format, os.Stderr)
+			tmp.Warn("failed to open log file, logging to stdout only", "path", cfg.Log.File, "err", err)
+		} else {
+			logWriter = io.MultiWriter(os.Stdout, f)
+			defer f.Close()
+		}
+	}
+	logger := logging.New(cfg.Log.Level, cfg.Log.Format, logWriter)
 	slog.SetDefault(logger)
 	logger.Info("starting", "env", cfg.Env)
 
