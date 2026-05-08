@@ -38,7 +38,17 @@ func registerGameHandlers(hub *wsx.Hub, mgr *session.Manager) {
 		if queueID < 0 {
 			queueID = 0
 		}
-		ev.Enqueue(queueID, gameconfig.EventID(req.EventId), int(req.TargetCycles))
+		eventID := gameconfig.EventID(req.EventId)
+		evCfg, ok := gameconfig.GetEventByID(eventID)
+		if ok && (evCfg.Type == gameconfig.EventTypeInstant || evCfg.Type == gameconfig.EventTypeUpgrade) {
+			// Instant/upgrade events execute immediately without queuing.
+			if !ev.CheckReqs(sess, evCfg) {
+				return apperror.BadRequest("requirements not met")
+			}
+			ev.ExecuteInstant(sess, eventID, evCfg)
+			return nil
+		}
+		ev.Enqueue(queueID, eventID, int(req.TargetCycles))
 		return nil
 	})
 

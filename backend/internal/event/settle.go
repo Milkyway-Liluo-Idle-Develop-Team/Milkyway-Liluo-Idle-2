@@ -67,7 +67,7 @@ func (st *State) WillTrigger(ctx SettlementCtx, delta float64) bool {
 			if lt <= 0 {
 				continue
 			}
-			if !st.checkReqs(ctx, ev) {
+			if !st.CheckReqs(ctx, ev) {
 				// Requirements not met — Settle may swap or block.
 				return true
 			}
@@ -132,7 +132,7 @@ func (st *State) settleQueue(ctx SettlementCtx, q *Queue, delta float64) float64
 			continue
 		}
 
-		if !st.checkReqs(ctx, ev) {
+		if !st.CheckReqs(ctx, ev) {
 			if !st.swapSatisfied(ctx, q) {
 				return remaining
 			}
@@ -243,7 +243,9 @@ func (st *State) settleInstant(ctx SettlementCtx, q *Queue, idx int, ev gameconf
 	st.consume(q, idx)
 }
 
-func (st *State) checkReqs(ctx SettlementCtx, ev gameconfig.Event) bool {
+// CheckReqs verifies that non-consumption requirements (skill level, unlocked
+// events) are satisfied for the given event.
+func (st *State) CheckReqs(ctx SettlementCtx, ev gameconfig.Event) bool {
 	for _, req := range ev.Requirements {
 		if req.IsConsumption() {
 			continue
@@ -264,6 +266,21 @@ func (st *State) checkReqs(ctx SettlementCtx, ev gameconfig.Event) bool {
 	return true
 }
 
+// ExecuteInstant applies rewards, unlocks the event, and records execution
+// for an instant or upgrade event. The caller must verify requirements.
+func (st *State) ExecuteInstant(ctx SettlementCtx, eventID gameconfig.EventID, ev gameconfig.Event) {
+	for _, rew := range ev.Rewards {
+		switch {
+		case rew.IsItem():
+			ctx.AddItem(rew.ResolvedItem, rew.ItemQuantity())
+		case rew.IsExperience():
+			ctx.AddXP(rew.ResolvedSkillID, rew.Value)
+		}
+	}
+	ctx.UnlockEvent(eventID)
+	st.recordExecution(eventID, 1)
+}
+
 func (st *State) swapSatisfied(ctx SettlementCtx, q *Queue) bool {
 	cur := q.firstActive()
 	if cur < 0 {
@@ -274,7 +291,7 @@ func (st *State) swapSatisfied(ctx SettlementCtx, q *Queue) bool {
 		if !ok {
 			continue
 		}
-		if st.checkReqs(ctx, ev) {
+		if st.CheckReqs(ctx, ev) {
 			q.Entries[cur], q.Entries[i] = q.Entries[i], q.Entries[cur]
 			st.markQueueFull(q.ID)
 			return true
