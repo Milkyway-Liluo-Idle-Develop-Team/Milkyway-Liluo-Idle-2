@@ -96,6 +96,9 @@ func (s *Service) Register(ctx context.Context, username, email, password string
 		if isUniqueViolation(err) {
 			return User{}, apperror.Conflict("username or email already taken")
 		}
+		if db.IsBusyError(err) {
+			return User{}, apperror.Unavailable("database busy, retry").WithCause(err)
+		}
 		return User{}, apperror.Internal("create user").WithCause(err)
 	}
 	return toUser(u), nil
@@ -211,6 +214,9 @@ func (s *Service) createSession(ctx context.Context, userID int64, userAgent, ip
 		ExpiresAt: expires,
 	})
 	if err != nil {
+		if db.IsBusyError(err) {
+			return Session{}, apperror.Unavailable("database busy, retry").WithCause(err)
+		}
 		return Session{}, apperror.Internal("create session").WithCause(err)
 	}
 	return toSession(sess, rawToken), nil

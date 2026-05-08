@@ -11,6 +11,7 @@ import (
 	"database/sql"
 	"embed"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/Milkyway-Liluo-Idle-Develop-Team/Milkyway-Liluo-Idle-2/backend/internal/config"
@@ -37,7 +38,8 @@ type DB struct {
 // Open creates the connection, applies SQLite PRAGMAs, optionally runs
 // migrations, and returns DB.
 func Open(ctx context.Context, cfg config.DB) (*DB, error) {
-	conn, err := sql.Open(driverName, cfg.URL)
+	url := appendDefaultPragmas(cfg.URL)
+	conn, err := sql.Open(driverName, url)
 	if err != nil {
 		return nil, fmt.Errorf("open db: %w", err)
 	}
@@ -64,9 +66,10 @@ func Open(ctx context.Context, cfg config.DB) (*DB, error) {
 		return nil, fmt.Errorf("ping db: %w", err)
 	}
 
-	if err := applyPragmas(ctx, conn); err != nil {
+	// Verify that the connection pool is using the expected settings.
+	if err := verifyPragmas(ctx, conn); err != nil {
 		_ = conn.Close()
-		return nil, fmt.Errorf("apply pragmas: %w", err)
+		return nil, fmt.Errorf("verify pragmas: %w", err)
 	}
 
 	if cfg.AutoMigrate {
@@ -117,26 +120,59 @@ func (d *DB) InTx(ctx context.Context, fn func(q *dbgen.Queries) error) (err err
 	return nil
 }
 
-// applyPragmas turns on foreign keys, switches to WAL for better
-// concurrency, and sets a generous busy timeout so brief writer contention
-// doesn't surface as errors. Pragmas are per-connection in SQLite, so we
-// also apply them to every freshly-opened connection via a connector hook
-// where possible —but here we additionally rely on shared-cache + WAL
-// behaviour and a small pool to keep things simple.
-func applyPragmas(ctx context.Context, conn *sql.DB) error {
-	stmts := []string{
-		"PRAGMA foreign_keys = ON;",
-		"PRAGMA journal_mode = WAL;",
-		"PRAGMA synchronous = NORMAL;",
-		"PRAGMA busy_timeout = 5000;",
-		"PRAGMA temp_store = MEMORY;",
+// appendDefaultPragmas injects essential SQLite PRAGMAs into the connection
+// URL so that every freshly-opened connection inherits them. PRAGMAs set via
+// ExecContext only affect the current connection; URL parameters are applied
+// by the driver to each new connection.
+func appendDefaultPragmas(url string) string {
+	pragmas := []string{
+		"_pragma=journal_mode(WAL)",
+		"_pragma=synchronous(NORMAL)",
+		"_pragma=busy_timeout(15000)",
+		"_pragma=temp_store(MEMORY)",
 	}
-	for _, s := range stmts {
-		if _, err := conn.ExecContext(ctx, s); err != nil {
-			return fmt.Errorf("exec %q: %w", s, err)
+	for _, p := range pragmas {
+		if !strings.Contains(url, p) {
+			sep := "?"
+			if strings.Contains(url, "?") {
+				sep = "&"
+			}
+			url += sep + p
 		}
 	}
+	return url
+}
+
+// verifyPragmas checks that the current connection is using the expected
+// settings. This catches mis-configured URLs at startup.
+func verifyPragmas(ctx context.Context, conn *sql.DB) error {
+	var journalMode string
+	if err := conn.QueryRowContext(ctx, "PRAGMA journal_mode;").Scan(&journalMode); err != nil {
+		return fmt.Errorf("read journal_mode: %w", err)
+	}
+	if !strings.EqualFold(journalMode, "wal") {
+		return fmt.Errorf("journal_mode=%q, want wal", journalMode)
+	}
+	var busyTimeout int
+	if err := conn.QueryRowContext(ctx, "PRAGMA busy_timeout;").Scan(&busyTimeout); err != nil {
+		return fmt.Errorf("read busy_timeout: %w", err)
+	}
+	if busyTimeout == 0 {
+		return fmt.Errorf("busy_timeout=0, expected >0")
+	}
 	return nil
+}
+
+// IsBusyError reports whether err is an SQLite busy/locked error that
+// clients may safely retry.
+func IsBusyError(err error) bool {
+	if err == nil {
+		return false
+	}
+	msg := strings.ToLower(err.Error())
+	return strings.Contains(msg, "database is locked") ||
+		strings.Contains(msg, "sqlited_busy") ||
+		strings.Contains(msg, "busy")
 }
 
 // migrate runs embedded goose migrations.
