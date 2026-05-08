@@ -97,8 +97,8 @@ func registerGameHandlers(hub *wsx.Hub, mgr *session.Manager) {
 
 func buildEquipResponse(sess *session.PlayerSession) *pb.EquipUnequipResponse {
 	resp := &pb.EquipUnequipResponse{Equipped: make(map[string]*pb.ItemIdentity)}
-	for slot, it := range sess.Equipment().All() {
-		resp.Equipped[slot] = &pb.ItemIdentity{ItemId: int32(it.ID), ItemState: int32(it.State)}
+	for slot, entry := range sess.Equipment().All() {
+		resp.Equipped[slot] = &pb.ItemIdentity{ItemId: int32(entry.Item.ID), ItemState: int32(entry.Item.State)}
 	}
 	return resp
 }

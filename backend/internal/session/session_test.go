@@ -670,8 +670,8 @@ func TestEquip(t *testing.T) {
 	if !ok {
 		t.Fatal("main_hand should be equipped")
 	}
-	if got.ID != 35 {
-		t.Errorf("want wooden_sword(35), got %v", got.ID)
+	if got.Item.ID != 35 {
+		t.Errorf("want wooden_sword(35), got %v", got.Item.ID)
 	}
 	if s.Inv().Get(sword) != 0 {
 		t.Error("inventory should have 0 after equip")
@@ -737,8 +737,8 @@ func TestEquipReplaceSlot(t *testing.T) {
 	s.Equip(context.Background(), staff, "main_hand")
 
 	got, ok := s.Equipment().Get("main_hand")
-	if !ok || got.ID != 33 {
-		t.Errorf("want staff(33) equipped, got %v", got.ID)
+	if !ok || got.Item.ID != 33 {
+		t.Errorf("want staff(33) equipped, got %v", got.Item.ID)
 	}
 	if s.Inv().Get(sword) != 1 {
 		t.Error("sword should return to inventory on replace")
@@ -1055,8 +1055,8 @@ func TestEquipPersistsAcrossSessions(t *testing.T) {
 
 	db, q := openInvDB(t)
 	// Create equipment table and insert a record to simulate a prior session.
-	db.ExecContext(context.Background(), `CREATE TABLE IF NOT EXISTS player_equipment (user_id INTEGER NOT NULL, slot TEXT NOT NULL, item_id INTEGER NOT NULL, item_state INTEGER NOT NULL DEFAULT 0, PRIMARY KEY (user_id, slot))`)
-	db.ExecContext(context.Background(), `INSERT OR REPLACE INTO player_equipment (user_id, slot, item_id, item_state) VALUES (1, 'main_hand', 35, 0)`)
+	db.ExecContext(context.Background(), `CREATE TABLE IF NOT EXISTS player_equipment (user_id INTEGER NOT NULL, slot TEXT NOT NULL, item_id INTEGER NOT NULL, item_state INTEGER NOT NULL DEFAULT 0, anchor_slot TEXT NOT NULL DEFAULT '', PRIMARY KEY (user_id, slot))`)
+	db.ExecContext(context.Background(), `INSERT OR REPLACE INTO player_equipment (user_id, slot, item_id, item_state, anchor_slot) VALUES (1, 'main_hand', 35, 0, 'main_hand')`)
 
 	invSt, _ := inventory.Load(context.Background(), q, 1)
 	sword := item.Item{ID: 35, State: 0}
@@ -1081,7 +1081,7 @@ func TestEquipPersistsAcrossSessions(t *testing.T) {
 	defer mgr.UnlockSession(locked)
 
 	got, ok := locked.Equipment().Get("main_hand")
-	if !ok || got.ID != 35 {
+	if !ok || got.Item.ID != 35 {
 		t.Fatalf("main_hand should have sword(35) after reconnect, got %v", got)
 	}
 

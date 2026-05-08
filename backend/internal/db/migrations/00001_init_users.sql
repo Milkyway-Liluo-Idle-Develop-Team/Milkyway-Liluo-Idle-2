@@ -87,11 +87,13 @@ CREATE TABLE IF NOT EXISTS player_active_events (
 );
 
 -- Player equipment. One item per slot per user.
+-- anchor_slot links multiple rows as one logical piece (multi-slot items).
 CREATE TABLE IF NOT EXISTS player_equipment (
-    user_id    INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-    slot       TEXT    NOT NULL,
-    item_id    INTEGER NOT NULL,
-    item_state INTEGER NOT NULL DEFAULT 0,
+    user_id     INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    slot        TEXT    NOT NULL,
+    item_id     INTEGER NOT NULL,
+    item_state  INTEGER NOT NULL DEFAULT 0,
+    anchor_slot TEXT    NOT NULL DEFAULT '',
     PRIMARY KEY (user_id, slot)
 );
 

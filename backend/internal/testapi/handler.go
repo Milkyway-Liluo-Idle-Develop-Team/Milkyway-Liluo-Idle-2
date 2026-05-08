@@ -34,6 +34,7 @@ func (h *Handler) Mount(r chi.Router) {
 		r.Post("/reset-user", h.resetUser)
 		r.Post("/evict-session", h.evictSession)
 		r.Post("/cleanup-expired", h.cleanupExpired)
+		r.Post("/add-inventory", h.addInventory)
 	})
 }
 
@@ -225,4 +226,72 @@ func (h *Handler) cleanupExpired(w http.ResponseWriter, r *http.Request) {
 
 	affected, _ := res.RowsAffected()
 	httpx.JSON(w, http.StatusOK, map[string]any{"deleted": affected})
+}
+
+// ---------------------------------------------------------------------------
+// Add inventory (test fixture)
+// ---------------------------------------------------------------------------
+
+type addInventoryReq struct {
+	Username string              `json:"username"`
+	Items    []addInventoryItem  `json:"items"`
+}
+
+type addInventoryItem struct {
+	ItemID    int64   `json:"item_id"`
+	ItemState int64   `json:"item_state"`
+	Quantity  float64 `json:"quantity"`
+}
+
+func (h *Handler) addInventory(w http.ResponseWriter, r *http.Request) {
+	var req addInventoryReq
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		httpx.JSON(w, http.StatusBadRequest, map[string]string{"error": "invalid JSON"})
+		return
+	}
+	if req.Username == "" {
+		httpx.JSON(w, http.StatusBadRequest, map[string]string{"error": "username required"})
+		return
+	}
+	if len(req.Items) == 0 {
+		httpx.JSON(w, http.StatusBadRequest, map[string]string{"error": "items required"})
+		return
+	}
+
+	ctx := r.Context()
+
+	var userID int64
+	if err := h.db.QueryRowContext(ctx, "SELECT id FROM users WHERE username = ?", req.Username).Scan(&userID); err != nil {
+		if err == sql.ErrNoRows {
+			httpx.JSON(w, http.StatusNotFound, map[string]string{"error": "user not found"})
+			return
+		}
+		httpx.JSON(w, http.StatusInternalServerError, map[string]string{"error": err.Error()})
+		return
+	}
+
+	// Upsert each item into player_inventory
+	for _, it := range req.Items {
+		if it.Quantity <= 0 {
+			continue
+		}
+		_, err := h.db.ExecContext(ctx, `
+			INSERT INTO player_inventory (user_id, item_id, item_state, quantity, updated_at)
+			VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP)
+			ON CONFLICT (user_id, item_id, item_state) DO UPDATE SET
+				quantity = quantity + excluded.quantity,
+				updated_at = CURRENT_TIMESTAMP
+			`, userID, it.ItemID, it.ItemState, it.Quantity)
+		if err != nil {
+			httpx.JSON(w, http.StatusInternalServerError, map[string]string{"error": err.Error()})
+			return
+		}
+	}
+
+	// Evict session so the next WS connect loads the new inventory from DB.
+	if h.sessMgr != nil {
+		h.sessMgr.Evict(userID)
+	}
+
+	httpx.NoContent(w)
 }

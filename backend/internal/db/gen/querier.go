@@ -13,12 +13,13 @@ type Querier interface {
 	CreateSession(ctx context.Context, arg CreateSessionParams) (Session, error)
 	CreateUser(ctx context.Context, arg CreateUserParams) (User, error)
 	DeleteEquipment(ctx context.Context, arg DeleteEquipmentParams) error
+	DeleteEquipmentByAnchor(ctx context.Context, arg DeleteEquipmentByAnchorParams) error
 	DeleteExpiredSessions(ctx context.Context) error
 	GetSessionByTokenHash(ctx context.Context, tokenHash string) (Session, error)
 	GetUserByID(ctx context.Context, id int64) (User, error)
 	GetUserByUsername(ctx context.Context, username string) (User, error)
 	IsPlayerInit(ctx context.Context, userID int64) (int64, error)
-	LoadActiveEvents(ctx context.Context, userID int64) ([]PlayerActiveEvent, error)
+	LoadActiveEvents(ctx context.Context, userID int64) ([]LoadActiveEventsRow, error)
 	LoadDiscoveredItems(ctx context.Context, userID int64) ([]PlayerDiscoveredItem, error)
 	LoadEquipment(ctx context.Context, userID int64) ([]LoadEquipmentRow, error)
 	LoadInventory(ctx context.Context, userID int64) ([]LoadInventoryRow, error)

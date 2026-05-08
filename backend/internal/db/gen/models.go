@@ -10,12 +10,13 @@ import (
 )
 
 type PlayerActiveEvent struct {
-	UserID       int64   `json:"user_id"`
-	QueueID      int64   `json:"queue_id"`
-	EventID      int64   `json:"event_id"`
-	Position     int64   `json:"position"`
-	TargetCycles int64   `json:"target_cycles"`
-	Progress     float64 `json:"progress"`
+	UserID       int64     `json:"user_id"`
+	QueueID      int64     `json:"queue_id"`
+	EventID      int64     `json:"event_id"`
+	Position     int64     `json:"position"`
+	TargetCycles int64     `json:"target_cycles"`
+	Progress     float64   `json:"progress"`
+	UpdatedAt    time.Time `json:"updated_at"`
 }
 
 type PlayerDiscoveredItem struct {
@@ -25,10 +26,11 @@ type PlayerDiscoveredItem struct {
 }
 
 type PlayerEquipment struct {
-	UserID    int64  `json:"user_id"`
-	Slot      string `json:"slot"`
-	ItemID    int64  `json:"item_id"`
-	ItemState int64  `json:"item_state"`
+	UserID     int64  `json:"user_id"`
+	Slot       string `json:"slot"`
+	ItemID     int64  `json:"item_id"`
+	ItemState  int64  `json:"item_state"`
+	AnchorSlot string `json:"anchor_slot"`
 }
 
 type PlayerInit struct {

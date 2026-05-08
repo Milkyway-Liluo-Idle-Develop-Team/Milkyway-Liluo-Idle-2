@@ -23,14 +23,29 @@ func (q *Queries) DeleteEquipment(ctx context.Context, arg DeleteEquipmentParams
 	return err
 }
 
+const deleteEquipmentByAnchor = `-- name: DeleteEquipmentByAnchor :exec
+DELETE FROM player_equipment WHERE user_id = ? AND anchor_slot = ?
+`
+
+type DeleteEquipmentByAnchorParams struct {
+	UserID     int64  `json:"user_id"`
+	AnchorSlot string `json:"anchor_slot"`
+}
+
+func (q *Queries) DeleteEquipmentByAnchor(ctx context.Context, arg DeleteEquipmentByAnchorParams) error {
+	_, err := q.db.ExecContext(ctx, deleteEquipmentByAnchor, arg.UserID, arg.AnchorSlot)
+	return err
+}
+
 const loadEquipment = `-- name: LoadEquipment :many
-SELECT slot, item_id, item_state FROM player_equipment WHERE user_id = ?
+SELECT slot, item_id, item_state, anchor_slot FROM player_equipment WHERE user_id = ?
 `
 
 type LoadEquipmentRow struct {
-	Slot      string `json:"slot"`
-	ItemID    int64  `json:"item_id"`
-	ItemState int64  `json:"item_state"`
+	Slot       string `json:"slot"`
+	ItemID     int64  `json:"item_id"`
+	ItemState  int64  `json:"item_state"`
+	AnchorSlot string `json:"anchor_slot"`
 }
 
 func (q *Queries) LoadEquipment(ctx context.Context, userID int64) ([]LoadEquipmentRow, error) {
@@ -42,7 +57,12 @@ func (q *Queries) LoadEquipment(ctx context.Context, userID int64) ([]LoadEquipm
 	items := []LoadEquipmentRow{}
 	for rows.Next() {
 		var i LoadEquipmentRow
-		if err := rows.Scan(&i.Slot, &i.ItemID, &i.ItemState); err != nil {
+		if err := rows.Scan(
+			&i.Slot,
+			&i.ItemID,
+			&i.ItemState,
+			&i.AnchorSlot,
+		); err != nil {
 			return nil, err
 		}
 		items = append(items, i)
@@ -57,16 +77,17 @@ func (q *Queries) LoadEquipment(ctx context.Context, userID int64) ([]LoadEquipm
 }
 
 const upsertEquipment = `-- name: UpsertEquipment :exec
-INSERT INTO player_equipment (user_id, slot, item_id, item_state)
-VALUES (?, ?, ?, ?)
-ON CONFLICT (user_id, slot) DO UPDATE SET item_id = excluded.item_id, item_state = excluded.item_state
+INSERT INTO player_equipment (user_id, slot, item_id, item_state, anchor_slot)
+VALUES (?, ?, ?, ?, ?)
+ON CONFLICT (user_id, slot) DO UPDATE SET item_id = excluded.item_id, item_state = excluded.item_state, anchor_slot = excluded.anchor_slot
 `
 
 type UpsertEquipmentParams struct {
-	UserID    int64  `json:"user_id"`
-	Slot      string `json:"slot"`
-	ItemID    int64  `json:"item_id"`
-	ItemState int64  `json:"item_state"`
+	UserID     int64  `json:"user_id"`
+	Slot       string `json:"slot"`
+	ItemID     int64  `json:"item_id"`
+	ItemState  int64  `json:"item_state"`
+	AnchorSlot string `json:"anchor_slot"`
 }
 
 func (q *Queries) UpsertEquipment(ctx context.Context, arg UpsertEquipmentParams) error {
@@ -75,6 +96,7 @@ func (q *Queries) UpsertEquipment(ctx context.Context, arg UpsertEquipmentParams
 		arg.Slot,
 		arg.ItemID,
 		arg.ItemState,
+		arg.AnchorSlot,
 	)
 	return err
 }

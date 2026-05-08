@@ -25,6 +25,7 @@ func openTestDB(t *testing.T) (*sql.DB, *dbgen.Queries) {
 	CREATE TABLE player_equipment (
 	    user_id INTEGER NOT NULL, slot TEXT NOT NULL,
 	    item_id INTEGER NOT NULL, item_state INTEGER NOT NULL DEFAULT 0,
+	    anchor_slot TEXT NOT NULL DEFAULT '',
 	    PRIMARY KEY (user_id, slot)
 	);
 	`
@@ -50,13 +51,13 @@ func TestEquipAndGet(t *testing.T) {
 	s, _ := equipment.Load(context.Background(), q, 1)
 
 	it := item.Item{ID: 5, State: 0}
-	s.Equip("main_hand", it)
+	s.Equip("main_hand", it, "main_hand")
 
 	got, ok := s.Get("main_hand")
 	if !ok {
 		t.Fatal("slot should be occupied")
 	}
-	if got != it {
+	if got.Item != it {
 		t.Errorf("want %v, got %v", it, got)
 	}
 	if len(s.All()) != 1 {
@@ -69,7 +70,7 @@ func TestUnequip(t *testing.T) {
 	s, _ := equipment.Load(context.Background(), q, 1)
 
 	it := item.Item{ID: 5, State: 0}
-	s.Equip("feet", it)
+	s.Equip("feet", it, "feet")
 	s.Unequip("feet")
 
 	if _, ok := s.Get("feet"); ok {
@@ -86,11 +87,11 @@ func TestEquipReplaceSlot(t *testing.T) {
 
 	a := item.Item{ID: 1, State: 0}
 	b := item.Item{ID: 2, State: 7}
-	s.Equip("main_hand", a)
-	s.Equip("main_hand", b)
+	s.Equip("main_hand", a, "main_hand")
+	s.Equip("main_hand", b, "main_hand")
 
 	got, ok := s.Get("main_hand")
-	if !ok || got != b {
+	if !ok || got.Item != b {
 		t.Errorf("want %v, got %v ok=%v", b, got, ok)
 	}
 }
@@ -100,7 +101,7 @@ func TestFlushPersists(t *testing.T) {
 	s, _ := equipment.Load(context.Background(), q, 1)
 
 	it := item.Item{ID: 9, State: 3}
-	s.Equip("main_hand", it)
+	s.Equip("main_hand", it, "main_hand")
 	if err := s.Flush(context.Background(), q); err != nil {
 		t.Fatal(err)
 	}
@@ -110,7 +111,7 @@ func TestFlushPersists(t *testing.T) {
 		t.Fatal(err)
 	}
 	got, ok := s2.Get("main_hand")
-	if !ok || got != it {
+	if !ok || got.Item != it {
 		t.Errorf("after reload: want %v, got %v ok=%v", it, got, ok)
 	}
 }
@@ -120,7 +121,7 @@ func TestFlushDeletes(t *testing.T) {
 	s, _ := equipment.Load(context.Background(), q, 1)
 
 	it := item.Item{ID: 9, State: 0}
-	s.Equip("main_hand", it)
+	s.Equip("main_hand", it, "main_hand")
 	if err := s.Flush(context.Background(), q); err != nil {
 		t.Fatal(err)
 	}
@@ -145,8 +146,8 @@ func TestRecordBucket(t *testing.T) {
 	s.SetRecorder(rec)
 
 	rec.PushNamespace("event_execution")
-	s.Equip("main_hand", item.Item{ID: 1, State: 0})
-	s.Equip("feet", item.Item{ID: 2, State: 0})
+	s.Equip("main_hand", item.Item{ID: 1, State: 0}, "main_hand")
+	s.Equip("feet", item.Item{ID: 2, State: 0}, "feet")
 	// Same slot, last action wins.
 	s.Unequip("main_hand")
 	rec.PopNamespace()
@@ -181,8 +182,8 @@ func TestFullSnapshot(t *testing.T) {
 
 	_, q := openTestDB(t)
 	s, _ := equipment.Load(context.Background(), q, 1)
-	s.Equip("main_hand", item.Item{ID: 1, State: 0})
-	s.Equip("feet", item.Item{ID: 2, State: 5})
+	s.Equip("main_hand", item.Item{ID: 1, State: 0}, "main_hand")
+	s.Equip("feet", item.Item{ID: 2, State: 5}, "feet")
 
 	full, err := reg.BuildFullSnapshot(map[string]any{
 		"equipment": s,

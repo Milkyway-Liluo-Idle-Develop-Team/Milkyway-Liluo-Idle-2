@@ -33,15 +33,24 @@ WHERE user_id = ?
 ORDER BY queue_id, position
 `
 
-func (q *Queries) LoadActiveEvents(ctx context.Context, userID int64) ([]PlayerActiveEvent, error) {
+type LoadActiveEventsRow struct {
+	UserID       int64   `json:"user_id"`
+	QueueID      int64   `json:"queue_id"`
+	EventID      int64   `json:"event_id"`
+	Position     int64   `json:"position"`
+	TargetCycles int64   `json:"target_cycles"`
+	Progress     float64 `json:"progress"`
+}
+
+func (q *Queries) LoadActiveEvents(ctx context.Context, userID int64) ([]LoadActiveEventsRow, error) {
 	rows, err := q.db.QueryContext(ctx, loadActiveEvents, userID)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	items := []PlayerActiveEvent{}
+	items := []LoadActiveEventsRow{}
 	for rows.Next() {
-		var i PlayerActiveEvent
+		var i LoadActiveEventsRow
 		if err := rows.Scan(
 			&i.UserID,
 			&i.QueueID,

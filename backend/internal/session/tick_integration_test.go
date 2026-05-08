@@ -51,6 +51,7 @@ func openFullDBForTest(t *testing.T) *db.DB {
 			PRIMARY KEY (user_id, queue_id, position))`,
 		`CREATE TABLE player_equipment (user_id INTEGER NOT NULL, slot TEXT NOT NULL,
 			item_id INTEGER NOT NULL, item_state INTEGER NOT NULL DEFAULT 0,
+			anchor_slot TEXT NOT NULL DEFAULT '',
 			PRIMARY KEY (user_id, slot))`,
 		`CREATE TABLE player_init (user_id INTEGER NOT NULL PRIMARY KEY,
 			initialized INTEGER NOT NULL DEFAULT 0,

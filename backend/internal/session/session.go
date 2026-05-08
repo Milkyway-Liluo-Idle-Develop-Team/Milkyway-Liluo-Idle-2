@@ -13,9 +13,11 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"fmt"
 	"log/slog"
 	"reflect"
 	"runtime"
+	"strings"
 	"sync"
 	"time"
 
@@ -221,15 +223,22 @@ func (s *PlayerSession) SetEquipment(st *equipment.State) {
 	s.eq = st
 	// Replay equipment modifiers on the attribute system. equipment.Load is
 	// pure DB →State; attribute coupling is the session's job.
-	for _, it := range st.All() {
-		def, ok := gameconfig.GetItemDefByID(it.ID)
+	seen := make(map[string]struct{})
+	for _, entry := range st.All() {
+		def, ok := gameconfig.GetItemDefByID(entry.Item.ID)
 		if !ok {
 			continue
 		}
-		mods, err := def.Modifiers(it, attribute.Get())
+		// Deduplicate by anchor to avoid double-counting multi-slot pieces.
+		key := entry.AnchorSlot + ":" + def.StringID()
+		if _, done := seen[key]; done {
+			continue
+		}
+		seen[key] = struct{}{}
+		mods, err := def.Modifiers(entry.Item, attribute.Get())
 		if err != nil {
 			// Best-effort: log and skip broken definitions.
-			s.logger.Warn("equipment modifier replay failed", "item_id", it.ID, "err", err)
+			s.logger.Warn("equipment modifier replay failed", "item_id", entry.Item.ID, "err", err)
 			continue
 		}
 		s.attr.AddModifiers("equipment:"+def.StringID(), mods)
@@ -333,57 +342,240 @@ func (s *PlayerSession) FlushAll(ctx context.Context, database *db.DB) error {
 }
 
 // Equip moves an item from inventory to the given slot, applying attribute modifiers.
-// If the slot is occupied, the old item is unequipped first.
-func (s *PlayerSession) Equip(ctx context.Context, it item.Item, slot string) error {
+// For multi-slot items, the system automatically occupies all required slots
+// anchored to the clicked slot.
+func (s *PlayerSession) Equip(ctx context.Context, it item.Item, clickedSlot string) error {
 	def, ok := gameconfig.GetItemDefByID(it.ID)
 	if !ok {
 		return apperror.NotFound("item not found")
 	}
-	if !def.IsEquipment() {
+	if !def.IsEquipment() && !def.IsTool() {
 		return apperror.BadRequest("item is not equipment")
 	}
 	if !s.inv.Has(it, 1) {
 		return apperror.BadRequest("item not in inventory")
 	}
 
-	// Replace existing item in slot, if any.
-	if old, ok := s.eq.Get(slot); ok {
-		if oldDef, ok := gameconfig.GetItemDefByID(old.ID); ok {
-			s.attr.RemoveModifiers("equipment:" + oldDef.StringID())
+	slotType := resolveSlotType(clickedSlot)
+
+	// Parse position requirements.
+	reqMap := positionRequirements(def, slotType)
+	if len(reqMap) == 0 {
+		reqMap = map[string]int{slotBase(clickedSlot): 1}
+	}
+	if _, ok := reqMap[slotBase(clickedSlot)]; !ok {
+		return apperror.BadRequest("item cannot be equipped in this slot")
+	}
+
+	// Build dynamic slot instances.
+	allSlots := s.buildSlotInstances(slotType)
+	found := false
+	for _, sl := range allSlots {
+		if sl == clickedSlot {
+			found = true
+			break
 		}
-		s.inv.AddEquipChange(old, 1, false) // returns to inventory, reason=UNEQUIP
-		s.best.UnlockItem(old)
-		s.eq.Unequip(slot)                  // clears + records UNEQUIP
+	}
+	if !found {
+		return apperror.BadRequest("invalid slot")
+	}
+
+	// If clicked slot is occupied, remove the entire anchored piece first.
+	if old, ok := s.eq.Get(clickedSlot); ok {
+		if err := s.unequipByAnchor(old.AnchorSlot); err != nil {
+			return err
+		}
+	}
+
+	// Collect occupied slots (excluding the clicked slot area which we just freed).
+	occupied := make(map[string]struct{})
+	for sl := range s.eq.All() {
+		occupied[sl] = struct{}{}
+	}
+
+	// Greedy target slot selection.
+	targetSlots, err := chooseTargetSlots(allSlots, reqMap, clickedSlot, occupied)
+	if err != nil {
+		return apperror.BadRequest(err.Error())
 	}
 
 	// Deduct from inventory with EQUIP reason.
 	s.inv.AddEquipChange(it, -1, true)
 
-	// Apply attribute modifiers.
+	// Apply attribute modifiers (once per piece, not per slot).
 	mods, err := def.Modifiers(it, attribute.Get())
 	if err != nil {
 		return err
 	}
 	s.attr.AddModifiers("equipment:"+def.StringID(), mods)
 
-	// Record slot mount.
-	s.eq.Equip(slot, it)
+	// Record slot mounts.
+	for _, sl := range targetSlots {
+		s.eq.Equip(sl, it, clickedSlot)
+	}
 	return nil
 }
 
-// Unequip removes the item from the given slot and returns it to inventory.
+// Unequip removes the entire anchored piece that occupies the given slot.
 func (s *PlayerSession) Unequip(ctx context.Context, slot string) error {
-	it, ok := s.eq.Get(slot)
+	entry, ok := s.eq.Get(slot)
 	if !ok {
 		return apperror.NotFound("no item equipped in slot")
+	}
+	return s.unequipByAnchor(entry.AnchorSlot)
+}
+
+func (s *PlayerSession) unequipByAnchor(anchor string) error {
+	removed := s.eq.UnequipByAnchor(anchor)
+	if len(removed) == 0 {
+		return nil
+	}
+	// All removed slots belong to the same piece; grab item from any.
+	var it item.Item
+	for _, v := range removed {
+		it = v
+		break
 	}
 	if def, ok := gameconfig.GetItemDefByID(it.ID); ok {
 		s.attr.RemoveModifiers("equipment:" + def.StringID())
 	}
 	s.inv.AddEquipChange(it, 1, false)
 	s.best.UnlockItem(it)
-	s.eq.Unequip(slot)
 	return nil
+}
+
+// ---------------------------------------------------------------------------
+// Equipment helpers
+// ---------------------------------------------------------------------------
+
+var (
+	toolSlotBases      = []string{"felling", "mining", "planting", "crafting", "forging", "enhancing"}
+	equipmentSlotBases = []string{"main_hand", "side_hand", "head", "chest", "leg", "feet", "necklace", "treasure"}
+)
+
+func slotBase(slotID string) string {
+	return strings.Split(slotID, "#")[0]
+}
+
+func resolveSlotType(slotID string) string {
+	base := slotBase(slotID)
+	for _, b := range toolSlotBases {
+		if b == base {
+			return "tool"
+		}
+	}
+	for _, b := range equipmentSlotBases {
+		if b == base {
+			return "equipment"
+		}
+	}
+	return ""
+}
+
+func (s *PlayerSession) buildSlotInstances(slotType string) []string {
+	var bases []string
+	if slotType == "tool" {
+		bases = toolSlotBases
+	} else {
+		bases = equipmentSlotBases
+	}
+	var out []string
+	for _, base := range bases {
+		count := 1
+		if s.attr != nil {
+			attrName := base + "_slot_count"
+			if aid, ok := attribute.Get().AttrID(attrName); ok {
+				count = int(s.attr.GetFinal(aid))
+			}
+		}
+		if count <= 1 {
+			out = append(out, base)
+			continue
+		}
+		for i := 1; i <= count; i++ {
+			out = append(out, fmt.Sprintf("%s#%d", base, i))
+		}
+	}
+	return out
+}
+
+func positionRequirements(def item.ItemDef, slotType string) map[string]int {
+	out := make(map[string]int)
+	if slotType == "tool" {
+		for _, r := range def.ToolPositionReqs() {
+			v := r.Value
+			if v < 1 {
+				v = 1
+			}
+			out[r.Position] += v
+		}
+	} else {
+		for _, r := range def.EquipPositionReqs() {
+			v := r.Value
+			if v < 1 {
+				v = 1
+			}
+			out[r.Position] += v
+		}
+	}
+	return out
+}
+
+func chooseTargetSlots(allSlots []string, reqMap map[string]int, clickedSlot string, occupied map[string]struct{}) ([]string, error) {
+	clickedBase := slotBase(clickedSlot)
+	if _, ok := reqMap[clickedBase]; !ok {
+		return nil, fmt.Errorf("item cannot be equipped in this slot")
+	}
+
+	slotsByBase := make(map[string][]string)
+	for _, sl := range allSlots {
+		b := slotBase(sl)
+		slotsByBase[b] = append(slotsByBase[b], sl)
+	}
+
+	var selected []string
+	for base, need := range reqMap {
+		candidates := slotsByBase[base]
+		if len(candidates) == 0 {
+			return nil, fmt.Errorf("missing slot: %s", base)
+		}
+
+		var chosen []string
+		if base == clickedBase {
+			if _, taken := occupied[clickedSlot]; taken {
+				return nil, fmt.Errorf("clicked slot is occupied")
+			}
+			chosen = append(chosen, clickedSlot)
+			for _, sl := range candidates {
+				if len(chosen) >= need {
+					break
+				}
+				if sl == clickedSlot {
+					continue
+				}
+				if _, taken := occupied[sl]; taken {
+					continue
+				}
+				chosen = append(chosen, sl)
+			}
+		} else {
+			for _, sl := range candidates {
+				if len(chosen) >= need {
+					break
+				}
+				if _, taken := occupied[sl]; taken {
+					continue
+				}
+				chosen = append(chosen, sl)
+			}
+		}
+
+		if len(chosen) < need {
+			return nil, fmt.Errorf("not enough free slots for %s", base)
+		}
+		selected = append(selected, chosen...)
+	}
+	return selected, nil
 }
 
 func isStateDiffEmpty(d *pb.StateDiff) bool {

@@ -67,11 +67,53 @@ func (ij itemJSON) toDef(id item.ID) item.ItemDef {
 		tu = asFloat(ij.ToolDetails.ToolUpgradeData)
 	}
 
+	// Build upgrade curve nodes.
+	var upgradeCurve []item.UpgradeCurveNode
+	if ij.UpgradeDetails != nil {
+		for _, n := range ij.UpgradeDetails.UpgradeCurve {
+			upgradeCurve = append(upgradeCurve, item.UpgradeCurveNode{
+				Level:             n.Level,
+				RecommendLevel:    n.RecommendLevel,
+				BasicSuccessRate:  n.BasicSuccessRate,
+				AbilityMultiplier: n.AbilityMultiplier,
+			})
+		}
+	}
+
+	// Build position requirements.
+	var equipReqs, toolReqs []item.PositionReq
+	if ij.EquipmentDetails != nil {
+		for _, r := range ij.EquipmentDetails.EquipmentPositionRequirements {
+			v := r.Value
+			if v < 1 {
+				v = 1
+			}
+			equipReqs = append(equipReqs, item.PositionReq{Position: r.Position, Value: v})
+		}
+	}
+	if ij.ToolDetails != nil {
+		for _, r := range ij.ToolDetails.ToolPositionRequirement {
+			v := r.Value
+			if v < 1 {
+				v = 1
+			}
+			toolReqs = append(toolReqs, item.PositionReq{Position: r.ToolPosition, Value: v})
+		}
+	}
+
+	maxUpgrade := 0
+	if ij.UpgradeDetails != nil {
+		maxUpgrade = ij.UpgradeDetails.MaxUpgrade
+	}
+
 	return item.NewDef(
 		id, ij.ID, ij.Name,
 		ij.Tool, ij.Equipment, ij.Upgradable,
 		ij.Classification,
 		eb, eu, tb, tu,
+		upgradeCurve,
+		equipReqs, toolReqs,
+		maxUpgrade,
 	)
 }
 

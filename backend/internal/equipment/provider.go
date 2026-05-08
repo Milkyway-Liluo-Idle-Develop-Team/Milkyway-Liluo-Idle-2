@@ -26,10 +26,10 @@ func (p *provider) SerializeFull(state any) (proto.Message, error) {
 	}
 
 	out := make(map[string]*pb.ItemIdentity, len(all))
-	for slot, it := range all {
+	for slot, entry := range all {
 		out[slot] = &pb.ItemIdentity{
-			ItemId:    int32(it.ID),
-			ItemState: int32(it.State),
+			ItemId:    int32(entry.Item.ID),
+			ItemState: int32(entry.Item.State),
 		}
 	}
 	return &pb.StateFull{Equipment: out}, nil

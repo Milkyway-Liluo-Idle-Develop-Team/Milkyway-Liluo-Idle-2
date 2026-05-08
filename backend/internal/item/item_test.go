@@ -86,11 +86,8 @@ func TestModifiersEquipment(t *testing.T) {
 	for _, m := range mods {
 		sources[m.Source]++
 	}
-	if sources["equipment_basic:wooden_sword"] != 1 {
-		t.Error("missing equipment_basic source")
-	}
-	if sources["equipment_upgrade:wooden_sword"] != 2 {
-		t.Error("wrong count for equipment_upgrade source")
+	if sources["equipment:wooden_sword"] != 3 {
+		t.Errorf("want 3 equipment:wooden_sword sources, got %d", sources["equipment:wooden_sword"])
 	}
 }
 
@@ -110,7 +107,7 @@ func TestModifiersTool(t *testing.T) {
 		t.Fatalf("wooden_axe: want 1 modifier, got %d", len(mods))
 	}
 	m := mods[0]
-	if m.Source != "tool_upgrade:wooden_axe" {
+	if m.Source != "tool:wooden_axe" {
 		t.Errorf("want tool_upgrade source, got %q", m.Source)
 	}
 	if m.Value != 0.1 {
