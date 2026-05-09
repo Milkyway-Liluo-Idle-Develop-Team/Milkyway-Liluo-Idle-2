@@ -31,8 +31,10 @@ const (
 // --- raw config ---
 
 type ActionConfig struct {
-	Items  []itemJSON `json:"items"`
-	Events []Event    `json:"events"`
+	Items   []itemJSON   `json:"items"`
+	Events  []Event      `json:"events"`
+	Enemies []EnemyDef   `json:"enemies"`
+	Battles []BattleDef  `json:"battles"`
 }
 
 // --- Item JSON shape ---
@@ -172,14 +174,31 @@ type BattleSkill struct {
 	Name        string         `json:"name"`
 	Description string         `json:"description"`
 	TargetType  string         `json:"target_type"`
-	Damage      DamageProfile  `json:"damage"`
+	Damage      *DamageProfile `json:"damage,omitempty"`
 	IsBasic     bool           `json:"is_basic"`
+
+	// Extended fields used by enemy battle skills.
+	Cooldown      float64    `json:"cooldown"`
+	CastTime      float64    `json:"cast_time"`
+	MPCost        float64    `json:"mp_cost"`
+	SPCost        float64    `json:"sp_cost"`
+	IsSupport     bool       `json:"is_support"`
+	Effects       []EffectDef `json:"effects,omitempty"`
+	PhysicalStyle string     `json:"physical_style"`
 }
 
 type DamageProfile struct {
 	Type       string  `json:"type"`
 	Flat       float64 `json:"flat"`
 	Multiplier float64 `json:"multiplier"`
+}
+
+type EffectDef struct {
+	Target    string  `json:"target"` // "self" | "target"
+	Attribute string  `json:"attribute"`
+	Mode      string  `json:"mode"` // "flat" | "percent_mult"
+	Value     float64 `json:"value"`
+	Duration  float64 `json:"duration,omitempty"`
 }
 
 // UpgradeDetails is present when Item.Upgradable == true.
@@ -274,4 +293,97 @@ func (r Reward) ItemQuantity() float64 {
 // Experience returns the XP value and target skill for an experience reward.
 func (r Reward) Experience() (value float64, skillID string) {
 	return r.Value, r.SkillID
+}
+
+// --- Enemy definitions ---
+
+// EnemyDef is a read-only enemy definition loaded from actions.json.
+type EnemyDef struct {
+	ID              string                  `json:"id"`
+	Name            string                  `json:"name"`
+	BattleData      map[string]float64      `json:"enemy_battle_data"`
+	BasicDamageType string                  `json:"basic_damage_type"`
+	Rewards         []EnemyReward           `json:"rewards"`
+	BattleSkills    []EnemyBattleSkillEntry `json:"battle_skill"`
+	BasicSkillID    string                  `json:"basic_skill_id"`
+}
+
+// EnemyReward is a single drop or XP reward from an enemy.
+type EnemyReward struct {
+	Type           string  // "" for item, "experience" for XP
+	ID             string
+	Num            float64
+	Value          float64
+	ResolvedItem   item.Item
+	ResolvedSkillID SkillID
+}
+
+// IsExperience reports whether this reward grants skill experience.
+func (r EnemyReward) IsExperience() bool { return r.Type == "experience" }
+
+// IsItem reports whether this reward grants an item.
+func (r EnemyReward) IsItem() bool { return r.Type == "" }
+
+// ItemQuantity returns the resolved quantity.
+func (r EnemyReward) ItemQuantity() float64 {
+	if r.Num != 0 {
+		return r.Num
+	}
+	return r.Value
+}
+
+// Experience returns the XP value and target skill.
+func (r EnemyReward) Experience() (value float64, skillID string) {
+	return r.Value, r.ID
+}
+
+// EnemyBattleSkillEntry is a single skill in an enemy's battle plan.
+type EnemyBattleSkillEntry struct {
+	Skill     BattleSkill
+	Priority  int
+	Condition *SkillConditionDef
+}
+
+// SkillConditionDef defines when a skill may be used.
+type SkillConditionDef struct {
+	LogicType        string               `json:"logic_type"`
+	NormalCondition  []SimpleConditionDef `json:"normal_condition"`
+	ComplexCondition *SkillConditionDef   `json:"complex_condition"`
+}
+
+// SimpleConditionDef is a single numeric comparison.
+type SimpleConditionDef struct {
+	Key            string  `json:"key"`
+	ComparisonType string  `json:"comparison_type"`
+	Value          float64 `json:"value"`
+}
+
+
+// --- Battle definitions ---
+
+// BattleDef is a read-only battle scene definition loaded from actions.json.
+type BattleDef struct {
+	ID                       string                  `json:"id"`
+	Name                     string                  `json:"name"`
+	Map                      string                  `json:"map"`
+	Interval                 float64                 `json:"interval"`
+	CombinationLoop          []string                `json:"combination_loop"`
+	WeakEnemyCombinations    []EnemyWaveCombination  `json:"weak_enemy_combinations,omitempty"`
+	StrongEnemyCombinations  []EnemyWaveCombination  `json:"strong_enemy_combinations,omitempty"`
+	BossEnemyCombinations    []EnemyWaveCombination  `json:"boss_enemy_combinations,omitempty"`
+}
+
+// EnemyWaveCombination is a single weighted enemy group for a wave.
+type EnemyWaveCombination struct {
+	Enemies []string `json:"enemies"`
+	Weight  float64  `json:"weight"`
+}
+
+// CombinationsMap returns the combinations grouped by wave type.
+func (b BattleDef) CombinationsMap() map[string][]EnemyWaveCombination {
+	return map[string][]EnemyWaveCombination{
+		"weak":   b.WeakEnemyCombinations,
+		"strong": b.StrongEnemyCombinations,
+		"boss":   b.BossEnemyCombinations,
+	}
 }

@@ -2,18 +2,20 @@ package battle
 
 // BattleConfig is the static definition of a battle instance.
 type BattleConfig struct {
-	ID                string
-	Name              string
-	Map               string
-	Interval          float64 // seconds between waves
-	CombinationLoop   []string
-	Combinations      map[string][]EnemyCombination
+	ID                      string
+	Name                    string
+	Map                     string
+	Interval                float64 // seconds between waves
+	CombinationLoop         []string
+	WeakEnemyCombinations   []EnemyWaveCombination
+	StrongEnemyCombinations []EnemyWaveCombination
+	BossEnemyCombinations   []EnemyWaveCombination
 }
 
-// EnemyCombination defines a group of enemies that can spawn together.
-type EnemyCombination struct {
-	EnemyID string
-	Count   int
+// EnemyWaveCombination is a single weighted enemy group for a wave.
+type EnemyWaveCombination struct {
+	Enemies []string
+	Weight  float64
 }
 
 // BattleSession holds the runtime state of an active battle.

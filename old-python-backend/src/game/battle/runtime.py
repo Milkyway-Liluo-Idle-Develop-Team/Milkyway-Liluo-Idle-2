@@ -289,7 +289,7 @@ def start_battle(uid: int, battle_id: str, player_skills: Any = None) -> dict[st
             "interval": interval,
             "combination_loop": [str(x) for x in (battle.get("combination_loop") or ["weak"])],
             "combinations": {
-                "weak": list(battle.get("week_enemy_combinations") or []),
+                "weak": list(battle.get("weak_enemy_combinations") or []),
                 "strong": list(battle.get("strong_enemy_combinations") or []),
                 "boss": list(battle.get("boss_enemy_combinations") or []),
             },

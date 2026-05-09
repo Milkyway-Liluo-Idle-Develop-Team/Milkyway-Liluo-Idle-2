@@ -411,7 +411,7 @@ export interface battle_field_data{
     id: string,
     name: string,
     interval: number,
-    week_enemy_combinations: enemy_combination_data[],
+    weak_enemy_combinations: enemy_combination_data[],
     strong_enemy_combinations: enemy_combination_data[],
     boss_enemy_combinations: enemy_combination_data[],
     combination_loop: string[], // in combination_type

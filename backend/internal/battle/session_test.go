@@ -38,8 +38,8 @@ func TestBattleSessionWaveSpawnAndAttack(t *testing.T) {
 		Map:             "village",
 		Interval:        3.0,
 		CombinationLoop: []string{"weak"},
-		Combinations: map[string][]battle.EnemyCombination{
-			"weak": {{EnemyID: "goblin", Count: 1}},
+		WeakEnemyCombinations: []battle.EnemyWaveCombination{
+			{Enemies: []string{"goblin"}, Weight: 100},
 		},
 	}
 

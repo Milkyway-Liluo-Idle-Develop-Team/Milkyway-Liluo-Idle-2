@@ -6,6 +6,7 @@ import (
 
 	"github.com/Milkyway-Liluo-Idle-Develop-Team/Milkyway-Liluo-Idle-2/backend/internal/attribute"
 	"github.com/Milkyway-Liluo-Idle-Develop-Team/Milkyway-Liluo-Idle-2/backend/internal/battle"
+	"github.com/Milkyway-Liluo-Idle-Develop-Team/Milkyway-Liluo-Idle-2/backend/internal/gameconfig"
 )
 
 func init() {
@@ -13,6 +14,9 @@ func init() {
 		if err := attribute.Load(); err != nil {
 			panic(err)
 		}
+	}
+	if err := gameconfig.Load(); err != nil {
+		panic(err)
 	}
 	battle.LoadAttrIDs()
 }

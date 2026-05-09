@@ -3101,7 +3101,7 @@
       "id": "pasture",
       "name": "牧场",
       "interval": 3,
-      "week_enemy_combinations": [
+      "weak_enemy_combinations": [
         {
           "enemies": [
             "pig",
@@ -3174,7 +3174,7 @@
       "id": "outskirts_of_village",
       "name": "村庄郊外",
       "interval": 4,
-      "week_enemy_combinations": [
+      "weak_enemy_combinations": [
         {
           "enemies": [
             "goblin",
@@ -3282,7 +3282,7 @@
       "id": "cave",
       "name": "山洞",
       "interval": 10,
-      "week_enemy_combinations": [],
+      "weak_enemy_combinations": [],
       "strong_enemy_combinations": [],
       "boss_enemy_combinations": [
         {

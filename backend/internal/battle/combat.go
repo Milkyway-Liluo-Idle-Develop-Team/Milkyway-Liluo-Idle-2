@@ -225,9 +225,37 @@ func skillWouldApplyEffect(skill *BattleSkill, caster, target BattleEntity, now 
 		if dst == nil {
 			continue
 		}
-		// Simplified: always true if effect exists and target valid.
-		// Full implementation would check existing effects for overwrite.
-		return true
+
+		// Build the effect key as ApplyEffect would.
+		candidate := ActiveEffect{
+			SourceSkillID: skill.ID,
+			Attribute:     eff.Attribute,
+			Mode:          eff.Mode,
+		}
+		key := candidate.effectKey()
+
+		found := false
+		for _, ae := range dst.ActiveEffects() {
+			if ae.effectKey() != key {
+				continue
+			}
+			found = true
+			// If the existing effect has expired, it will be cleaned up soon,
+			// so re-applying makes sense.
+			if ae.ExpiresAt != nil && *ae.ExpiresAt <= now {
+				return true
+			}
+			// If the value differs (stronger buff, weaker debuff, etc.),
+			// applying it would change the entity's stats.
+			if ae.Value != eff.Value {
+				return true
+			}
+			// Same value, still alive → this particular effect would change nothing.
+		}
+		if !found {
+			// No existing effect with this key → applying creates a new modifier.
+			return true
+		}
 	}
 	return false
 }

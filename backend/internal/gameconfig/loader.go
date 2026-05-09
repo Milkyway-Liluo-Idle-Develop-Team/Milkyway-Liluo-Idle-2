@@ -18,6 +18,12 @@ type registry struct {
 	// --- events ---
 	events map[string]Event
 
+	// --- enemies ---
+	enemies map[string]EnemyDef
+
+	// --- battles ---
+	battles map[string]BattleDef
+
 	// --- id registry (source of truth for numeric ids) ---
 	idReg *IDRegistry
 
@@ -62,12 +68,20 @@ func Load() error {
 		eventsByID:    make(map[EventID]Event),
 		eventsBySkill: make(map[SkillID][]Event),
 		eventsByMap:   make(map[MapID][]Event),
+		enemies:       make(map[string]EnemyDef, len(cfg.Enemies)),
+		battles:       make(map[string]BattleDef, len(cfg.Battles)),
 	}
 
 	if err := indexItems(r, cfg.Items); err != nil {
 		return err
 	}
 	if err := indexEvents(r, cfg.Events); err != nil {
+		return err
+	}
+	if err := indexEnemies(r, cfg.Enemies); err != nil {
+		return err
+	}
+	if err := indexBattles(r, cfg.Battles); err != nil {
 		return err
 	}
 	if err := validate(r); err != nil {
@@ -186,6 +200,49 @@ func validate(r *registry) error {
 		// the JSON-level validation (tool/equipment/upgrade flags) is
 		// handled in toDef / NewDef.
 		_ = it
+	}
+	return nil
+}
+
+func indexEnemies(r *registry, enemies []EnemyDef) error {
+	for i := range enemies {
+		e := &enemies[i]
+		if e.ID == "" {
+			return fmt.Errorf("enemy with empty id (name=%q)", e.Name)
+		}
+		if _, dup := r.enemies[e.ID]; dup {
+			return fmt.Errorf("duplicate enemy id %q", e.ID)
+		}
+
+		// Resolve rewards.
+		for j := range e.Rewards {
+			rew := &e.Rewards[j]
+			if rew.IsItem() {
+				if id, ok := r.idReg.Items[rew.ID]; ok {
+					rew.ResolvedItem = item.Item{ID: item.ID(id)}
+				}
+			} else if rew.IsExperience() {
+				if id, ok := r.idReg.Skills[rew.ID]; ok {
+					rew.ResolvedSkillID = SkillID(id)
+				}
+			}
+		}
+
+		r.enemies[e.ID] = *e
+	}
+	return nil
+}
+
+func indexBattles(r *registry, battles []BattleDef) error {
+	for i := range battles {
+		b := &battles[i]
+		if b.ID == "" {
+			return fmt.Errorf("battle with empty id (name=%q)", b.Name)
+		}
+		if _, dup := r.battles[b.ID]; dup {
+			return fmt.Errorf("duplicate battle id %q", b.ID)
+		}
+		r.battles[b.ID] = *b
 	}
 	return nil
 }
@@ -534,4 +591,72 @@ func EventsByMapID(mapID MapID) []Event {
 		panic("gameconfig: Load() must be called before EventsByMapID")
 	}
 	return append([]Event(nil), reg.eventsByMap[mapID]...)
+}
+
+// =========================
+// Enemy accessors
+// =========================
+
+// GetEnemy returns an enemy definition by its string id.
+func GetEnemy(id string) (EnemyDef, bool) {
+	if reg == nil {
+		panic("gameconfig: Load() must be called before GetEnemy")
+	}
+	e, ok := reg.enemies[id]
+	return e, ok
+}
+
+// AllEnemies returns every enemy definition in deterministic order.
+func AllEnemies() []EnemyDef {
+	if reg == nil {
+		panic("gameconfig: Load() must be called before AllEnemies")
+	}
+	out := make([]EnemyDef, 0, len(reg.enemies))
+	for _, e := range reg.enemies {
+		out = append(out, e)
+	}
+	sort.Slice(out, func(i, j int) bool { return out[i].ID < out[j].ID })
+	return out
+}
+
+// EnemyCount returns the number of defined enemies.
+func EnemyCount() int {
+	if reg == nil {
+		panic("gameconfig: Load() must be called before EnemyCount")
+	}
+	return len(reg.enemies)
+}
+
+// =========================
+// Battle accessors
+// =========================
+
+// GetBattle returns a battle definition by its string id.
+func GetBattle(id string) (BattleDef, bool) {
+	if reg == nil {
+		panic("gameconfig: Load() must be called before GetBattle")
+	}
+	b, ok := reg.battles[id]
+	return b, ok
+}
+
+// AllBattles returns every battle definition in deterministic order.
+func AllBattles() []BattleDef {
+	if reg == nil {
+		panic("gameconfig: Load() must be called before AllBattles")
+	}
+	out := make([]BattleDef, 0, len(reg.battles))
+	for _, b := range reg.battles {
+		out = append(out, b)
+	}
+	sort.Slice(out, func(i, j int) bool { return out[i].ID < out[j].ID })
+	return out
+}
+
+// BattleCount returns the number of defined battles.
+func BattleCount() int {
+	if reg == nil {
+		panic("gameconfig: Load() must be called before BattleCount")
+	}
+	return len(reg.battles)
 }
