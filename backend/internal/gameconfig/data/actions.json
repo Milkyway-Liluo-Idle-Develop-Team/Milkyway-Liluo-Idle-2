@@ -144,7 +144,7 @@
           "attack_interval": 3
         },
         "equipment_upgrade_data": {
-          "magic_damage": 20,
+          "magic_power": 20,
           "accuracy": 10
         }
       },

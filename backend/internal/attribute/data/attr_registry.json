@@ -3,14 +3,31 @@
   "attributes": {
     "accuracy": 3,
     "attack_interval": 4,
+    "block": 17,
+    "block_possibility_multiplier": 18,
+    "block_rate": 19,
     "crafting_production_multiplier": 11,
+    "critical": 15,
+    "critical_rate": 16,
     "defense": 5,
+    "evade": 20,
+    "evade_possibility_multiplier": 21,
     "exp_gain_multiplier": 8,
     "felling_production_multiplier": 9,
+    "final_damage_multiplier": 24,
+    "final_damage_reduce": 25,
+    "hatred": 26,
     "hatred_multiplier": 6,
+    "hp": 12,
     "hp_recovery": 7,
-    "magic_damage": 2,
+    "magic_instance": 23,
+    "magic_power": 2,
     "mining_production_multiplier": 10,
-    "physical_power": 1
+    "mp": 13,
+    "mp_recovery": 27,
+    "physical_power": 1,
+    "sp": 14,
+    "sp_recovery": 28,
+    "accuracy_possibility_multiplier": 22
   }
 }

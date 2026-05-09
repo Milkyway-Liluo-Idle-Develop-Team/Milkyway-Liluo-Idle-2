@@ -2,15 +2,33 @@
   "version": "1",
   "attributes": [
     {"id": "physical_power",  "name": "物理攻击力",    "default_value": 10, "min_value": 0,   "direction": "positive", "group": "combat",     "desc": "角色基础物理攻击力"},
-    {"id": "magic_damage",    "name": "魔法伤害",      "default_value": 0,  "min_value": 0,   "direction": "positive", "group": "combat",     "desc": "角色魔法伤害值"},
+    {"id": "magic_power",     "name": "奥术伤害",      "default_value": 20, "min_value": 0,   "direction": "positive", "group": "combat",     "desc": "角色基础奥术攻击力"},
     {"id": "accuracy",        "name": "命中率",        "default_value": 0,  "min_value": 0,   "direction": "positive", "group": "combat",     "desc": "影响攻击命中概率"},
     {"id": "attack_interval", "name": "攻击间隔",      "default_value": 2,  "min_value": 0.1, "direction": "negative", "group": "combat",     "desc": "每次攻击之间的间隔秒数，越小越快"},
     {"id": "defense",         "name": "防御",           "default_value": 0,  "min_value": 0,   "direction": "positive", "group": "combat",     "desc": "减少受到的物理伤害"},
-    {"id": "hatred_multiplier", "name": "暴击倍率",     "default_value": 0,  "min_value": 0,   "direction": "positive", "group": "combat",     "desc": "暴击时的伤害倍率加成"},
+    {"id": "hatred_multiplier", "name": "仇恨值倍率",     "default_value": 0,  "min_value": 0,   "direction": "positive", "group": "combat",     "desc": "仇恨值的百分比加成"},
     {"id": "hp_recovery",     "name": "生命恢复",      "default_value": 0,  "min_value": 0,   "direction": "positive", "group": "combat",     "desc": "每秒恢复的生命值"},
     {"id": "exp_gain_multiplier", "name": "经验获取倍率", "default_value": 0, "min_value": 0,   "direction": "positive", "group": "production", "desc": "所有经验获取的百分比加成"},
     {"id": "felling_production_multiplier",  "name": "伐木产出倍率",  "default_value": 0, "min_value": 0, "direction": "positive", "group": "production", "desc": "伐木类事件的产出百分比加成"},
     {"id": "mining_production_multiplier",   "name": "采矿产出倍率",  "default_value": 0, "min_value": 0, "direction": "positive", "group": "production", "desc": "采矿类事件的产出百分比加成"},
-    {"id": "crafting_production_multiplier", "name": "制作产出倍率",  "default_value": 0, "min_value": 0, "direction": "positive", "group": "production", "desc": "制作类事件的产出百分比加成"}
+    {"id": "crafting_production_multiplier", "name": "制作产出倍率",  "default_value": 0, "min_value": 0, "direction": "positive", "group": "production", "desc": "制作类事件的产出百分比加成"},
+
+    {"id": "hp",                              "name": "生命值上限",       "default_value": 100, "min_value": 1,   "direction": "positive", "group": "combat", "desc": "角色生命上限"},
+    {"id": "mp",                              "name": "魔力值上限",       "default_value": 100, "min_value": 0,   "direction": "positive", "group": "combat", "desc": "角色魔力上限"},
+    {"id": "sp",                              "name": "耐力值上限",       "default_value": 100, "min_value": 0,   "direction": "positive", "group": "combat", "desc": "角色耐力上限"},
+    {"id": "critical",                        "name": "暴击率",           "default_value": 0,   "min_value": 0,   "max_value": 1,   "direction": "positive", "group": "combat", "desc": "暴击触发概率"},
+    {"id": "critical_rate",                   "name": "暴击倍率",         "default_value": 2,   "min_value": 1,   "direction": "positive", "group": "combat", "desc": "暴击时的伤害倍率"},
+    {"id": "block",                           "name": "格挡值",           "default_value": 0,   "min_value": 0,   "direction": "positive", "group": "combat", "desc": "影响格挡概率"},
+    {"id": "block_possibility_multiplier",    "name": "格挡概率倍率",     "default_value": 0,   "min_value": 0,   "direction": "positive", "group": "combat", "desc": "格挡概率的乘算加成"},
+    {"id": "block_rate",                      "name": "格挡减伤率",       "default_value": 0.2, "min_value": 0,   "direction": "positive", "group": "combat", "desc": "格挡时伤害减免比例"},
+    {"id": "evade",                           "name": "闪避值",           "default_value": 20,  "min_value": 0,   "direction": "positive", "group": "combat", "desc": "影响闪避概率"},
+    {"id": "evade_possibility_multiplier",    "name": "闪避概率倍率",     "default_value": 0,   "min_value": 0,   "direction": "positive", "group": "combat", "desc": "闪避概率的乘算加成"},
+    {"id": "accuracy_possibility_multiplier", "name": "命中概率倍率",     "default_value": 0,   "min_value": 0,   "direction": "positive", "group": "combat", "desc": "命中概率的乘算加成"},
+    {"id": "magic_instance",                  "name": "奥术抵抗",         "default_value": 0.33,"min_value": 0,   "direction": "positive", "group": "combat", "desc": "减少受到的奥术伤害"},
+    {"id": "final_damage_multiplier",         "name": "最终伤害加成",     "default_value": 0,   "min_value": 0,   "direction": "positive", "group": "combat", "desc": "所有造成伤害的乘算加成"},
+    {"id": "final_damage_reduce",             "name": "最终伤害减免",     "default_value": 0,   "min_value": 0,   "direction": "positive", "group": "combat", "desc": "所有受到伤害的乘算减免"},
+    {"id": "hatred",                          "name": "仇恨值",           "default_value": 100, "min_value": 0,   "direction": "positive", "group": "combat", "desc": "影响敌人目标选择"},
+    {"id": "mp_recovery",                     "name": "魔力回复",         "default_value": 0,   "min_value": 0,   "direction": "positive", "group": "combat", "desc": "每秒恢复的魔力值"},
+    {"id": "sp_recovery",                     "name": "耐力回复",         "default_value": 0,   "min_value": 0,   "direction": "positive", "group": "combat", "desc": "每秒恢复的耐力值"}
   ]
 }
