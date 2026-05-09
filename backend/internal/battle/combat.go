@@ -8,22 +8,20 @@ import (
 	"github.com/Milkyway-Liluo-Idle-Develop-Team/Milkyway-Liluo-Idle-2/backend/internal/attribute"
 )
 
-// processPlayerAttack resolves the player's next attack.
-func (s *BattleSession) processPlayerAttack(target *EnemyBattleEntity) []BattleLog {
-	p := s.Player
-	skill := s.choosePlayerSkill(target)
-	return s.resolveAttack(p, target, skill, true)
+// processPlayerAttack resolves a single player's next attack.
+func (s *BattleSession) processPlayerAttack(player *PlayerBattleEntity, target *EnemyBattleEntity) []BattleLog {
+	skill := s.choosePlayerSkill(player, target)
+	return s.resolveAttack(player, target, skill)
 }
 
-// processEnemyAttack resolves a single enemy's attack on the player.
-func (s *BattleSession) processEnemyAttack(enemy *EnemyBattleEntity) []BattleLog {
-	p := s.Player
-	skill := s.chooseEnemySkill(enemy, p)
-	return s.resolveAttack(enemy, p, skill, false)
+// processEnemyAttack resolves a single enemy's attack on its chosen target.
+func (s *BattleSession) processEnemyAttack(enemy *EnemyBattleEntity, target *PlayerBattleEntity) []BattleLog {
+	skill := s.chooseEnemySkill(enemy, target)
+	return s.resolveAttack(enemy, target, skill)
 }
 
 // resolveAttack handles the full attack flow: costs, effects, damage, XP, death.
-func (s *BattleSession) resolveAttack(attacker, defender BattleEntity, skill *BattleSkill, isPlayerAttacking bool) []BattleLog {
+func (s *BattleSession) resolveAttack(attacker, defender BattleEntity, skill *BattleSkill) []BattleLog {
 	var logs []BattleLog
 
 	// Deduct costs.
@@ -48,6 +46,11 @@ func (s *BattleSession) resolveAttack(attacker, defender BattleEntity, skill *Ba
 		defender.SetHP(clamp(defender.HP()-result.Damage, 0.0, defender.MaxHP()))
 	}
 
+	// Update hate: player dealing damage to enemy generates hate on that enemy.
+	if attacker.Team() == TeamPlayer && defender.Team() == TeamEnemy && result.Damage > 0 {
+		s.addHate(defender.EntityID(), attacker.EntityID(), result.Damage)
+	}
+
 	// Set attacker timing.
 	castTime := max(0.1, skill.CastTime)
 	if castTime <= 0 {
@@ -63,9 +66,14 @@ func (s *BattleSession) resolveAttack(attacker, defender BattleEntity, skill *Ba
 		attacker.SetCooldown(skill.ID, s.Time+cooldown)
 	}
 
+	teamStr := "enemy"
+	if attacker.Team() == TeamPlayer {
+		teamStr = "player"
+	}
+
 	// Build log.
 	log := BattleLog{
-		Type:             "player_attack",
+		Type:             teamStr + "_attack",
 		SkillID:          skill.ID,
 		SkillName:        skill.Name,
 		Damage:           result.Damage,
@@ -77,73 +85,66 @@ func (s *BattleSession) resolveAttack(attacker, defender BattleEntity, skill *Ba
 		MPCost:           mpCost,
 		SPCost:           spCost,
 		Effects:          appliedEffects,
-	}
-
-	if isPlayerAttacking {
-		log.Type = "player_attack"
-		log.TargetID = defender.EntityID()
-		log.TargetHP = round3(defender.HP())
-	} else {
-		log.Type = "enemy_attack"
-		log.EnemyID = attacker.EntityID()
-		log.EnemyInstanceID = attacker.EntityID()
-		log.EnemyName = attacker.Name()
-		log.PlayerHP = round3(defender.HP())
+		AttackerID:       attacker.EntityID(),
+		AttackerName:     attacker.Name(),
+		AttackerTeam:     teamStr,
+		DefenderID:       defender.EntityID(),
+		DefenderName:     defender.Name(),
+		DefenderHP:       round3(defender.HP()),
 	}
 	logs = append(logs, log)
 
-	// Skill XP (1 XP per skill use).
-	if isPlayerAttacking && skill.ID != "" {
+	// Skill XP (1 XP per skill use) for player attacks.
+	if attacker.Team() == TeamPlayer && skill.ID != "" {
 		s.addPendingSkillXP(skill.ID, 1.0)
 	}
 
 	// Combat XP from damage dealt.
-	if isPlayerAttacking && result.Damage > 0 {
+	if attacker.Team() == TeamPlayer && result.Damage > 0 {
 		s.awardCombatXP(result, skill)
 	}
 
 	// Combat XP from damage received (evade / block / hit).
-	if !isPlayerAttacking {
+	if defender.Team() == TeamPlayer {
 		s.awardDefenseXP(result)
 	}
 
 	// Check death.
 	if defender.HP() <= 0 && defender.Alive() {
 		defender.SetAlive(false)
-		if isPlayerAttacking {
+		if defender.Team() == TeamEnemy {
 			logs = append(logs, s.handleEnemyDeath(defender.(*EnemyBattleEntity))...)
 		} else {
-			logs = append(logs, s.handlePlayerDown()...)
+			logs = append(logs, s.handlePlayerDown(defender.(*PlayerBattleEntity))...)
 		}
 	}
 
 	return logs
 }
 
-// choosePlayerSkill selects the highest-priority usable skill.
-func (s *BattleSession) choosePlayerSkill(target *EnemyBattleEntity) *BattleSkill {
-	p := s.Player
+// choosePlayerSkill selects the highest-priority usable skill for a specific player.
+func (s *BattleSession) choosePlayerSkill(player *PlayerBattleEntity, target *EnemyBattleEntity) *BattleSkill {
 	aliveEnemies := s.AliveEnemies()
 
-	for _, entry := range p.SkillPlan() {
-		skill, ok := p.Skills()[entry.SkillID]
+	for _, entry := range player.SkillPlan() {
+		skill, ok := player.Skills()[entry.SkillID]
 		if !ok {
 			continue
 		}
-		if !s.canUseSkill(p, skill) {
+		if !s.canUseSkill(player, skill) {
 			continue
 		}
-		if entry.Condition != nil && !evaluateCondition(entry.Condition, p, target, toEntities(aliveEnemies)) {
+		if entry.Condition != nil && !evaluateCondition(entry.Condition, player, target, toEntities(aliveEnemies)) {
 			continue
 		}
-		if !skillHasDamage(skill) && skillRequiresEffectChange(skill) && !skillWouldApplyEffect(skill, p, target, s.Time) {
+		if !skillHasDamage(skill) && skillRequiresEffectChange(skill) && !skillWouldApplyEffect(skill, player, target, s.Time) {
 			continue
 		}
 		return skill
 	}
 
 	// Fallback to basic attack.
-	if basic, ok := p.Skills()[p.BasicSkillID()]; ok {
+	if basic, ok := player.Skills()[player.BasicSkillID()]; ok {
 		return basic
 	}
 	// Ultimate fallback.
@@ -155,12 +156,12 @@ func (s *BattleSession) choosePlayerSkill(target *EnemyBattleEntity) *BattleSkil
 			Flat:       0,
 			Multiplier: 1.0,
 		},
-		CastTime: max(0.1, p.GetFinal(AttrAttackInterval)),
+		CastTime: max(0.1, player.GetFinal(AttrAttackInterval)),
 	}
 }
 
 // chooseEnemySkill selects the highest-priority usable enemy skill.
-func (s *BattleSession) chooseEnemySkill(enemy *EnemyBattleEntity, target *PlayerBattleEntity) *BattleSkill {
+func (s *BattleSession) chooseEnemySkill(enemy *EnemyBattleEntity, target BattleEntity) *BattleSkill {
 	aliveAllies := s.AliveEnemies()
 
 	for _, entry := range enemy.SkillPlan() {
@@ -308,7 +309,7 @@ func (s *BattleSession) awardCombatXP(result DamageResult, skill *BattleSkill) {
 	if result.Damage <= 0 {
 		return
 	}
-	 dmg := result.Damage
+	dmg := result.Damage
 	if skill.Damage != nil && skill.Damage.Type == "magic" {
 		s.addPendingSkillXP("magic", 1.0*dmg)
 		return
@@ -350,24 +351,32 @@ func (s *BattleSession) addPendingSkillXP(skillID string, xp float64) {
 
 func (s *BattleSession) handleEnemyDeath(enemy *EnemyBattleEntity) []BattleLog {
 	return []BattleLog{{
-		Type:            "enemy_died",
-		EnemyID:         enemy.enemyID,
-		EnemyInstanceID: enemy.instanceID,
-		EnemyName:       enemy.name,
-		WaveNumber:      s.WaveNumber,
+		Type:       "enemy_died",
+		AttackerID: enemy.enemyID,
+		AttackerName: enemy.name,
+		AttackerTeam: "enemy",
+		WaveNumber: s.WaveNumber,
 	}}
 }
 
-func (s *BattleSession) handlePlayerDown() []BattleLog {
-	p := s.Player
-	p.SetAlive(false)
+func (s *BattleSession) handlePlayerDown(player *PlayerBattleEntity) []BattleLog {
+	player.SetAlive(false)
 	respawn := s.Time + max(0.1, s.Config.Interval)
-	s.RespawnTime = &respawn
+	s.RespawnTimes[player.EntityID()] = &respawn
 	return []BattleLog{{
 		Type:       "player_downed",
-		PlayerHP:   0,
+		DefenderID: player.EntityID(),
+		DefenderHP: 0,
 		NextWaveIn: s.Config.Interval,
 	}}
+}
+
+// addHate accumulates hate for a player against a specific enemy.
+func (s *BattleSession) addHate(enemyID, playerID string, amount float64) {
+	if s.HateMap[enemyID] == nil {
+		s.HateMap[enemyID] = make(map[string]float64)
+	}
+	s.HateMap[enemyID][playerID] += amount
 }
 
 func round3(v float64) float64 {

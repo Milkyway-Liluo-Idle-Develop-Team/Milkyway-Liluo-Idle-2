@@ -43,7 +43,7 @@ func TestBattleSessionWaveSpawnAndAttack(t *testing.T) {
 		},
 	}
 
-	sess := battle.NewBattleSession(cfg, p)
+	sess := battle.NewBattleSession(cfg, []*battle.PlayerBattleEntity{p})
 
 	// Advance to first event (should be wave spawn at t=3).
 	logs := sess.AdvanceOneEvent()

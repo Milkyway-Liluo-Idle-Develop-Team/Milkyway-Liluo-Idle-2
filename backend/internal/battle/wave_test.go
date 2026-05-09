@@ -54,7 +54,7 @@ func TestRealEnemyDataFromGameConfig(t *testing.T) {
 		},
 	}
 
-	sess := battle.NewBattleSession(cfg, p)
+	sess := battle.NewBattleSession(cfg, []*battle.PlayerBattleEntity{p})
 	logs := sess.AdvanceOneEvent() // wave spawn at t=3
 
 	if len(sess.Enemies) != 1 {

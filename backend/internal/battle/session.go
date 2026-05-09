@@ -24,54 +24,90 @@ type BattleSession struct {
 	Time   float64
 	Running bool
 
-	Player  *PlayerBattleEntity
+	Players []*PlayerBattleEntity
 	Enemies []*EnemyBattleEntity
 
 	WaveNumber   int
 	WaveType     string
 	NextWaveTime *float64
-	RespawnTime  *float64
+
+	// Per-player respawn timers: key = player EntityID.
+	RespawnTimes map[string]*float64
 
 	// Accumulated rewards / exp pending settlement.
 	PendingSkillExp map[string]float64 // skill_id -> xp
+
+	// HateMap[enemyID][playerID] = accumulated hate value.
+	HateMap map[string]map[string]float64
 }
 
-// NewBattleSession creates a battle session with the given config and player.
-func NewBattleSession(cfg BattleConfig, player *PlayerBattleEntity) *BattleSession {
+// NewBattleSession creates a battle session with the given config and players.
+func NewBattleSession(cfg BattleConfig, players []*PlayerBattleEntity) *BattleSession {
 	s := &BattleSession{
 		Config:          cfg,
 		Time:            0,
 		Running:         true,
-		Player:          player,
+		Players:         players,
 		PendingSkillExp: make(map[string]float64),
+		RespawnTimes:    make(map[string]*float64),
+		HateMap:         make(map[string]map[string]float64),
 	}
 
-	// Player starts ready after the first wave interval + attack interval.
+	// Each player starts ready after the first wave interval + their attack interval.
 	interval := max(0.1, cfg.Interval)
-	attackInterval := max(0.1, player.GetFinal(AttrAttackInterval))
-	player.SetNextReadyTime(interval + attackInterval)
-	player.SetLastActionDuration(attackInterval)
+	for _, p := range players {
+		attackInterval := max(0.1, p.GetFinal(AttrAttackInterval))
+		p.SetNextReadyTime(interval + attackInterval)
+		p.SetLastActionDuration(attackInterval)
+	}
 
 	s.NextWaveTime = &interval
 	return s
+}
+
+// AlivePlayers returns players that are still alive.
+func (s *BattleSession) AlivePlayers() []*PlayerBattleEntity {
+	var out []*PlayerBattleEntity
+	for _, p := range s.Players {
+		if p.Alive() {
+			out = append(out, p)
+		}
+	}
+	return out
 }
 
 // NextEventTime returns the next time anything happens, or nil if idle.
 func (s *BattleSession) NextEventTime() *float64 {
 	var candidates []float64
 
-	if s.RespawnTime != nil {
-		candidates = append(candidates, *s.RespawnTime)
+	for _, rt := range s.RespawnTimes {
+		if rt != nil {
+			candidates = append(candidates, *rt)
+		}
 	}
 	if s.NextWaveTime != nil {
 		candidates = append(candidates, *s.NextWaveTime)
 	}
 
 	aliveEnemies := s.AliveEnemies()
-	if s.Player.Alive() && len(aliveEnemies) > 0 {
-		candidates = append(candidates, s.Player.NextReadyTime())
-		for _, e := range aliveEnemies {
-			candidates = append(candidates, e.NextReadyTime())
+	alivePlayers := s.AlivePlayers()
+
+	if len(alivePlayers) == 0 {
+		// No alive players: only respawn times matter.
+		if len(candidates) == 0 {
+			return nil
+		}
+	} else {
+		if s.NextWaveTime != nil {
+			candidates = append(candidates, *s.NextWaveTime)
+		}
+		if len(aliveEnemies) > 0 {
+			for _, p := range alivePlayers {
+				candidates = append(candidates, p.NextReadyTime())
+			}
+			for _, e := range aliveEnemies {
+				candidates = append(candidates, e.NextReadyTime())
+			}
 		}
 	}
 
@@ -115,46 +151,69 @@ func (s *BattleSession) AdvanceOneEvent() []BattleLog {
 
 	s.advanceTime(*next)
 
-	// Respawn check.
-	if s.RespawnTime != nil && s.Time >= *s.RespawnTime {
-		s.RespawnTime = nil
-		p := s.Player
-		p.SetAlive(true)
-		p.SetHP(p.MaxHP())
-		p.SetMP(p.MaxMP())
-		p.SetSP(p.MaxSP())
-		p.SetNextReadyTime(s.Time + max(0.1, p.GetFinal(AttrAttackInterval)))
-		nextWave := s.Time + max(0.1, s.Config.Interval)
-		s.NextWaveTime = &nextWave
-		logs = append(logs, BattleLog{Type: "player_respawn", NextWaveIn: s.Config.Interval})
+	// Respawn checks.
+	for pid, rt := range s.RespawnTimes {
+		if rt != nil && s.Time >= *rt {
+			s.RespawnTimes[pid] = nil
+			p := s.playerByID(pid)
+			if p != nil {
+				p.SetAlive(true)
+				p.SetHP(p.MaxHP())
+				p.SetMP(p.MaxMP())
+				p.SetSP(p.MaxSP())
+				p.SetNextReadyTime(s.Time + max(0.1, p.GetFinal(AttrAttackInterval)))
+				logs = append(logs, BattleLog{
+					Type:       "player_respawn",
+					NextWaveIn: s.Config.Interval,
+					AttackerID: pid,
+				})
+			}
+		}
 	}
 
 	// Wave spawn check.
-	if s.NextWaveTime != nil && s.Time >= *s.NextWaveTime && s.Player.Alive() {
+	alivePlayers := s.AlivePlayers()
+	if s.NextWaveTime != nil && s.Time >= *s.NextWaveTime && len(alivePlayers) > 0 {
 		logs = append(logs, s.spawnWave()...)
 	}
 
-	// Player attack.
+	// If everyone is dead, only respawn matters; emit the event once.
+	if len(alivePlayers) == 0 {
+		logs = append(logs, BattleLog{Type: "all_players_downed"})
+		return logs
+	}
+
+	// Player attacks.
 	aliveEnemies := s.AliveEnemies()
-	if len(aliveEnemies) > 0 && s.Player.Alive() && s.Time >= s.Player.NextReadyTime() {
-		logs = append(logs, s.processPlayerAttack(aliveEnemies[0])...)
+	if len(aliveEnemies) > 0 {
+		for _, p := range alivePlayers {
+			if s.Time >= p.NextReadyTime() {
+				logs = append(logs, s.processPlayerAttack(p, aliveEnemies[0])...)
+			}
+		}
 	}
 
 	// Enemy attacks.
 	aliveEnemies = s.AliveEnemies()
-	if len(aliveEnemies) > 0 && s.Player.Alive() {
+	alivePlayers = s.AlivePlayers()
+	if len(aliveEnemies) > 0 && len(alivePlayers) > 0 {
 		for _, e := range aliveEnemies {
 			if s.Time >= e.NextReadyTime() {
-				logs = append(logs, s.processEnemyAttack(e)...)
-				if !s.Player.Alive() {
-					break
+				target := s.chooseEnemyTarget(e, alivePlayers)
+				if target != nil {
+					logs = append(logs, s.processEnemyAttack(e, target)...)
 				}
 			}
 		}
 	}
 
+	// After enemy attacks, check if the last player just died.
+	if len(s.AlivePlayers()) == 0 {
+		logs = append(logs, BattleLog{Type: "all_players_downed"})
+	}
+
 	// Wave completion check.
-	if s.Player.Alive() {
+	if len(s.AlivePlayers()) > 0 {
 		logs = append(logs, s.finishWaveIfNeeded()...)
 	}
 
@@ -168,10 +227,12 @@ func (s *BattleSession) advanceTime(target float64) {
 	}
 	elapsed := target - s.Time
 
-	// Natural recovery for player.
-	if s.Player.Alive() {
-		s.applyNaturalRecovery(s.Player, elapsed)
-		s.Player.RefreshStats(target)
+	// Natural recovery for alive players.
+	for _, p := range s.Players {
+		if p.Alive() {
+			s.applyNaturalRecovery(p, elapsed)
+			p.RefreshStats(target)
+		}
 	}
 
 	// Natural recovery for alive enemies.
@@ -240,4 +301,24 @@ func (s *BattleSession) finishWaveIfNeeded() []BattleLog {
 		WaveNumber: s.WaveNumber,
 		NextWaveIn: s.Config.Interval,
 	}}
+}
+
+// playerByID finds a player by their EntityID.
+func (s *BattleSession) playerByID(id string) *PlayerBattleEntity {
+	for _, p := range s.Players {
+		if p.EntityID() == id {
+			return p
+		}
+	}
+	return nil
+}
+
+// hasPendingRespawn returns true if any player has a pending respawn timer.
+func (s *BattleSession) hasPendingRespawn() bool {
+	for _, rt := range s.RespawnTimes {
+		if rt != nil {
+			return true
+		}
+	}
+	return false
 }
