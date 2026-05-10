@@ -24,7 +24,7 @@ const (
 type Envelope struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
-	Type          string                 `protobuf:"bytes,2,opt,name=type,proto3" json:"type,omitempty"`
+	Opcode        int32                  `protobuf:"varint,2,opt,name=opcode,proto3" json:"opcode,omitempty"`
 	Payload       []byte                 `protobuf:"bytes,3,opt,name=payload,proto3" json:"payload,omitempty"`
 	Error         *Error                 `protobuf:"bytes,4,opt,name=error,proto3" json:"error,omitempty"`
 	unknownFields protoimpl.UnknownFields
@@ -68,11 +68,11 @@ func (x *Envelope) GetId() string {
 	return ""
 }
 
-func (x *Envelope) GetType() string {
+func (x *Envelope) GetOpcode() int32 {
 	if x != nil {
-		return x.Type
+		return x.Opcode
 	}
-	return ""
+	return 0
 }
 
 func (x *Envelope) GetPayload() []byte {
@@ -153,10 +153,10 @@ var File_envelope_proto protoreflect.FileDescriptor
 
 const file_envelope_proto_rawDesc = "" +
 	"\n" +
-	"\x0eenvelope.proto\x12\x06mli.v1\"m\n" +
+	"\x0eenvelope.proto\x12\x06mli.v1\"q\n" +
 	"\bEnvelope\x12\x0e\n" +
-	"\x02id\x18\x01 \x01(\tR\x02id\x12\x12\n" +
-	"\x04type\x18\x02 \x01(\tR\x04type\x12\x18\n" +
+	"\x02id\x18\x01 \x01(\tR\x02id\x12\x16\n" +
+	"\x06opcode\x18\x02 \x01(\x05R\x06opcode\x12\x18\n" +
 	"\apayload\x18\x03 \x01(\fR\apayload\x12#\n" +
 	"\x05error\x18\x04 \x01(\v2\r.mli.v1.ErrorR\x05error\"\xa3\x01\n" +
 	"\x05Error\x12\x12\n" +

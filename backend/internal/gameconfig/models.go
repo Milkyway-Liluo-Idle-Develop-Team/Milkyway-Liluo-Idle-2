@@ -300,6 +300,7 @@ func (r Reward) Experience() (value float64, skillID string) {
 // EnemyDef is a read-only enemy definition loaded from actions.json.
 type EnemyDef struct {
 	ID              string                  `json:"id"`
+	NumericID       int64                   `json:"-"` // assigned from id_registry.json
 	Name            string                  `json:"name"`
 	BattleData      map[string]float64      `json:"enemy_battle_data"`
 	BasicDamageType string                  `json:"basic_damage_type"`
@@ -364,6 +365,7 @@ type SimpleConditionDef struct {
 // BattleDef is a read-only battle scene definition loaded from actions.json.
 type BattleDef struct {
 	ID                       string                  `json:"id"`
+	NumericID                int64                   `json:"-"` // assigned from id_registry.json
 	Name                     string                  `json:"name"`
 	Map                      string                  `json:"map"`
 	Interval                 float64                 `json:"interval"`

@@ -1,10 +1,13 @@
 package battle
 
-import "github.com/Milkyway-Liluo-Idle-Develop-Team/Milkyway-Liluo-Idle-2/backend/internal/attribute"
+import (
+	"github.com/Milkyway-Liluo-Idle-Develop-Team/Milkyway-Liluo-Idle-2/backend/internal/attribute"
+	"github.com/Milkyway-Liluo-Idle-Develop-Team/Milkyway-Liluo-Idle-2/backend/internal/gameconfig"
+)
 
 // BattleSkill is a runtime combat skill.
 type BattleSkill struct {
-	ID          string
+	ID          gameconfig.BattleSkillID
 	Name        string
 	Description string
 	TargetType  string // "single" | "aoe" | "self"
@@ -50,7 +53,7 @@ type SkillEffect struct {
 
 // SkillPlanEntry is a single entry in a skill priority plan.
 type SkillPlanEntry struct {
-	SkillID   string
+	SkillID   gameconfig.BattleSkillID
 	Priority  int
 	Condition *SkillCondition
 }
@@ -58,9 +61,9 @@ type SkillPlanEntry struct {
 // SkillCondition defines when a skill may be used.
 // Logic may nest via Complex.
 type SkillCondition struct {
-	Logic   string              // "and" | "or" | "nor"
-	Normal  []SimpleCondition   // flat list of simple checks
-	Complex *SkillCondition     // nested condition
+	Logic   string            // "and" | "or" | "nor"
+	Normal  []SimpleCondition // flat list of simple checks
+	Complex *SkillCondition   // nested condition
 }
 
 // SimpleCondition is a single numeric comparison.

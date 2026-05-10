@@ -1,9 +1,7 @@
 package battle
 
 import (
-	"fmt"
 	"math/rand"
-	"time"
 
 	"github.com/Milkyway-Liluo-Idle-Develop-Team/Milkyway-Liluo-Idle-2/backend/internal/attribute"
 	"github.com/Milkyway-Liluo-Idle-Develop-Team/Milkyway-Liluo-Idle-2/backend/internal/gameconfig"
@@ -32,15 +30,14 @@ func (s *BattleSession) spawnWave() []BattleLog {
 	}
 
 	// Pick a weighted combination.
-	combo := pickWeightedCombination(combos)
+	combo := pickWeightedCombination(combos, s.rng)
 	if combo == nil {
 		return logs
 	}
 
 	// Spawn enemies.
 	for idx, enemyID := range combo.Enemies {
-		instanceID := fmt.Sprintf("%s_%d", enemyID, idx)
-		enemy := s.createEnemyFromDef(enemyID, instanceID)
+		enemy := s.createEnemyFromDef(enemyID, idx)
 		if enemy == nil {
 			continue
 		}
@@ -50,20 +47,21 @@ func (s *BattleSession) spawnWave() []BattleLog {
 	}
 
 	logs = append(logs, BattleLog{
-		Type:       "wave_spawned",
+		Type:       BattleLogTypeWaveSpawned,
 		WaveNumber: s.WaveNumber,
 	})
 	return logs
 }
 
 // createEnemyFromDef builds an EnemyBattleEntity from gameconfig data.
-func (s *BattleSession) createEnemyFromDef(enemyID, instanceID string) *EnemyBattleEntity {
-	def, ok := gameconfig.GetEnemy(enemyID)
+func (s *BattleSession) createEnemyFromDef(enemyDefID string, instanceIdx int) *EnemyBattleEntity {
+	def, ok := gameconfig.GetEnemy(enemyDefID)
 	if !ok {
 		return nil
 	}
 
-	e := NewEnemyBattleEntity(enemyID, instanceID, def.Name, def.BattleData)
+	numericID, _ := gameconfig.StringToEnemyID(enemyDefID)
+	e := NewEnemyBattleEntity(numericID, instanceIdx, def.Name, def.BattleData)
 
 	// Set basic damage type.
 	basicDamageType := def.BasicDamageType
@@ -72,13 +70,17 @@ func (s *BattleSession) createEnemyFromDef(enemyID, instanceID string) *EnemyBat
 	}
 
 	// Build skills map and skill plan.
-	skills := make(map[string]*BattleSkill)
+	skills := make(map[gameconfig.BattleSkillID]*BattleSkill)
 	var skillPlan []SkillPlanEntry
 
 	for _, entry := range def.BattleSkills {
 		bs := entry.Skill
+		skillID, _ := gameconfig.StringToBattleSkillID(bs.ID)
+		if skillID == 0 {
+			continue // skip skills with no registry entry
+		}
 		skill := &BattleSkill{
-			ID:            bs.ID,
+			ID:            skillID,
 			Name:          bs.Name,
 			Description:   bs.Description,
 			TargetType:    bs.TargetType,
@@ -115,21 +117,23 @@ func (s *BattleSession) createEnemyFromDef(enemyID, instanceID string) *EnemyBat
 			})
 		}
 
-		skills[bs.ID] = skill
+		skills[skillID] = skill
 		skillPlan = append(skillPlan, SkillPlanEntry{
-			SkillID:  bs.ID,
+			SkillID:  skillID,
 			Priority: entry.Priority,
 		})
 	}
 
-	// If no skills defined, create a basic attack fallback.
-	basicSkillID := def.BasicSkillID
-	if basicSkillID == "" {
-		basicSkillID = "__enemy_basic_attack__"
+	// Resolve basic skill ID to numeric.
+	basicSkillID := FallbackEnemyBasicAttackID
+	if def.BasicSkillID != "" {
+		if nid, ok := gameconfig.StringToBattleSkillID(def.BasicSkillID); ok {
+			basicSkillID = nid
+		}
 	}
 	if _, ok := skills[basicSkillID]; !ok {
 		fallback := &BattleSkill{
-			ID:   basicSkillID,
+			ID:   FallbackEnemyBasicAttackID,
 			Name: "基础攻击",
 			Damage: &DamageProfile{
 				Type:       basicDamageType,
@@ -138,7 +142,8 @@ func (s *BattleSession) createEnemyFromDef(enemyID, instanceID string) *EnemyBat
 			},
 			CastTime: max(0.1, e.GetFinal(AttrAttackInterval)),
 		}
-		skills[basicSkillID] = fallback
+		skills[FallbackEnemyBasicAttackID] = fallback
+		basicSkillID = FallbackEnemyBasicAttackID
 	}
 
 	e.SetSkills(skills)
@@ -163,7 +168,7 @@ func (s *BattleSession) createEnemyFromDef(enemyID, instanceID string) *EnemyBat
 }
 
 // pickWeightedCombination selects a combination using weight-based random roll.
-func pickWeightedCombination(combos []EnemyWaveCombination) *EnemyWaveCombination {
+func pickWeightedCombination(combos []EnemyWaveCombination, rng *rand.Rand) *EnemyWaveCombination {
 	if len(combos) == 0 {
 		return nil
 	}
@@ -175,7 +180,6 @@ func pickWeightedCombination(combos []EnemyWaveCombination) *EnemyWaveCombinatio
 		return &combos[0]
 	}
 
-	rng := rand.New(rand.NewSource(time.Now().UnixNano()))
 	roll := rng.Float64() * total
 
 	var accum float64

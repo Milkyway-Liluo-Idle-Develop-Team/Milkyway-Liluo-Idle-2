@@ -1,10 +1,12 @@
 package battle_test
 
 import (
+	"math/rand"
 	"testing"
 
 	"github.com/Milkyway-Liluo-Idle-Develop-Team/Milkyway-Liluo-Idle-2/backend/internal/attribute"
 	"github.com/Milkyway-Liluo-Idle-Develop-Team/Milkyway-Liluo-Idle-2/backend/internal/battle"
+	"github.com/Milkyway-Liluo-Idle-Develop-Team/Milkyway-Liluo-Idle-2/backend/internal/gameconfig"
 )
 
 // TestTwoPlayersAttack verifies that in a 2-player session both players get to attack.
@@ -38,11 +40,11 @@ func TestTwoPlayersAttack(t *testing.T) {
 	for i := 0; i < maxEvents && sess.Running; i++ {
 		logs = sess.AdvanceOneEvent()
 		for _, l := range logs {
-			if l.Type == "player_attack" {
-				if l.AttackerID == "Alice" {
+			if l.Type == battle.BattleLogTypePlayerAttack {
+				if l.AttackerEntityID == p1.EntityID() {
 					p1Attacked = true
 				}
-				if l.AttackerID == "Bob" {
+				if l.AttackerEntityID == p2.EntityID() {
 					p2Attacked = true
 				}
 			}
@@ -75,9 +77,9 @@ func TestHateTargeting(t *testing.T) {
 	})
 	pA := battle.NewPlayerBattleEntity(1, "Aggro", pAAttr)
 	pA.SetHP(pA.MaxHP())
-	pA.SetSkills(map[string]*battle.BattleSkill{
-		"basic_attack": {
-			ID:   "basic_attack",
+	pA.SetSkills(map[gameconfig.BattleSkillID]*battle.BattleSkill{
+		gameconfig.BattleSkillID(1): {
+			ID: gameconfig.BattleSkillID(1),
 			Name: "基础攻击",
 			Damage: &battle.DamageProfile{
 				Type:       "physical",
@@ -88,8 +90,8 @@ func TestHateTargeting(t *testing.T) {
 			IsBasic:  true,
 		},
 	})
-	pA.SetBasicSkillID("basic_attack")
-	pA.SetSkillPlan([]battle.SkillPlanEntry{{SkillID: "basic_attack", Priority: 0}})
+	pA.SetBasicSkillID(gameconfig.BattleSkillID(1))
+	pA.SetSkillPlan([]battle.SkillPlanEntry{{SkillID: gameconfig.BattleSkillID(1), Priority: 0}})
 
 	pBAttr := attribute.NewInstance()
 	pBAttr.AddModifiers("test", []attribute.Modifier{
@@ -98,9 +100,9 @@ func TestHateTargeting(t *testing.T) {
 	})
 	pB := battle.NewPlayerBattleEntity(2, "Passive", pBAttr)
 	pB.SetHP(pB.MaxHP())
-	pB.SetSkills(map[string]*battle.BattleSkill{
-		"basic_attack": {
-			ID:   "basic_attack",
+	pB.SetSkills(map[gameconfig.BattleSkillID]*battle.BattleSkill{
+		gameconfig.BattleSkillID(1): {
+			ID: gameconfig.BattleSkillID(1),
 			Name: "基础攻击",
 			Damage: &battle.DamageProfile{
 				Type:       "physical",
@@ -111,8 +113,8 @@ func TestHateTargeting(t *testing.T) {
 			IsBasic:  true,
 		},
 	})
-	pB.SetBasicSkillID("basic_attack")
-	pB.SetSkillPlan([]battle.SkillPlanEntry{{SkillID: "basic_attack", Priority: 0}})
+	pB.SetBasicSkillID(gameconfig.BattleSkillID(1))
+	pB.SetSkillPlan([]battle.SkillPlanEntry{{SkillID: gameconfig.BattleSkillID(1), Priority: 0}})
 
 	cfg := battle.BattleConfig{
 		ID:              "test_hate",
@@ -127,9 +129,12 @@ func TestHateTargeting(t *testing.T) {
 
 	sess := battle.NewBattleSession(cfg, []*battle.PlayerBattleEntity{pA, pB})
 
-	// Manually inject a high-HP enemy so it survives long enough to attack many times.
-	enemy := battle.NewEnemyBattleEntity("tank", "tank_0", "TankEnemy", map[string]float64{
-		"hp":              5000,
+	// Deterministic RNG so the test is reproducible.
+	sess.SetRNG(rand.New(rand.NewSource(42)))
+
+	// Manually inject a very high-HP enemy so it survives many attack rounds.
+	enemy := battle.NewEnemyBattleEntity(1, 0, "TankEnemy", map[string]float64{
+		"hp":              50000,
 		"physical_power":  30,
 		"defense":         10,
 		"attack_interval": 2,
@@ -137,9 +142,9 @@ func TestHateTargeting(t *testing.T) {
 	})
 	enemy.SetHP(enemy.MaxHP())
 	enemy.SetNextReadyTime(5.0)
-	enemy.SetSkills(map[string]*battle.BattleSkill{
-		"basic_attack": {
-			ID:   "basic_attack",
+	enemy.SetSkills(map[gameconfig.BattleSkillID]*battle.BattleSkill{
+		gameconfig.BattleSkillID(1): {
+			ID: gameconfig.BattleSkillID(1),
 			Name: "基础攻击",
 			Damage: &battle.DamageProfile{
 				Type:       "physical",
@@ -150,31 +155,33 @@ func TestHateTargeting(t *testing.T) {
 			IsBasic:  true,
 		},
 	})
-	enemy.SetBasicSkillID("basic_attack")
-	enemy.SetSkillPlan([]battle.SkillPlanEntry{{SkillID: "basic_attack", Priority: 0}})
+	enemy.SetBasicSkillID(gameconfig.BattleSkillID(1))
+	enemy.SetSkillPlan([]battle.SkillPlanEntry{{SkillID: gameconfig.BattleSkillID(1), Priority: 0}})
 	sess.Enemies = append(sess.Enemies, enemy)
 	sess.NextWaveTime = nil // prevent auto wave spawn
 
 	// Run many events to gather attack statistics.
-	targetCounts := map[string]int{}
+	targetCounts := map[int64]int{}
 	maxEvents := 80
 	for i := 0; i < maxEvents && sess.Running; i++ {
 		logs := sess.AdvanceOneEvent()
 		for _, l := range logs {
-			if l.Type == "enemy_attack" {
-				targetCounts[l.DefenderID]++
+			if l.Type == battle.BattleLogTypeEnemyAttack {
+				targetCounts[l.DefenderEntityID]++
 			}
 		}
 	}
 
-	aggroCount := targetCounts["Aggro"]
-	passiveCount := targetCounts["Passive"]
+	aggroCount := targetCounts[pA.EntityID()]
+	passiveCount := targetCounts[pB.EntityID()]
 	t.Logf("enemy targeted Aggro %d times, Passive %d times", aggroCount, passiveCount)
 
 	if aggroCount == 0 {
 		t.Error("enemy never targeted Aggro (high-damage player)")
 	}
-	if passiveCount > aggroCount {
+	// With deterministic RNG and a huge-HP enemy, Aggro (who generates far more
+	// hate) should be targeted overwhelmingly more often than Passive.
+	if aggroCount <= passiveCount {
 		t.Errorf("expected enemy to target Aggro more than Passive, got Aggro=%d Passive=%d", aggroCount, passiveCount)
 	}
 }
@@ -192,9 +199,9 @@ func TestPartialPlayerDeath(t *testing.T) {
 	})
 	pB := battle.NewPlayerBattleEntity(2, "Fragile", pBAttr)
 	pB.SetHP(pB.MaxHP())
-	pB.SetSkills(map[string]*battle.BattleSkill{
-		"basic_attack": {
-			ID:   "basic_attack",
+	pB.SetSkills(map[gameconfig.BattleSkillID]*battle.BattleSkill{
+		gameconfig.BattleSkillID(1): {
+			ID: gameconfig.BattleSkillID(1),
 			Name: "基础攻击",
 			Damage: &battle.DamageProfile{
 				Type:       "physical",
@@ -205,8 +212,8 @@ func TestPartialPlayerDeath(t *testing.T) {
 			IsBasic:  true,
 		},
 	})
-	pB.SetBasicSkillID("basic_attack")
-	pB.SetSkillPlan([]battle.SkillPlanEntry{{SkillID: "basic_attack", Priority: 0}})
+	pB.SetBasicSkillID(gameconfig.BattleSkillID(1))
+	pB.SetSkillPlan([]battle.SkillPlanEntry{{SkillID: gameconfig.BattleSkillID(1), Priority: 0}})
 
 	cfg := battle.BattleConfig{
 		ID:              "test_death",
@@ -231,13 +238,13 @@ func TestPartialPlayerDeath(t *testing.T) {
 	for i := 0; i < maxEvents && sess.Running; i++ {
 		logs := sess.AdvanceOneEvent()
 		for _, l := range logs {
-			if l.Type == "player_downed" && l.DefenderID == "Fragile" {
+			if l.Type == battle.BattleLogTypePlayerDowned && l.DefenderEntityID == pB.EntityID() {
 				fragileDowned = true
 			}
-			if l.Type == "player_attack" && l.AttackerID == "Tank" {
+			if l.Type == battle.BattleLogTypePlayerAttack && l.AttackerEntityID == pA.EntityID() {
 				tankContinued = true
 			}
-			if l.Type == "player_respawn" && l.AttackerID == "Fragile" {
+			if l.Type == battle.BattleLogTypePlayerRespawn && l.AttackerEntityID == pB.EntityID() {
 				fragileRespawned = true
 			}
 		}
@@ -267,9 +274,9 @@ func TestAllPlayersDowned(t *testing.T) {
 	})
 	p1 := battle.NewPlayerBattleEntity(1, "P1", p1Attr)
 	p1.SetHP(p1.MaxHP())
-	p1.SetSkills(map[string]*battle.BattleSkill{
-		"basic_attack": {
-			ID:   "basic_attack",
+	p1.SetSkills(map[gameconfig.BattleSkillID]*battle.BattleSkill{
+		gameconfig.BattleSkillID(1): {
+			ID: gameconfig.BattleSkillID(1),
 			Name: "基础攻击",
 			Damage: &battle.DamageProfile{
 				Type:       "physical",
@@ -280,14 +287,14 @@ func TestAllPlayersDowned(t *testing.T) {
 			IsBasic:  true,
 		},
 	})
-	p1.SetBasicSkillID("basic_attack")
-	p1.SetSkillPlan([]battle.SkillPlanEntry{{SkillID: "basic_attack", Priority: 0}})
+	p1.SetBasicSkillID(gameconfig.BattleSkillID(1))
+	p1.SetSkillPlan([]battle.SkillPlanEntry{{SkillID: gameconfig.BattleSkillID(1), Priority: 0}})
 
 	p2 := battle.NewPlayerBattleEntity(2, "P2", p1Attr)
 	p2.SetHP(p2.MaxHP())
 	p2.SetSkills(p1.Skills())
-	p2.SetBasicSkillID("basic_attack")
-	p2.SetSkillPlan([]battle.SkillPlanEntry{{SkillID: "basic_attack", Priority: 0}})
+	p2.SetBasicSkillID(gameconfig.BattleSkillID(1))
+	p2.SetSkillPlan([]battle.SkillPlanEntry{{SkillID: gameconfig.BattleSkillID(1), Priority: 0}})
 
 	cfg := battle.BattleConfig{
 		ID:              "test_all_down",
@@ -311,10 +318,10 @@ func TestAllPlayersDowned(t *testing.T) {
 	for i := 0; i < maxEvents; i++ {
 		logs := sess.AdvanceOneEvent()
 		for _, l := range logs {
-			if l.Type == "all_players_downed" {
+			if l.Type == battle.BattleLogTypeAllPlayersDowned {
 				allDowned = true
 			}
-			if l.Type == "player_respawn" {
+			if l.Type == battle.BattleLogTypePlayerRespawn {
 				someoneRespawned = true
 			}
 		}
@@ -339,9 +346,9 @@ func makeTestPlayer(userID int64, name string) *battle.PlayerBattleEntity {
 	inst := attribute.NewInstance()
 	p := battle.NewPlayerBattleEntity(userID, name, inst)
 	p.SetHP(p.MaxHP())
-	p.SetSkills(map[string]*battle.BattleSkill{
-		"basic_attack": {
-			ID:   "basic_attack",
+	p.SetSkills(map[gameconfig.BattleSkillID]*battle.BattleSkill{
+		gameconfig.BattleSkillID(1): {
+			ID: gameconfig.BattleSkillID(1),
 			Name: "基础攻击",
 			Damage: &battle.DamageProfile{
 				Type:       "physical",
@@ -352,7 +359,7 @@ func makeTestPlayer(userID int64, name string) *battle.PlayerBattleEntity {
 			IsBasic:  true,
 		},
 	})
-	p.SetBasicSkillID("basic_attack")
-	p.SetSkillPlan([]battle.SkillPlanEntry{{SkillID: "basic_attack", Priority: 0}})
+	p.SetBasicSkillID(gameconfig.BattleSkillID(1))
+	p.SetSkillPlan([]battle.SkillPlanEntry{{SkillID: gameconfig.BattleSkillID(1), Priority: 0}})
 	return p
 }

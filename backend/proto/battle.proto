@@ -1,0 +1,96 @@
+syntax = "proto3";
+
+package mli.v1;
+
+option go_package = "github.com/Milkyway-Liluo-Idle-Develop-Team/Milkyway-Liluo-Idle-2/backend/pb";
+
+enum BattleStatus {
+  BATTLE_STATUS_UNSPECIFIED = 0;
+  BATTLE_STATUS_FIGHTING = 1;
+  BATTLE_STATUS_BETWEEN_WAVES = 2;
+  BATTLE_STATUS_RESPAWN = 3;
+  BATTLE_STATUS_STOPPED = 4;
+}
+
+enum BattleLogType {
+  BATTLE_LOG_TYPE_UNSPECIFIED = 0;
+  BATTLE_LOG_TYPE_PLAYER_ATTACK = 1;
+  BATTLE_LOG_TYPE_ENEMY_ATTACK = 2;
+  BATTLE_LOG_TYPE_ENEMY_DIED = 3;
+  BATTLE_LOG_TYPE_PLAYER_DOWNED = 4;
+  BATTLE_LOG_TYPE_PLAYER_RESPAWN = 5;
+  BATTLE_LOG_TYPE_WAVE_SPAWNED = 6;
+  BATTLE_LOG_TYPE_WAVE_CLEARED = 7;
+  BATTLE_LOG_TYPE_ALL_PLAYERS_DOWNED = 8;
+  BATTLE_LOG_TYPE_STOPPED = 9;
+}
+
+message BattleEntityState {
+  sint64 entity_id = 1;
+  bool alive = 2;
+  double hp = 3;
+  double max_hp = 4;
+  double mp = 5;
+  double max_mp = 6;
+  double sp = 7;
+  double max_sp = 8;
+  double next_ready_in = 9;
+  double action_cooldown_seconds = 10;
+  double action_cooldown_progress = 11;
+  sint64 last_skill_id = 12;
+}
+
+message BattleLogEntry {
+  BattleLogType type = 1;
+  sint64 attacker_entity_id = 2;
+  sint64 defender_entity_id = 3;
+  sint64 skill_id = 4;
+  double damage = 5;
+  double raw_damage = 6;
+  bool evaded = 7;
+  bool blocked = 8;
+  double blocked_reduction = 9;
+  double defender_hp = 10;
+  int32 wave_number = 11;
+  double next_wave_in = 12;
+}
+
+// Layer 1: full snapshot (first connect, reconnect, heartbeat)
+message BattleSnapshot {
+  string battle_id = 1;
+  BattleStatus status = 2;
+  double time = 3;
+  int32 wave_number = 4;
+  double next_step_in = 5;
+  repeated BattleEntityState players = 6;
+  repeated BattleEntityState enemies = 7;
+}
+
+// Layer 2: event batch (pushed only when combat events occur)
+message BattleEventBatch {
+  double time = 1;
+  repeated BattleLogEntry logs = 2;
+  repeated BattleEntityState affected_entities = 3;
+}
+
+// --- Requests / Responses ---
+
+message BattleStartReq {
+  string battle_id = 1;
+}
+
+message BattleStartResp {
+  BattleSnapshot snapshot = 1;
+}
+
+message BattleStopReq {}
+
+message BattleStopResp {
+  BattleSnapshot snapshot = 1;
+}
+
+message BattleStateReq {}
+
+message BattleStateResp {
+  BattleSnapshot snapshot = 1;
+}

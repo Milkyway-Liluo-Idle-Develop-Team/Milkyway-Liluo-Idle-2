@@ -19,6 +19,8 @@ type IDRegistry struct {
 	Skills       map[string]int64 `json:"skills"`
 	Maps         map[string]int64 `json:"maps"`
 	BattleSkills map[string]int64 `json:"battle_skills"`
+	Enemies      map[string]int64 `json:"enemies"`
+	Battles      map[string]int64 `json:"battles"`
 }
 
 // GenerateRegistry reads actions.json and produces (or updates) an
@@ -57,6 +59,8 @@ func GenerateRegistry(actionsPath, registryPath string) error {
 		Skills:       copyMap(existing.Skills),
 		Maps:         copyMap(existing.Maps),
 		BattleSkills: copyMap(existing.BattleSkills),
+		Enemies:      copyMap(existing.Enemies),
+		Battles:      copyMap(existing.Battles),
 	}
 
 	// Collect all string ids from actions.json.
@@ -76,6 +80,8 @@ func GenerateRegistry(actionsPath, registryPath string) error {
 	fluidIDs := collectFluidIDs(cfg) // fluids are treated as items
 	mapIDs := collectMapIDs(cfg)
 	bsIDs := collectBattleSkillIDs(cfg)
+	enemyIDs := collectEnemyIDs(cfg)
+	battleIDs := collectBattleIDs(cfg)
 
 	// Fluids are a special form of items; merge fluid IDs into items.
 	allItemIDs := append(itemIDs, fluidIDs...)
@@ -87,6 +93,8 @@ func GenerateRegistry(actionsPath, registryPath string) error {
 	mergeIDs(reg.Skills, skillIDs)
 	mergeIDs(reg.Maps, mapIDs)
 	mergeIDs(reg.BattleSkills, bsIDs)
+	mergeIDs(reg.Enemies, enemyIDs)
+	mergeIDs(reg.Battles, battleIDs)
 
 	// Detect removed ids (present in registry but absent from actions.json).
 	removed := detectRemoved(reg.Items, allItemIDs)
@@ -94,6 +102,7 @@ func GenerateRegistry(actionsPath, registryPath string) error {
 	removed = append(removed, detectRemoved(reg.Skills, skillIDs)...)
 	removed = append(removed, detectRemoved(reg.Maps, mapIDs)...)
 	removed = append(removed, detectRemoved(reg.BattleSkills, bsIDs)...)
+	removed = append(removed, detectRemoved(reg.Enemies, enemyIDs)...)
 	for _, r := range removed {
 		fmt.Fprintln(os.Stderr, "warn: id_registry contains deprecated entry", r)
 	}
@@ -238,6 +247,24 @@ func collectBattleSkillIDs(cfg ActionConfig) []string {
 	return out
 }
 
+func collectEnemyIDs(cfg ActionConfig) []string {
+	out := make([]string, len(cfg.Enemies))
+	for i, e := range cfg.Enemies {
+		out[i] = e.ID
+	}
+	sort.Strings(out)
+	return out
+}
+
+func collectBattleIDs(cfg ActionConfig) []string {
+	out := make([]string, len(cfg.Battles))
+	for i, b := range cfg.Battles {
+		out[i] = b.ID
+	}
+	sort.Strings(out)
+	return out
+}
+
 // marshalRegistry writes the registry as compact JSON with sorted keys.
 func marshalRegistry(reg IDRegistry) ([]byte, error) {
 	var buf bytes.Buffer
@@ -253,6 +280,8 @@ func marshalRegistry(reg IDRegistry) ([]byte, error) {
 		{"skills", reg.Skills},
 		{"maps", reg.Maps},
 		{"battle_skills", reg.BattleSkills},
+		{"enemies", reg.Enemies},
+		{"battles", reg.Battles},
 	}
 
 	for si, sec := range sections {

@@ -1,41 +1,80 @@
 package battle
 
-// BattleLog is a single event in the combat log.
+import "github.com/Milkyway-Liluo-Idle-Develop-Team/Milkyway-Liluo-Idle-2/backend/internal/gameconfig"
+
+// BattleLogType categorises a single combat event.
+type BattleLogType int
+
+const (
+	BattleLogTypeUnspecified      BattleLogType = 0
+	BattleLogTypePlayerAttack     BattleLogType = 1
+	BattleLogTypeEnemyAttack      BattleLogType = 2
+	BattleLogTypeEnemyDied        BattleLogType = 3
+	BattleLogTypePlayerDowned     BattleLogType = 4
+	BattleLogTypePlayerRespawn    BattleLogType = 5
+	BattleLogTypeWaveSpawned      BattleLogType = 6
+	BattleLogTypeWaveCleared      BattleLogType = 7
+	BattleLogTypeAllPlayersDowned BattleLogType = 8
+	BattleLogTypeStopped          BattleLogType = 9
+)
+
+func (t BattleLogType) String() string {
+	switch t {
+	case BattleLogTypePlayerAttack:
+		return "player_attack"
+	case BattleLogTypeEnemyAttack:
+		return "enemy_attack"
+	case BattleLogTypeEnemyDied:
+		return "enemy_died"
+	case BattleLogTypePlayerDowned:
+		return "player_downed"
+	case BattleLogTypePlayerRespawn:
+		return "player_respawn"
+	case BattleLogTypeWaveSpawned:
+		return "wave_spawned"
+	case BattleLogTypeWaveCleared:
+		return "wave_cleared"
+	case BattleLogTypeAllPlayersDowned:
+		return "all_players_downed"
+	case BattleLogTypeStopped:
+		return "stopped"
+	default:
+		return "unknown"
+	}
+}
+
+// BattleLog is a single event produced by the combat engine.
+// It is converted to protobuf before leaving the server.
 type BattleLog struct {
-	Type string `json:"type"`
+	Type BattleLogType
 
 	// Attack logs.
-	SkillID          string          `json:"skill_id,omitempty"`
-	SkillName        string          `json:"skill_name,omitempty"`
-	Damage           float64         `json:"damage,omitempty"`
-	RawDamage        float64         `json:"raw_damage,omitempty"`
-	DamageType       string          `json:"damage_type,omitempty"`
-	Evaded           bool            `json:"evaded,omitempty"`
-	Blocked          bool            `json:"blocked,omitempty"`
-	BlockedReduction float64         `json:"blocked_reduction,omitempty"`
-	MPCost           float64         `json:"mp_cost,omitempty"`
-	SPCost           float64         `json:"sp_cost,omitempty"`
-	Effects          []AppliedEffect `json:"effects,omitempty"`
+	SkillID          gameconfig.BattleSkillID
+	Damage           float64
+	RawDamage        float64
+	Evaded           bool
+	Blocked          bool
+	BlockedReduction float64
+	MPCost           float64 // internal only, not transmitted
+	SPCost           float64 // internal only, not transmitted
+	Effects          []AppliedEffect
 
-	// Attacker / Defender identifiers (generic, supports multiplayer).
-	AttackerID   string `json:"attacker_id,omitempty"`
-	AttackerName string `json:"attacker_name,omitempty"`
-	AttackerTeam string `json:"attacker_team,omitempty"` // "player" | "enemy"
-	DefenderID   string `json:"defender_id,omitempty"`
-	DefenderName string `json:"defender_name,omitempty"`
-	DefenderHP   float64 `json:"defender_hp,omitempty"`
+	// Attacker / Defender identifiers (numeric, supports multiplayer).
+	AttackerEntityID int64
+	DefenderEntityID int64
+	DefenderHP       float64
 
 	// Meta.
-	WaveNumber int     `json:"wave_number,omitempty"`
-	NextWaveIn float64 `json:"next_wave_in,omitempty"`
-	BattleID   string  `json:"battle_id,omitempty"`
+	WaveNumber int
+	NextWaveIn float64
+	BattleID   string // internal only, not transmitted
 }
 
 // AppliedEffect records an effect that was actually applied.
 type AppliedEffect struct {
-	Target    string  `json:"target"` // "self" | "target"
-	Attribute string  `json:"attribute"`
-	Mode      string  `json:"mode"`
-	Value     float64 `json:"value"`
-	Duration  float64 `json:"duration_seconds,omitempty"`
+	Target    string
+	Attribute string
+	Mode      string
+	Value     float64
+	Duration  float64
 }

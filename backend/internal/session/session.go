@@ -23,6 +23,7 @@ import (
 
 	"github.com/Milkyway-Liluo-Idle-Develop-Team/Milkyway-Liluo-Idle-2/backend/internal/apperror"
 	"github.com/Milkyway-Liluo-Idle-Develop-Team/Milkyway-Liluo-Idle-2/backend/internal/attribute"
+	"github.com/Milkyway-Liluo-Idle-Develop-Team/Milkyway-Liluo-Idle-2/backend/internal/battle"
 	"github.com/Milkyway-Liluo-Idle-Develop-Team/Milkyway-Liluo-Idle-2/backend/internal/bestiary"
 	"github.com/Milkyway-Liluo-Idle-Develop-Team/Milkyway-Liluo-Idle-2/backend/internal/db"
 	dbgen "github.com/Milkyway-Liluo-Idle-Develop-Team/Milkyway-Liluo-Idle-2/backend/internal/db/gen"
@@ -54,7 +55,7 @@ type PlayerSession struct {
 	best   *bestiary.State
 	ev     *event.State
 	eq     *equipment.State
-	battle *Instance
+	battleSession *battle.BattleSession
 
 	logger *slog.Logger
 
@@ -212,11 +213,11 @@ func (s *PlayerSession) SetEvents(st *event.State) { s.ev = st }
 // Equipment returns the equipment state, or nil if not yet loaded.
 func (s *PlayerSession) Equipment() *equipment.State { return s.eq }
 
-// Battle returns the battle instance, or nil if not yet attached.
-func (s *PlayerSession) Battle() *Instance { return s.battle }
+// BattleSession returns the active battle session, or nil if not in battle.
+func (s *PlayerSession) BattleSession() *battle.BattleSession { return s.battleSession }
 
-// SetBattle attaches a battle instance.
-func (s *PlayerSession) SetBattle(b *Instance) { s.battle = b }
+// SetBattleSession attaches a battle session.
+func (s *PlayerSession) SetBattleSession(b *battle.BattleSession) { s.battleSession = b }
 
 // SetEquipment attaches an equipment state (called after DB load).
 func (s *PlayerSession) SetEquipment(st *equipment.State) {
@@ -593,6 +594,8 @@ func isStateDiffEmpty(d *pb.StateDiff) bool {
 type Manager struct {
 	mu          sync.RWMutex
 	sessions    map[int64]*PlayerSession
+	battlesMu   sync.RWMutex
+	battles     map[int64]*battle.BattleSession // keyed by BattleConfig.NumericID
 	reg         *record.Registry
 	database    *db.DB
 	workerCount int
@@ -604,6 +607,7 @@ type Manager struct {
 func NewManager(ctx context.Context, reg *record.Registry, database *db.DB, tickInterval time.Duration) *Manager {
 	m := &Manager{
 		sessions:    make(map[int64]*PlayerSession),
+		battles:     make(map[int64]*battle.BattleSession),
 		reg:         reg,
 		database:    database,
 		workerCount: runtime.NumCPU(),
@@ -619,6 +623,7 @@ func NewManager(ctx context.Context, reg *record.Registry, database *db.DB, tick
 func NewManagerWithoutTick(reg *record.Registry, database *db.DB) *Manager {
 	return &Manager{
 		sessions:    make(map[int64]*PlayerSession),
+		battles:     make(map[int64]*battle.BattleSession),
 		reg:         reg,
 		database:    database,
 		workerCount: runtime.NumCPU(),
@@ -687,6 +692,32 @@ func (m *Manager) Get(userID int64) (*PlayerSession, bool) {
 // GetByUser returns the session for a user.
 func (m *Manager) GetByUser(userID int64) (*PlayerSession, bool) {
 	return m.Get(userID)
+}
+
+// =========================
+// Battle management
+// =========================
+
+// AddBattle registers a battle session. The caller must ensure the NumericID is unique.
+func (m *Manager) AddBattle(bs *battle.BattleSession) {
+	m.battlesMu.Lock()
+	defer m.battlesMu.Unlock()
+	m.battles[bs.Config.NumericID] = bs
+}
+
+// RemoveBattle unregisters a battle session by its NumericID.
+func (m *Manager) RemoveBattle(numericID int64) {
+	m.battlesMu.Lock()
+	defer m.battlesMu.Unlock()
+	delete(m.battles, numericID)
+}
+
+// GetBattle returns a registered battle session by its NumericID.
+func (m *Manager) GetBattle(numericID int64) (*battle.BattleSession, bool) {
+	m.battlesMu.RLock()
+	defer m.battlesMu.RUnlock()
+	bs, ok := m.battles[numericID]
+	return bs, ok
 }
 
 // Evict forcibly closes and removes an in-memory session.

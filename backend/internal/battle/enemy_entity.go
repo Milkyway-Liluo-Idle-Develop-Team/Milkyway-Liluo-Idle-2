@@ -1,15 +1,18 @@
 package battle
 
 import (
+	"fmt"
+
 	"github.com/Milkyway-Liluo-Idle-Develop-Team/Milkyway-Liluo-Idle-2/backend/internal/attribute"
+	"github.com/Milkyway-Liluo-Idle-Develop-Team/Milkyway-Liluo-Idle-2/backend/internal/gameconfig"
 )
 
 // EnemyBattleEntity represents an enemy in combat.
 // It owns a temporary attribute.Instance that is discarded after the battle.
 type EnemyBattleEntity struct {
-	enemyID    string
-	instanceID string
-	name       string
+	numericID   int64 // numeric enemy definition id from gameconfig
+	instanceIdx int   // index within the current wave
+	name        string // retained for internal debugging, not transmitted
 
 	attr *attribute.Instance
 
@@ -27,17 +30,16 @@ type EnemyBattleEntity struct {
 	nextReadyTime      float64
 	lastActionDuration float64
 
-	cooldowns     map[string]float64
+	cooldowns     map[gameconfig.BattleSkillID]float64
 	activeEffects []ActiveEffect
 
 	// Skills.
-	skills       map[string]*BattleSkill
+	skills       map[gameconfig.BattleSkillID]*BattleSkill
 	skillPlan    []SkillPlanEntry
-	basicSkillID string
+	basicSkillID gameconfig.BattleSkillID
 
 	// Bookkeeping.
-	lastSkillID   string
-	lastSkillName string
+	lastSkillID gameconfig.BattleSkillID
 
 	// Rewards.
 	Drops     []DropEntry
@@ -46,16 +48,16 @@ type EnemyBattleEntity struct {
 
 // DropEntry is a single possible drop from an enemy.
 type DropEntry struct {
-	ItemID   int32
+	ItemID    int32
 	ItemState int32
-	Chance   float64 // 0.0 - 1.0
-	MinQty   float64
-	MaxQty   float64
+	Chance    float64 // 0.0 - 1.0
+	MinQty    float64
+	MaxQty    float64
 }
 
 // NewEnemyBattleEntity creates an enemy from its definition.
 // baseStats maps attribute string IDs to their base values.
-func NewEnemyBattleEntity(enemyID, instanceID, name string, baseStats map[string]float64) *EnemyBattleEntity {
+func NewEnemyBattleEntity(numericID int64, instanceIdx int, name string, baseStats map[string]float64) *EnemyBattleEntity {
 	attr := attribute.NewInstance()
 	reg := attribute.Get()
 
@@ -79,13 +81,13 @@ func NewEnemyBattleEntity(enemyID, instanceID, name string, baseStats map[string
 	}
 
 	e := &EnemyBattleEntity{
-		enemyID:    enemyID,
-		instanceID: instanceID,
-		name:       name,
-		attr:       attr,
-		alive:      true,
-		cooldowns:  make(map[string]float64),
-		skills:     make(map[string]*BattleSkill),
+		numericID:   numericID,
+		instanceIdx: instanceIdx,
+		name:        name,
+		attr:        attr,
+		alive:       true,
+		cooldowns:   make(map[gameconfig.BattleSkillID]float64),
+		skills:      make(map[gameconfig.BattleSkillID]*BattleSkill),
 	}
 	e.cachedMaxHP = e.MaxHP()
 	e.cachedMaxMP = e.MaxMP()
@@ -95,9 +97,14 @@ func NewEnemyBattleEntity(enemyID, instanceID, name string, baseStats map[string
 
 // --- Identity ---
 
-func (e *EnemyBattleEntity) EntityID() string { return e.instanceID }
-func (e *EnemyBattleEntity) Name() string      { return e.name }
-func (e *EnemyBattleEntity) Team() Team        { return TeamEnemy }
+// EntityID returns a unique numeric id for this enemy instance.
+// Encoding: -(numericID << 32 | instanceIdx)
+// Players use positive ids (userID), so negative values identify enemies.
+func (e *EnemyBattleEntity) EntityID() int64 {
+	return -(e.numericID<<32 | int64(e.instanceIdx))
+}
+
+func (e *EnemyBattleEntity) Team() Team { return TeamEnemy }
 
 // --- Life ---
 
@@ -158,7 +165,7 @@ func (e *EnemyBattleEntity) ApplyEffect(effect ActiveEffect, now float64) {
 }
 
 // syncEffectsForSource rebuilds all attribute modifiers for a given skill source.
-func (e *EnemyBattleEntity) syncEffectsForSource(sourceSkillID string) {
+func (e *EnemyBattleEntity) syncEffectsForSource(sourceSkillID gameconfig.BattleSkillID) {
 	var mods []attribute.Modifier
 	for _, eff := range e.activeEffects {
 		if eff.SourceSkillID != sourceSkillID {
@@ -177,10 +184,10 @@ func (e *EnemyBattleEntity) syncEffectsForSource(sourceSkillID string) {
 			AttrID: eff.Attribute,
 			Op:     op,
 			Value:  eff.Value,
-			Source: "battle:" + sourceSkillID,
+			Source: fmt.Sprintf("battle:%d", sourceSkillID),
 		})
 	}
-	e.attr.AddModifiers("battle:"+sourceSkillID, mods)
+	e.attr.AddModifiers(fmt.Sprintf("battle:%d", sourceSkillID), mods)
 }
 
 func (e *EnemyBattleEntity) RefreshStats(now float64) {
@@ -203,30 +210,28 @@ func (e *EnemyBattleEntity) RefreshStats(now float64) {
 
 // --- Skills ---
 
-func (e *EnemyBattleEntity) Skills() map[string]*BattleSkill {
-	out := make(map[string]*BattleSkill, len(e.skills))
+func (e *EnemyBattleEntity) Skills() map[gameconfig.BattleSkillID]*BattleSkill {
+	out := make(map[gameconfig.BattleSkillID]*BattleSkill, len(e.skills))
 	for k, v := range e.skills {
 		out[k] = v
 	}
 	return out
 }
 
-func (e *EnemyBattleEntity) SkillPlan() []SkillPlanEntry   { return e.skillPlan }
-func (e *EnemyBattleEntity) BasicSkillID() string          { return e.basicSkillID }
-func (e *EnemyBattleEntity) Cooldowns() map[string]float64 { return e.cooldowns }
-func (e *EnemyBattleEntity) SetCooldown(skillID string, expiresAt float64) {
+func (e *EnemyBattleEntity) SkillPlan() []SkillPlanEntry                           { return e.skillPlan }
+func (e *EnemyBattleEntity) BasicSkillID() gameconfig.BattleSkillID                { return e.basicSkillID }
+func (e *EnemyBattleEntity) Cooldowns() map[gameconfig.BattleSkillID]float64       { return e.cooldowns }
+func (e *EnemyBattleEntity) SetCooldown(skillID gameconfig.BattleSkillID, expiresAt float64) {
 	e.cooldowns[skillID] = expiresAt
 }
 
 // --- Bookkeeping ---
 
-func (e *EnemyBattleEntity) LastSkillID() string              { return e.lastSkillID }
-func (e *EnemyBattleEntity) SetLastSkillID(v string)          { e.lastSkillID = v }
-func (e *EnemyBattleEntity) LastSkillName() string            { return e.lastSkillName }
-func (e *EnemyBattleEntity) SetLastSkillName(v string)        { e.lastSkillName = v }
+func (e *EnemyBattleEntity) LastSkillID() gameconfig.BattleSkillID              { return e.lastSkillID }
+func (e *EnemyBattleEntity) SetLastSkillID(v gameconfig.BattleSkillID)          { e.lastSkillID = v }
 
 // Setters for skill data.
 
-func (e *EnemyBattleEntity) SetSkills(skills map[string]*BattleSkill) { e.skills = skills }
-func (e *EnemyBattleEntity) SetSkillPlan(plan []SkillPlanEntry)       { e.skillPlan = plan }
-func (e *EnemyBattleEntity) SetBasicSkillID(id string)                { e.basicSkillID = id }
+func (e *EnemyBattleEntity) SetSkills(skills map[gameconfig.BattleSkillID]*BattleSkill) { e.skills = skills }
+func (e *EnemyBattleEntity) SetSkillPlan(plan []SkillPlanEntry)                         { e.skillPlan = plan }
+func (e *EnemyBattleEntity) SetBasicSkillID(id gameconfig.BattleSkillID)                { e.basicSkillID = id }

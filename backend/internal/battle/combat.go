@@ -2,10 +2,16 @@ package battle
 
 import (
 	"math"
-	"math/rand"
-	"time"
 
 	"github.com/Milkyway-Liluo-Idle-Develop-Team/Milkyway-Liluo-Idle-2/backend/internal/attribute"
+	"github.com/Milkyway-Liluo-Idle-Develop-Team/Milkyway-Liluo-Idle-2/backend/internal/gameconfig"
+)
+
+// Fallback skill IDs for runtime-generated basic attacks.
+// Negative values avoid collision with registry-assigned positive IDs.
+const (
+	FallbackBasicAttackID      gameconfig.BattleSkillID = -1
+	FallbackEnemyBasicAttackID gameconfig.BattleSkillID = -2
 )
 
 // processPlayerAttack resolves a single player's next attack.
@@ -38,8 +44,7 @@ func (s *BattleSession) resolveAttack(attacker, defender BattleEntity, skill *Ba
 	appliedEffects := s.applySkillEffects(attacker, defender, skill)
 
 	// Calculate damage.
-	rng := rand.New(rand.NewSource(time.Now().UnixNano()))
-	result := CalcDamage(attacker, defender, skill, rng)
+	result := CalcDamage(attacker, defender, skill, s.rng)
 
 	// Apply damage.
 	if result.Damage > 0 {
@@ -61,42 +66,38 @@ func (s *BattleSession) resolveAttack(attacker, defender BattleEntity, skill *Ba
 	attacker.SetNextReadyTime(s.Time + castTime)
 	attacker.SetLastActionDuration(castTime)
 	attacker.SetLastSkillID(skill.ID)
-	attacker.SetLastSkillName(skill.Name)
 	if cooldown > 0 {
 		attacker.SetCooldown(skill.ID, s.Time+cooldown)
 	}
 
-	teamStr := "enemy"
+	// Build log.
+	var logType BattleLogType
 	if attacker.Team() == TeamPlayer {
-		teamStr = "player"
+		logType = BattleLogTypePlayerAttack
+	} else {
+		logType = BattleLogTypeEnemyAttack
 	}
 
-	// Build log.
 	log := BattleLog{
-		Type:             teamStr + "_attack",
+		Type:             logType,
 		SkillID:          skill.ID,
-		SkillName:        skill.Name,
 		Damage:           result.Damage,
 		RawDamage:        result.RawDamage,
-		DamageType:       result.DamageType,
 		Evaded:           result.Evaded,
 		Blocked:          result.Blocked,
 		BlockedReduction: result.BlockedReduction,
 		MPCost:           mpCost,
 		SPCost:           spCost,
 		Effects:          appliedEffects,
-		AttackerID:       attacker.EntityID(),
-		AttackerName:     attacker.Name(),
-		AttackerTeam:     teamStr,
-		DefenderID:       defender.EntityID(),
-		DefenderName:     defender.Name(),
+		AttackerEntityID: attacker.EntityID(),
+		DefenderEntityID: defender.EntityID(),
 		DefenderHP:       round3(defender.HP()),
 	}
 	logs = append(logs, log)
 
 	// Skill XP (1 XP per skill use) for player attacks.
-	if attacker.Team() == TeamPlayer && skill.ID != "" {
-		s.addPendingSkillXP(skill.ID, 1.0)
+	if attacker.Team() == TeamPlayer && skill.ID > 0 {
+		s.addPendingBattleSkillXP(skill.ID, 1.0)
 	}
 
 	// Combat XP from damage dealt.
@@ -149,7 +150,7 @@ func (s *BattleSession) choosePlayerSkill(player *PlayerBattleEntity, target *En
 	}
 	// Ultimate fallback.
 	return &BattleSkill{
-		ID:   "__basic_attack__",
+		ID:   FallbackBasicAttackID,
 		Name: "基础攻击",
 		Damage: &DamageProfile{
 			Type:       "physical",
@@ -185,7 +186,7 @@ func (s *BattleSession) chooseEnemySkill(enemy *EnemyBattleEntity, target Battle
 		return basic
 	}
 	return &BattleSkill{
-		ID:   "__enemy_basic_attack__",
+		ID:   FallbackEnemyBasicAttackID,
 		Name: "基础攻击",
 		Damage: &DamageProfile{
 			Type:       "physical",
@@ -311,7 +312,9 @@ func (s *BattleSession) awardCombatXP(result DamageResult, skill *BattleSkill) {
 	}
 	dmg := result.Damage
 	if skill.Damage != nil && skill.Damage.Type == "magic" {
-		s.addPendingSkillXP("magic", 1.0*dmg)
+		if id, ok := gameconfig.StringToSkillID("magic"); ok {
+			s.addPendingSkillXP(id, 1.0*dmg)
+		}
 		return
 	}
 
@@ -320,29 +323,52 @@ func (s *BattleSession) awardCombatXP(result DamageResult, skill *BattleSkill) {
 		style = "melee"
 	}
 	if style == "ranged" {
-		s.addPendingSkillXP("strength", 0.5*dmg)
-		s.addPendingSkillXP("ranging", 0.5*dmg)
+		if id, ok := gameconfig.StringToSkillID("strength"); ok {
+			s.addPendingSkillXP(id, 0.5*dmg)
+		}
+		if id, ok := gameconfig.StringToSkillID("ranging"); ok {
+			s.addPendingSkillXP(id, 0.5*dmg)
+		}
 	} else {
-		s.addPendingSkillXP("strength", 0.8*dmg)
-		s.addPendingSkillXP("ranging", 0.2*dmg)
+		if id, ok := gameconfig.StringToSkillID("strength"); ok {
+			s.addPendingSkillXP(id, 0.8*dmg)
+		}
+		if id, ok := gameconfig.StringToSkillID("ranging"); ok {
+			s.addPendingSkillXP(id, 0.2*dmg)
+		}
 	}
 }
 
 func (s *BattleSession) awardDefenseXP(result DamageResult) {
 	if result.Evaded {
-		s.addPendingSkillXP("ranging", 2.0*result.RawDamage)
+		if id, ok := gameconfig.StringToSkillID("ranging"); ok {
+			s.addPendingSkillXP(id, 2.0*result.RawDamage)
+		}
 		return
 	}
 	if result.Damage > 0 {
-		s.addPendingSkillXP("resilience", 1.5*result.Damage)
-		s.addPendingSkillXP("defense", 0.5*result.Damage)
+		if id, ok := gameconfig.StringToSkillID("resilience"); ok {
+			s.addPendingSkillXP(id, 1.5*result.Damage)
+		}
+		if id, ok := gameconfig.StringToSkillID("defense"); ok {
+			s.addPendingSkillXP(id, 0.5*result.Damage)
+		}
 	}
 	if result.BlockedReduction > 0 {
-		s.addPendingSkillXP("defense", 2.0*result.BlockedReduction)
+		if id, ok := gameconfig.StringToSkillID("defense"); ok {
+			s.addPendingSkillXP(id, 2.0*result.BlockedReduction)
+		}
 	}
 }
 
-func (s *BattleSession) addPendingSkillXP(skillID string, xp float64) {
+func (s *BattleSession) addPendingBattleSkillXP(skillID gameconfig.BattleSkillID, xp float64) {
+	if xp <= 0 {
+		return
+	}
+	s.PendingBattleSkillExp[skillID] += xp
+}
+
+func (s *BattleSession) addPendingSkillXP(skillID gameconfig.SkillID, xp float64) {
 	if xp <= 0 {
 		return
 	}
@@ -351,11 +377,9 @@ func (s *BattleSession) addPendingSkillXP(skillID string, xp float64) {
 
 func (s *BattleSession) handleEnemyDeath(enemy *EnemyBattleEntity) []BattleLog {
 	return []BattleLog{{
-		Type:       "enemy_died",
-		AttackerID: enemy.enemyID,
-		AttackerName: enemy.name,
-		AttackerTeam: "enemy",
-		WaveNumber: s.WaveNumber,
+		Type:             BattleLogTypeEnemyDied,
+		AttackerEntityID: enemy.EntityID(),
+		WaveNumber:       s.WaveNumber,
 	}}
 }
 
@@ -364,19 +388,19 @@ func (s *BattleSession) handlePlayerDown(player *PlayerBattleEntity) []BattleLog
 	respawn := s.Time + max(0.1, s.Config.Interval)
 	s.RespawnTimes[player.EntityID()] = &respawn
 	return []BattleLog{{
-		Type:       "player_downed",
-		DefenderID: player.EntityID(),
-		DefenderHP: 0,
-		NextWaveIn: s.Config.Interval,
+		Type:             BattleLogTypePlayerDowned,
+		DefenderEntityID: player.EntityID(),
+		DefenderHP:       0,
+		NextWaveIn:       s.Config.Interval,
 	}}
 }
 
 // addHate accumulates hate for a player against a specific enemy.
-func (s *BattleSession) addHate(enemyID, playerID string, amount float64) {
-	if s.HateMap[enemyID] == nil {
-		s.HateMap[enemyID] = make(map[string]float64)
+func (s *BattleSession) addHate(enemyEntityID, playerEntityID int64, amount float64) {
+	if s.HateMap[enemyEntityID] == nil {
+		s.HateMap[enemyEntityID] = make(map[int64]float64)
 	}
-	s.HateMap[enemyID][playerID] += amount
+	s.HateMap[enemyEntityID][playerEntityID] += amount
 }
 
 func round3(v float64) float64 {

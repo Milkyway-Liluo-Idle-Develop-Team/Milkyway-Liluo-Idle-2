@@ -27,9 +27,9 @@ func TestRealEnemyDataFromGameConfig(t *testing.T) {
 	inst := attribute.NewInstance()
 	p := battle.NewPlayerBattleEntity(1, "Hero", inst)
 	p.SetHP(p.MaxHP())
-	p.SetSkills(map[string]*battle.BattleSkill{
-		"basic_attack": {
-			ID:   "basic_attack",
+	p.SetSkills(map[gameconfig.BattleSkillID]*battle.BattleSkill{
+		gameconfig.BattleSkillID(1): {
+			ID: gameconfig.BattleSkillID(1),
 			Name: "基础攻击",
 			Damage: &battle.DamageProfile{
 				Type:       "physical",
@@ -40,8 +40,8 @@ func TestRealEnemyDataFromGameConfig(t *testing.T) {
 			IsBasic:  true,
 		},
 	})
-	p.SetBasicSkillID("basic_attack")
-	p.SetSkillPlan([]battle.SkillPlanEntry{{SkillID: "basic_attack", Priority: 0}})
+	p.SetBasicSkillID(gameconfig.BattleSkillID(1))
+	p.SetSkillPlan([]battle.SkillPlanEntry{{SkillID: gameconfig.BattleSkillID(1), Priority: 0}})
 
 	cfg := battle.BattleConfig{
 		ID:              "test_battle",

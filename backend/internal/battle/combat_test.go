@@ -4,6 +4,14 @@ import (
 	"testing"
 
 	"github.com/Milkyway-Liluo-Idle-Develop-Team/Milkyway-Liluo-Idle-2/backend/internal/attribute"
+	"github.com/Milkyway-Liluo-Idle-Develop-Team/Milkyway-Liluo-Idle-2/backend/internal/gameconfig"
+)
+
+// Test-only skill IDs (negative to avoid collision with registry-assigned positives).
+const (
+	testSkillBuffPower  gameconfig.BattleSkillID = -100
+	testSkillBuffSelf   gameconfig.BattleSkillID = -101
+	testSkillBuffMixed  gameconfig.BattleSkillID = -102
 )
 
 func TestSkillWouldApplyEffect(t *testing.T) {
@@ -11,7 +19,7 @@ func TestSkillWouldApplyEffect(t *testing.T) {
 	defID, _ := attribute.Get().AttrID("defense")
 
 	caster := NewPlayerBattleEntity(1, "Caster", attribute.NewInstance())
-	target := NewEnemyBattleEntity("goblin", "goblin_0", "Goblin", map[string]float64{
+	target := NewEnemyBattleEntity(1, 0, "Goblin", map[string]float64{
 		"hp": 200,
 	})
 
@@ -20,7 +28,7 @@ func TestSkillWouldApplyEffect(t *testing.T) {
 	expireLater := 20.0
 
 	buffSkill := &BattleSkill{
-		ID:   "buff:power",
+		ID:   testSkillBuffPower,
 		Name: "Power Buff",
 		Effects: []SkillEffect{
 			{Target: "target", Attribute: ppID, Mode: EffectModeFlat, Value: 10, Duration: 30},
@@ -34,7 +42,7 @@ func TestSkillWouldApplyEffect(t *testing.T) {
 
 	// Case 2: identical effect already active (same value, not expired) → should NOT apply.
 	target.ApplyEffect(ActiveEffect{
-		SourceSkillID: "buff:power",
+		SourceSkillID: testSkillBuffPower,
 		Attribute:     ppID,
 		Mode:          EffectModeFlat,
 		Value:         10,
@@ -46,7 +54,7 @@ func TestSkillWouldApplyEffect(t *testing.T) {
 
 	// Case 3: same key but different value → should apply (overwrite).
 	buffSkillDifferent := &BattleSkill{
-		ID:   "buff:power",
+		ID:   testSkillBuffPower,
 		Name: "Power Buff Stronger",
 		Effects: []SkillEffect{
 			{Target: "target", Attribute: ppID, Mode: EffectModeFlat, Value: 20, Duration: 30},
@@ -57,11 +65,11 @@ func TestSkillWouldApplyEffect(t *testing.T) {
 	}
 
 	// Case 4: existing effect has expired → should apply.
-	target2 := NewEnemyBattleEntity("goblin", "goblin_1", "Goblin", map[string]float64{
+	target2 := NewEnemyBattleEntity(1, 1, "Goblin", map[string]float64{
 		"hp": 200,
 	})
 	target2.ApplyEffect(ActiveEffect{
-		SourceSkillID: "buff:power",
+		SourceSkillID: testSkillBuffPower,
 		Attribute:     ppID,
 		Mode:          EffectModeFlat,
 		Value:         10,
@@ -73,7 +81,7 @@ func TestSkillWouldApplyEffect(t *testing.T) {
 
 	// Case 5: self-target buff, no existing effect on caster → should apply.
 	selfBuffSkill := &BattleSkill{
-		ID:   "buff:self",
+		ID:   testSkillBuffSelf,
 		Name: "Self Buff",
 		Effects: []SkillEffect{
 			{Target: "self", Attribute: defID, Mode: EffectModeFlat, Value: 5, Duration: 30},
@@ -85,7 +93,7 @@ func TestSkillWouldApplyEffect(t *testing.T) {
 
 	// Case 6: skill with multiple effects, one unchanged + one new → should apply.
 	mixedSkill := &BattleSkill{
-		ID:   "buff:mixed",
+		ID:   testSkillBuffMixed,
 		Name: "Mixed Buff",
 		Effects: []SkillEffect{
 			{Target: "target", Attribute: ppID, Mode: EffectModeFlat, Value: 10, Duration: 30},
@@ -98,18 +106,18 @@ func TestSkillWouldApplyEffect(t *testing.T) {
 	}
 
 	// Case 7: all effects already present with same values → should NOT apply.
-	target3 := NewEnemyBattleEntity("goblin", "goblin_2", "Goblin", map[string]float64{
+	target3 := NewEnemyBattleEntity(1, 2, "Goblin", map[string]float64{
 		"hp": 200,
 	})
 	target3.ApplyEffect(ActiveEffect{
-		SourceSkillID: "buff:mixed",
+		SourceSkillID: testSkillBuffMixed,
 		Attribute:     ppID,
 		Mode:          EffectModeFlat,
 		Value:         10,
 		ExpiresAt:     &expireLater,
 	}, now)
 	target3.ApplyEffect(ActiveEffect{
-		SourceSkillID: "buff:mixed",
+		SourceSkillID: testSkillBuffMixed,
 		Attribute:     defID,
 		Mode:          EffectModeFlat,
 		Value:         5,

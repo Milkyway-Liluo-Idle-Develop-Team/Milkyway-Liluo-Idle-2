@@ -1,8 +1,16 @@
 package battle
 
+import (
+	"math/rand"
+	"time"
+
+	"github.com/Milkyway-Liluo-Idle-Develop-Team/Milkyway-Liluo-Idle-2/backend/internal/gameconfig"
+)
+
 // BattleConfig is the static definition of a battle instance.
 type BattleConfig struct {
-	ID                      string
+	NumericID               int64
+	ID                      string // human-readable string id (e.g. "pasture")
 	Name                    string
 	Map                     string
 	Interval                float64 // seconds between waves
@@ -31,14 +39,22 @@ type BattleSession struct {
 	WaveType     string
 	NextWaveTime *float64
 
-	// Per-player respawn timers: key = player EntityID.
-	RespawnTimes map[string]*float64
+	// Per-player respawn timers: key = player EntityID (int64 userID).
+	RespawnTimes map[int64]*float64
 
-	// Accumulated rewards / exp pending settlement.
-	PendingSkillExp map[string]float64 // skill_id -> xp
+	// Accumulated battle-skill XP (1 XP per skill use).
+	PendingBattleSkillExp map[gameconfig.BattleSkillID]float64
 
-	// HateMap[enemyID][playerID] = accumulated hate value.
-	HateMap map[string]map[string]float64
+	// Accumulated general-skill XP from combat (strength, defense, magic, etc.).
+	PendingSkillExp map[gameconfig.SkillID]float64
+
+	// HateMap[enemyEntityID][playerEntityID] = accumulated hate value.
+	HateMap map[int64]map[int64]float64
+
+	// rng is the shared random source for all non-deterministic combat
+	// decisions (damage rolls, evade/block/crit checks, target selection).
+	// Tests may replace this with a seeded source for reproducibility.
+	rng *rand.Rand
 }
 
 // NewBattleSession creates a battle session with the given config and players.
@@ -48,9 +64,11 @@ func NewBattleSession(cfg BattleConfig, players []*PlayerBattleEntity) *BattleSe
 		Time:            0,
 		Running:         true,
 		Players:         players,
-		PendingSkillExp: make(map[string]float64),
-		RespawnTimes:    make(map[string]*float64),
-		HateMap:         make(map[string]map[string]float64),
+		PendingBattleSkillExp: make(map[gameconfig.BattleSkillID]float64),
+		PendingSkillExp:       make(map[gameconfig.SkillID]float64),
+		RespawnTimes:    make(map[int64]*float64),
+		HateMap:         make(map[int64]map[int64]float64),
+		rng:             rand.New(rand.NewSource(time.Now().UnixNano())),
 	}
 
 	// Each player starts ready after the first wave interval + their attack interval.
@@ -63,6 +81,21 @@ func NewBattleSession(cfg BattleConfig, players []*PlayerBattleEntity) *BattleSe
 
 	s.NextWaveTime = &interval
 	return s
+}
+
+// UserIDs returns the user IDs of all participating players.
+func (s *BattleSession) UserIDs() []int64 {
+	out := make([]int64, len(s.Players))
+	for i, p := range s.Players {
+		out[i] = p.UserID()
+	}
+	return out
+}
+
+// SetRNG replaces the internal random source (used by tests for deterministic
+// combat outcomes).
+func (s *BattleSession) SetRNG(r *rand.Rand) {
+	s.rng = r
 }
 
 // AlivePlayers returns players that are still alive.
@@ -145,7 +178,7 @@ func (s *BattleSession) AdvanceOneEvent() []BattleLog {
 	next := s.NextEventTime()
 	if next == nil {
 		s.Running = false
-		logs = append(logs, BattleLog{Type: "stopped"})
+		logs = append(logs, BattleLog{Type: BattleLogTypeStopped})
 		return logs
 	}
 
@@ -163,9 +196,9 @@ func (s *BattleSession) AdvanceOneEvent() []BattleLog {
 				p.SetSP(p.MaxSP())
 				p.SetNextReadyTime(s.Time + max(0.1, p.GetFinal(AttrAttackInterval)))
 				logs = append(logs, BattleLog{
-					Type:       "player_respawn",
-					NextWaveIn: s.Config.Interval,
-					AttackerID: pid,
+					Type:             BattleLogTypePlayerRespawn,
+					NextWaveIn:       s.Config.Interval,
+					AttackerEntityID: pid,
 				})
 			}
 		}
@@ -179,7 +212,7 @@ func (s *BattleSession) AdvanceOneEvent() []BattleLog {
 
 	// If everyone is dead, only respawn matters; emit the event once.
 	if len(alivePlayers) == 0 {
-		logs = append(logs, BattleLog{Type: "all_players_downed"})
+		logs = append(logs, BattleLog{Type: BattleLogTypeAllPlayersDowned})
 		return logs
 	}
 
@@ -209,7 +242,7 @@ func (s *BattleSession) AdvanceOneEvent() []BattleLog {
 
 	// After enemy attacks, check if the last player just died.
 	if len(s.AlivePlayers()) == 0 {
-		logs = append(logs, BattleLog{Type: "all_players_downed"})
+		logs = append(logs, BattleLog{Type: BattleLogTypeAllPlayersDowned})
 	}
 
 	// Wave completion check.
@@ -218,6 +251,32 @@ func (s *BattleSession) AdvanceOneEvent() []BattleLog {
 	}
 
 	return logs
+}
+
+// AdvanceByDelta advances the battle by a fixed wall-clock delta,
+// processing every event whose scheduled time falls within the interval.
+// The session clock ends at s.Time+delta.
+func (s *BattleSession) AdvanceByDelta(delta float64) []BattleLog {
+	var allLogs []BattleLog
+	if !s.Running {
+		return allLogs
+	}
+
+	target := s.Time + delta
+	for {
+		next := s.NextEventTime()
+		if next == nil || *next > target {
+			break
+		}
+		allLogs = append(allLogs, s.AdvanceOneEvent()...)
+		if !s.Running {
+			return allLogs
+		}
+	}
+
+	// No more events before target — just apply natural recovery.
+	s.advanceTime(target)
+	return allLogs
 }
 
 // advanceTime moves the battle clock forward and applies natural recovery.
@@ -297,14 +356,14 @@ func (s *BattleSession) finishWaveIfNeeded() []BattleLog {
 	nextWave := s.Time + max(0.1, s.Config.Interval)
 	s.NextWaveTime = &nextWave
 	return []BattleLog{{
-		Type:       "wave_cleared",
+		Type:       BattleLogTypeWaveCleared,
 		WaveNumber: s.WaveNumber,
 		NextWaveIn: s.Config.Interval,
 	}}
 }
 
 // playerByID finds a player by their EntityID.
-func (s *BattleSession) playerByID(id string) *PlayerBattleEntity {
+func (s *BattleSession) playerByID(id int64) *PlayerBattleEntity {
 	for _, p := range s.Players {
 		if p.EntityID() == id {
 			return p

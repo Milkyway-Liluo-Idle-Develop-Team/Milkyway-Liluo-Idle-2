@@ -1,6 +1,11 @@
 package battle
 
-import "github.com/Milkyway-Liluo-Idle-Develop-Team/Milkyway-Liluo-Idle-2/backend/internal/attribute"
+import (
+	"fmt"
+
+	"github.com/Milkyway-Liluo-Idle-Develop-Team/Milkyway-Liluo-Idle-2/backend/internal/attribute"
+	"github.com/Milkyway-Liluo-Idle-Develop-Team/Milkyway-Liluo-Idle-2/backend/internal/gameconfig"
+)
 
 // EffectMode describes how an effect modifies its target attribute.
 type EffectMode int
@@ -12,8 +17,8 @@ const (
 
 // ActiveEffect is a runtime buff or debuff attached to a BattleEntity.
 type ActiveEffect struct {
-	SourceSkillID string                // source skill, used for overwrite semantics
-	Attribute     attribute.AttributeID // target attribute
+	SourceSkillID gameconfig.BattleSkillID // source skill, used for overwrite semantics
+	Attribute     attribute.AttributeID    // target attribute
 	Mode          EffectMode
 	Value         float64
 	ExpiresAt     *float64 // nil = permanent until battle end
@@ -21,7 +26,7 @@ type ActiveEffect struct {
 
 // effectKey returns a deterministic key for deduplication / overwrite.
 func (e ActiveEffect) effectKey() string {
-	return e.SourceSkillID + ":" + e.Attribute.String() + ":" + modeString(e.Mode)
+	return fmt.Sprintf("%d:%d:%s", e.SourceSkillID, e.Attribute, modeString(e.Mode))
 }
 
 func modeString(m EffectMode) string {

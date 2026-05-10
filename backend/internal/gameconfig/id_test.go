@@ -64,8 +64,8 @@ func TestIDCounts(t *testing.T) {
 	if EventCount() != 61 {
 		t.Errorf("EventCount = %d, want 61", EventCount())
 	}
-	if SkillCount() != 8 {
-		t.Errorf("SkillCount = %d, want 8", SkillCount())
+	if SkillCount() != 11 {
+		t.Errorf("SkillCount = %d, want 11", SkillCount())
 	}
 	if MapCount() != 1 {
 		t.Errorf("MapCount = %d, want 1", MapCount())

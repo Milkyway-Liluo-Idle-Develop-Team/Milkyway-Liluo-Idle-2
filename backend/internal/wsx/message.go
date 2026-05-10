@@ -5,7 +5,7 @@
 //
 // Wire format (protobuf binary, single envelope for both directions):
 //
-//	Envelope { id, type, payload bytes, error }
+//	Envelope { id, opcode, payload bytes, error }
 //
 // Server replies that target a specific request reuse the same id. Pushes
 // from server (events) leave id empty.
@@ -23,7 +23,8 @@ import (
 // Inbound is a message received from a client.
 type Inbound struct {
 	ID       string
-	Type     string
+	Type     string // string type for internal routing
+	Opcode   int32  // wire opcode from Envelope
 	Payload  []byte
 	JSONCodec bool // true = payload is protojson, false = protobuf binary
 }
@@ -31,9 +32,13 @@ type Inbound struct {
 // Outbound is a message sent to a client. Either Payload or Error is set,
 // not both. Replies to a specific Inbound copy its ID; broadcasts/pushes
 // leave ID empty.
+//
+// When sending, Opcode takes precedence over Type. If Opcode is 0, Type
+// is looked up in the typeToOpcode mapping table.
 type Outbound struct {
 	ID      string
-	Type    string
+	Type    string        // optional: used for lookup when Opcode == 0
+	Opcode  int32         // wire opcode; preferred over Type
 	Payload proto.Message
 	Error   *apperror.AppError
 }

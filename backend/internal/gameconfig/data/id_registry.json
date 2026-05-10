@@ -107,12 +107,15 @@
   },
   "skills": {
     "crafting": 1,
+    "defense": 9,
     "enhancing": 2,
     "felling": 3,
     "forging": 4,
     "magic": 5,
     "mining": 6,
     "none": 7,
+    "ranging": 10,
+    "resilience": 11,
     "strength": 8
   },
   "maps": {
@@ -120,5 +123,21 @@
   },
   "battle_skills": {
     "basic_attack": 1
+  },
+  "enemies": {
+    "pig": 1,
+    "ox": 2,
+    "chicken": 3,
+    "goblin": 4,
+    "kongkong": 5,
+    "kakka": 6,
+    "goblin_leader": 7,
+    "old_geometric_stone_statue": 8,
+    "forgotten_orcs": 9
+  },
+  "battles": {
+    "cave": 1,
+    "outskirts_of_village": 2,
+    "pasture": 3
   }
 }

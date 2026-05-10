@@ -58,16 +58,17 @@ func (c *Conn) Send(msg Outbound) bool {
 }
 
 // Reply sends a typed response to an inbound request, reusing its ID.
-// The response type is in.Type + ".ok"; use Send directly for custom types.
+// The response opcode is derived from the request opcode (req + 1000 = ok).
 func (c *Conn) Reply(in Inbound, payload proto.Message) bool {
 	return c.Send(Outbound{
 		ID:      in.ID,
-		Type:    in.Type + ".ok",
+		Opcode:  in.Opcode + 1000,
 		Payload: payload,
 	})
 }
 
 // ReplyError sends an error response that matches the inbound request id.
+// The error opcode is derived from the request opcode (req + 2000 = err).
 // Non-AppError values are wrapped as internal errors.
 func (c *Conn) ReplyError(in Inbound, err error) bool {
 	ae, ok := apperror.As(err)
@@ -75,9 +76,9 @@ func (c *Conn) ReplyError(in Inbound, err error) bool {
 		ae = apperror.Internal("internal error").WithCause(err)
 	}
 	return c.Send(Outbound{
-		ID:    in.ID,
-		Type:  in.Type + ".err",
-		Error: ae,
+		ID:     in.ID,
+		Opcode: in.Opcode + 2000,
+		Error:  ae,
 	})
 }
 
@@ -139,12 +140,13 @@ func (c *Conn) writeLoop(ctx context.Context, done chan<- struct{}) {
 			var data []byte
 			var err error
 			msgType := websocket.MessageBinary
+			op := resolveOpcode(msg)
 
 			if c.jsonCodec {
 				// Build JSON-friendly envelope with inline payload.
 				envMap := map[string]any{
-					"id":   msg.ID,
-					"type": msg.Type,
+					"id":     msg.ID,
+					"opcode": op,
 				}
 				if msg.Error != nil {
 					envMap["error"] = map[string]any{
@@ -155,7 +157,7 @@ func (c *Conn) writeLoop(ctx context.Context, done chan<- struct{}) {
 				} else if msg.Payload != nil {
 					payloadJSON, jerr := protojson.Marshal(msg.Payload)
 					if jerr != nil {
-						logging.FromContext(ctx).Error("ws marshal", "err", jerr, "type", msg.Type)
+						logging.FromContext(ctx).Error("ws marshal", "err", jerr, "opcode", op)
 						continue
 					}
 					envMap["payload"] = json.RawMessage(payloadJSON)
@@ -164,8 +166,8 @@ func (c *Conn) writeLoop(ctx context.Context, done chan<- struct{}) {
 				msgType = websocket.MessageText
 			} else {
 				env := &pb.Envelope{
-					Id:   msg.ID,
-					Type: msg.Type,
+					Id:     msg.ID,
+					Opcode: op,
 				}
 				if msg.Error != nil {
 					env.Error = &pb.Error{
@@ -177,7 +179,7 @@ func (c *Conn) writeLoop(ctx context.Context, done chan<- struct{}) {
 					var payload []byte
 					payload, err = proto.Marshal(msg.Payload)
 					if err != nil {
-						logging.FromContext(ctx).Error("ws marshal", "err", err, "type", msg.Type)
+						logging.FromContext(ctx).Error("ws marshal", "err", err, "opcode", op)
 						continue
 					}
 					env.Payload = payload
@@ -185,7 +187,7 @@ func (c *Conn) writeLoop(ctx context.Context, done chan<- struct{}) {
 				data, err = proto.Marshal(env)
 			}
 			if err != nil {
-				logging.FromContext(ctx).Error("ws envelope marshal", "err", err, "type", msg.Type)
+				logging.FromContext(ctx).Error("ws envelope marshal", "err", err, "opcode", op)
 				continue
 			}
 			wctx, cancel := context.WithTimeout(ctx, cfg.WriteTimeout)
@@ -217,7 +219,7 @@ func (c *Conn) readLoop(ctx context.Context) {
 			}
 			var raw struct {
 				ID      string          `json:"id"`
-				Type    string          `json:"type"`
+				Opcode  int32           `json:"opcode"`
 				Payload json.RawMessage `json:"payload"`
 			}
 			if err := json.Unmarshal(data, &raw); err != nil {
@@ -228,7 +230,7 @@ func (c *Conn) readLoop(ctx context.Context) {
 				continue
 			}
 			env.Id = raw.ID
-			env.Type = raw.Type
+			env.Opcode = raw.Opcode
 			env.Payload = raw.Payload
 		} else {
 			if typ != websocket.MessageBinary {
@@ -245,10 +247,24 @@ func (c *Conn) readLoop(ctx context.Context) {
 		}
 		in := Inbound{
 			ID:        env.Id,
-			Type:      env.Type,
+			Type:      opcodeToType[env.Opcode],
+			Opcode:    env.Opcode,
 			Payload:   env.Payload,
 			JSONCodec: c.jsonCodec,
 		}
 		c.hub.dispatch(ctx, c, in)
 	}
+}
+
+// NewTestConn creates a Conn suitable for unit tests. The returned receive
+// channel yields every Outbound message sent to the connection.
+func NewTestConn(userID int64, buf int) (*Conn, <-chan Outbound) {
+	ch := make(chan Outbound, buf)
+	c := &Conn{
+		ID:     uuid.New(),
+		UserID: userID,
+		send:   ch,
+		done:   make(chan struct{}),
+	}
+	return c, ch
 }

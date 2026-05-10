@@ -23,7 +23,7 @@ func init() {
 
 func TestEnemyEntityMaxHP(t *testing.T) {
 	// Enemy with base HP = 200.
-	e := battle.NewEnemyBattleEntity("goblin", "goblin_0", "Goblin", map[string]float64{
+	e := battle.NewEnemyBattleEntity(1, 0, "Goblin", map[string]float64{
 		"hp": 200,
 	})
 	if e.MaxHP() != 200 {
@@ -72,7 +72,7 @@ func TestRefreshStatsScalesHP(t *testing.T) {
 
 func TestCalcDamagePhysical(t *testing.T) {
 	// Create two enemies: attacker and defender.
-	attacker := battle.NewEnemyBattleEntity("a", "a_0", "Attacker", map[string]float64{
+	attacker := battle.NewEnemyBattleEntity(1, 0, "Attacker", map[string]float64{
 		"physical_power": 100,
 		"accuracy":       100,
 		"critical":       0,
@@ -80,7 +80,7 @@ func TestCalcDamagePhysical(t *testing.T) {
 	})
 	attacker.SetHP(100)
 
-	defender := battle.NewEnemyBattleEntity("d", "d_0", "Defender", map[string]float64{
+	defender := battle.NewEnemyBattleEntity(2, 0, "Defender", map[string]float64{
 		"defense":               50,
 		"evade":                 1, // very low evade
 		"block":                 0,
@@ -90,7 +90,7 @@ func TestCalcDamagePhysical(t *testing.T) {
 	defender.SetHP(100)
 
 	skill := &battle.BattleSkill{
-		ID:   "basic_attack",
+		ID: gameconfig.BattleSkillID(1),
 		Name: "Basic Attack",
 		Damage: &battle.DamageProfile{
 			Type:       "physical",
@@ -117,19 +117,19 @@ func TestCalcDamagePhysical(t *testing.T) {
 }
 
 func TestCalcDamageMagic(t *testing.T) {
-	attacker := battle.NewEnemyBattleEntity("a", "a_0", "Attacker", map[string]float64{
+	attacker := battle.NewEnemyBattleEntity(1, 0, "Attacker", map[string]float64{
 		"magic_power":             80,
 		"accuracy":                100,
 		"final_damage_multiplier": 0,
 	})
-	defender := battle.NewEnemyBattleEntity("d", "d_0", "Defender", map[string]float64{
+	defender := battle.NewEnemyBattleEntity(2, 0, "Defender", map[string]float64{
 		"magic_instance":        0.5,
 		"evade":                 1,
 		"final_damage_reduce":   0,
 	})
 
 	skill := &battle.BattleSkill{
-		ID:   "fireball",
+		ID:   gameconfig.BattleSkillID(-200),
 		Name: "Fireball",
 		Damage: &battle.DamageProfile{
 			Type:       "magic",
@@ -162,7 +162,7 @@ func TestApplyEffectSyncsToAttr(t *testing.T) {
 	before := p.GetFinal(ppID)
 
 	eff := battle.ActiveEffect{
-		SourceSkillID: "buff:strength",
+		SourceSkillID: gameconfig.BattleSkillID(-103),
 		Attribute:     ppID,
 		Mode:          battle.EffectModeFlat,
 		Value:         20,

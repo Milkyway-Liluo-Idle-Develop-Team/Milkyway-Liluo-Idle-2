@@ -1,7 +1,10 @@
 package battle
 
 import (
+	"fmt"
+
 	"github.com/Milkyway-Liluo-Idle-Develop-Team/Milkyway-Liluo-Idle-2/backend/internal/attribute"
+	"github.com/Milkyway-Liluo-Idle-Develop-Team/Milkyway-Liluo-Idle-2/backend/internal/gameconfig"
 )
 
 // PlayerBattleEntity wraps a PlayerSession for combat.
@@ -9,7 +12,7 @@ import (
 // as temporary modifiers with a "battle:" source prefix.
 type PlayerBattleEntity struct {
 	userID int64
-	name   string
+	name   string // retained for internal debugging, not transmitted
 
 	attr *attribute.Instance
 
@@ -27,17 +30,16 @@ type PlayerBattleEntity struct {
 	nextReadyTime      float64
 	lastActionDuration float64
 
-	cooldowns     map[string]float64
+	cooldowns     map[gameconfig.BattleSkillID]float64
 	activeEffects []ActiveEffect
 
 	// Skills.
-	skills       map[string]*BattleSkill
+	skills       map[gameconfig.BattleSkillID]*BattleSkill
 	skillPlan    []SkillPlanEntry
-	basicSkillID string
+	basicSkillID gameconfig.BattleSkillID
 
 	// Bookkeeping.
-	lastSkillID   string
-	lastSkillName string
+	lastSkillID gameconfig.BattleSkillID
 }
 
 // NewPlayerBattleEntity creates a combat-ready player entity.
@@ -47,8 +49,8 @@ func NewPlayerBattleEntity(userID int64, name string, attr *attribute.Instance) 
 		name:      name,
 		attr:      attr,
 		alive:     true,
-		cooldowns: make(map[string]float64),
-		skills:    make(map[string]*BattleSkill),
+		cooldowns: make(map[gameconfig.BattleSkillID]float64),
+		skills:    make(map[gameconfig.BattleSkillID]*BattleSkill),
 	}
 	p.cachedMaxHP = p.MaxHP()
 	p.cachedMaxMP = p.MaxMP()
@@ -58,9 +60,9 @@ func NewPlayerBattleEntity(userID int64, name string, attr *attribute.Instance) 
 
 // --- Identity ---
 
-func (p *PlayerBattleEntity) EntityID() string { return p.name }
-func (p *PlayerBattleEntity) Name() string      { return p.name }
-func (p *PlayerBattleEntity) Team() Team        { return TeamPlayer }
+func (p *PlayerBattleEntity) UserID() int64    { return p.userID }
+func (p *PlayerBattleEntity) EntityID() int64  { return p.userID }
+func (p *PlayerBattleEntity) Team() Team       { return TeamPlayer }
 
 // --- Life ---
 
@@ -123,7 +125,7 @@ func (p *PlayerBattleEntity) ApplyEffect(effect ActiveEffect, now float64) {
 }
 
 // syncEffectsForSource rebuilds all attribute modifiers for a given skill source.
-func (p *PlayerBattleEntity) syncEffectsForSource(sourceSkillID string) {
+func (p *PlayerBattleEntity) syncEffectsForSource(sourceSkillID gameconfig.BattleSkillID) {
 	var mods []attribute.Modifier
 	for _, eff := range p.activeEffects {
 		if eff.SourceSkillID != sourceSkillID {
@@ -142,10 +144,10 @@ func (p *PlayerBattleEntity) syncEffectsForSource(sourceSkillID string) {
 			AttrID: eff.Attribute,
 			Op:     op,
 			Value:  eff.Value,
-			Source: "battle:" + sourceSkillID,
+			Source: fmt.Sprintf("battle:%d", sourceSkillID),
 		})
 	}
-	p.attr.AddModifiers("battle:"+sourceSkillID, mods)
+	p.attr.AddModifiers(fmt.Sprintf("battle:%d", sourceSkillID), mods)
 }
 
 // RefreshStats purges expired effects and rescales current HP/MP/SP.
@@ -171,33 +173,31 @@ func (p *PlayerBattleEntity) RefreshStats(now float64) {
 
 // --- Skills ---
 
-func (p *PlayerBattleEntity) Skills() map[string]*BattleSkill {
-	out := make(map[string]*BattleSkill, len(p.skills))
+func (p *PlayerBattleEntity) Skills() map[gameconfig.BattleSkillID]*BattleSkill {
+	out := make(map[gameconfig.BattleSkillID]*BattleSkill, len(p.skills))
 	for k, v := range p.skills {
 		out[k] = v
 	}
 	return out
 }
 
-func (p *PlayerBattleEntity) SkillPlan() []SkillPlanEntry   { return p.skillPlan }
-func (p *PlayerBattleEntity) BasicSkillID() string          { return p.basicSkillID }
-func (p *PlayerBattleEntity) Cooldowns() map[string]float64 { return p.cooldowns }
-func (p *PlayerBattleEntity) SetCooldown(skillID string, expiresAt float64) {
+func (p *PlayerBattleEntity) SkillPlan() []SkillPlanEntry                    { return p.skillPlan }
+func (p *PlayerBattleEntity) BasicSkillID() gameconfig.BattleSkillID         { return p.basicSkillID }
+func (p *PlayerBattleEntity) Cooldowns() map[gameconfig.BattleSkillID]float64 { return p.cooldowns }
+func (p *PlayerBattleEntity) SetCooldown(skillID gameconfig.BattleSkillID, expiresAt float64) {
 	p.cooldowns[skillID] = expiresAt
 }
 
 // --- Bookkeeping ---
 
-func (p *PlayerBattleEntity) LastSkillID() string              { return p.lastSkillID }
-func (p *PlayerBattleEntity) SetLastSkillID(v string)          { p.lastSkillID = v }
-func (p *PlayerBattleEntity) LastSkillName() string            { return p.lastSkillName }
-func (p *PlayerBattleEntity) SetLastSkillName(v string)        { p.lastSkillName = v }
+func (p *PlayerBattleEntity) LastSkillID() gameconfig.BattleSkillID              { return p.lastSkillID }
+func (p *PlayerBattleEntity) SetLastSkillID(v gameconfig.BattleSkillID)          { p.lastSkillID = v }
 
 // Setters for skill data (called during entity construction).
 
-func (p *PlayerBattleEntity) SetSkills(skills map[string]*BattleSkill) { p.skills = skills }
-func (p *PlayerBattleEntity) SetSkillPlan(plan []SkillPlanEntry)       { p.skillPlan = plan }
-func (p *PlayerBattleEntity) SetBasicSkillID(id string)                { p.basicSkillID = id }
+func (p *PlayerBattleEntity) SetSkills(skills map[gameconfig.BattleSkillID]*BattleSkill) { p.skills = skills }
+func (p *PlayerBattleEntity) SetSkillPlan(plan []SkillPlanEntry)                         { p.skillPlan = plan }
+func (p *PlayerBattleEntity) SetBasicSkillID(id gameconfig.BattleSkillID)                { p.basicSkillID = id }
 
 // mustAttrID panics if the attribute is missing; used for well-known attrs.
 func mustAttrID(name string) attribute.AttributeID {

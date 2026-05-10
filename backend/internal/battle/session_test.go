@@ -5,6 +5,7 @@ import (
 
 	"github.com/Milkyway-Liluo-Idle-Develop-Team/Milkyway-Liluo-Idle-2/backend/internal/attribute"
 	"github.com/Milkyway-Liluo-Idle-Develop-Team/Milkyway-Liluo-Idle-2/backend/internal/battle"
+	"github.com/Milkyway-Liluo-Idle-Develop-Team/Milkyway-Liluo-Idle-2/backend/internal/gameconfig"
 )
 
 func TestBattleSessionWaveSpawnAndAttack(t *testing.T) {
@@ -13,9 +14,9 @@ func TestBattleSessionWaveSpawnAndAttack(t *testing.T) {
 	p.SetHP(p.MaxHP())
 
 	// Give the player a basic attack skill.
-	p.SetSkills(map[string]*battle.BattleSkill{
-		"basic_attack": {
-			ID:   "basic_attack",
+	p.SetSkills(map[gameconfig.BattleSkillID]*battle.BattleSkill{
+		gameconfig.BattleSkillID(1): {
+			ID: gameconfig.BattleSkillID(1),
 			Name: "基础攻击",
 			Damage: &battle.DamageProfile{
 				Type:       "physical",
@@ -27,9 +28,9 @@ func TestBattleSessionWaveSpawnAndAttack(t *testing.T) {
 			IsBasic:  true,
 		},
 	})
-	p.SetBasicSkillID("basic_attack")
+	p.SetBasicSkillID(gameconfig.BattleSkillID(1))
 	p.SetSkillPlan([]battle.SkillPlanEntry{
-		{SkillID: "basic_attack", Priority: 0},
+		{SkillID: gameconfig.BattleSkillID(1), Priority: 0},
 	})
 
 	cfg := battle.BattleConfig{
@@ -52,7 +53,7 @@ func TestBattleSessionWaveSpawnAndAttack(t *testing.T) {
 	}
 	foundSpawn := false
 	for _, l := range logs {
-		if l.Type == "wave_spawned" {
+		if l.Type == battle.BattleLogTypeWaveSpawned {
 			foundSpawn = true
 		}
 	}
@@ -69,12 +70,12 @@ func TestBattleSessionWaveSpawnAndAttack(t *testing.T) {
 	for sess.Running && len(sess.AliveEnemies()) > 0 {
 		logs = sess.AdvanceOneEvent()
 		for _, l := range logs {
-			if l.Type == "player_attack" || l.Type == "enemy_attack" {
+			if l.Type == battle.BattleLogTypePlayerAttack || l.Type == battle.BattleLogTypeEnemyAttack {
 				t.Logf("combat log: %+v", l)
 				return // success
 			}
 		}
-		if len(logs) > 0 && logs[0].Type == "stopped" {
+		if len(logs) > 0 && logs[0].Type == battle.BattleLogTypeStopped {
 			break
 		}
 	}

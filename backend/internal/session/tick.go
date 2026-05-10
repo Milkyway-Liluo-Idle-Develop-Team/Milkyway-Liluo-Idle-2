@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/Milkyway-Liluo-Idle-Develop-Team/Milkyway-Liluo-Idle-2/backend/internal/apperror"
+	"github.com/Milkyway-Liluo-Idle-Develop-Team/Milkyway-Liluo-Idle-2/backend/internal/battle"
 	"github.com/Milkyway-Liluo-Idle-Develop-Team/Milkyway-Liluo-Idle-2/backend/internal/db"
 	dbgen "github.com/Milkyway-Liluo-Idle-Develop-Team/Milkyway-Liluo-Idle-2/backend/internal/db/gen"
 	pb "github.com/Milkyway-Liluo-Idle-Develop-Team/Milkyway-Liluo-Idle-2/backend/pb"
@@ -36,7 +37,8 @@ func (m *Manager) TickAll(ctx context.Context, database *db.DB, tickInterval tim
 }
 
 // tickRound executes a single round of tick+flush for all sessions.
-// Diff pushing is now done inside runTick; tickRound only batches flushes.
+// Diff pushing is done inside runTick; battle simulation is ticked once
+// per battle session after all player sessions have finished.
 func (m *Manager) tickRound(ctx context.Context, database *db.DB, now time.Time) {
 	sessions := m.getAllSessions()
 	if len(sessions) == 0 {
@@ -44,6 +46,7 @@ func (m *Manager) tickRound(ctx context.Context, database *db.DB, now time.Time)
 	}
 
 	results := m.parallelTick(sessions, now)
+	m.tickBattles()
 
 	if database != nil {
 		if err := m.BatchFlush(ctx, database, results); err != nil {
@@ -58,7 +61,9 @@ func (m *Manager) ManualTick(now time.Time) []TickResult {
 	if len(sessions) == 0 {
 		return nil
 	}
-	return m.parallelTick(sessions, now)
+	results := m.parallelTick(sessions, now)
+	m.tickBattles()
+	return results
 }
 
 func (m *Manager) getAllSessions() []*PlayerSession {
@@ -171,10 +176,6 @@ func runTick(s *PlayerSession, mgr *Manager, delta float64) (dirty bool) {
 
 		s.ev.Settle(s, delta)
 
-		if s.battle != nil && s.battle.Active() {
-			// Placeholder: battle simulation runs here.
-		}
-
 		return mgr.Registry().BuildDiff(rec)
 	}()
 
@@ -196,6 +197,52 @@ func runTick(s *PlayerSession, mgr *Manager, delta float64) (dirty bool) {
 	}
 
 	return dirty
+}
+
+// tickBattles advances every active battle session exactly once per tick round,
+// then pushes combat events and heartbeat snapshots to every participating player.
+// This runs after parallelTick so that battle state is not mutated concurrently
+// by player-session workers.
+func (m *Manager) tickBattles() {
+	const delta = 0.05 // 50 ms fixed tick
+
+	m.battlesMu.RLock()
+	battles := make([]*battle.BattleSession, 0, len(m.battles))
+	for _, bs := range m.battles {
+		battles = append(battles, bs)
+	}
+	m.battlesMu.RUnlock()
+
+	for _, bs := range battles {
+		if !bs.Running {
+			continue
+		}
+		logs := bs.AdvanceByDelta(delta)
+
+		if len(logs) > 0 {
+			batch := battleLogsToProto(bs, logs)
+			for _, uid := range bs.UserIDs() {
+				if s, ok := m.Get(uid); ok {
+					if c := s.Conn(); c != nil {
+						c.Send(wsx.Outbound{Type: "battle.event_batch", Payload: batch})
+					}
+				}
+			}
+		}
+
+		// Heartbeat snapshot every ~2 s (40 ticks at 50 ms).
+		if int(bs.Time*20)%40 == 0 {
+			snap := bs.BuildSnapshot()
+			pbs := BattleSnapshotToProto(&snap)
+			for _, uid := range bs.UserIDs() {
+				if s, ok := m.Get(uid); ok {
+					if c := s.Conn(); c != nil {
+						c.Send(wsx.Outbound{Type: "battle.snapshot", Payload: pbs})
+					}
+				}
+			}
+		}
+	}
 }
 
 // isProgressOnlyDiff returns true when the diff contains only event-queue

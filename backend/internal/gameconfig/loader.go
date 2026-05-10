@@ -28,11 +28,14 @@ type registry struct {
 	idReg *IDRegistry
 
 	// --- numeric-id indexes ---
-	eventsByID    map[EventID]Event
-	eventsBySkill map[SkillID][]Event
-	eventsByMap   map[MapID][]Event
-	loopEvents    []Event
-	upgradeEvents []Event
+	enemiesByID      map[int64]EnemyDef
+	skillsByID       map[SkillID]string
+	battleSkillsByID map[BattleSkillID]string
+	eventsByID       map[EventID]Event
+	eventsBySkill    map[SkillID][]Event
+	eventsByMap      map[MapID][]Event
+	loopEvents       []Event
+	upgradeEvents    []Event
 }
 
 var reg *registry
@@ -68,8 +71,19 @@ func Load() error {
 		eventsByID:    make(map[EventID]Event),
 		eventsBySkill: make(map[SkillID][]Event),
 		eventsByMap:   make(map[MapID][]Event),
-		enemies:       make(map[string]EnemyDef, len(cfg.Enemies)),
-		battles:       make(map[string]BattleDef, len(cfg.Battles)),
+		enemies:          make(map[string]EnemyDef, len(cfg.Enemies)),
+		enemiesByID:      make(map[int64]EnemyDef, len(cfg.Enemies)),
+		skillsByID:       make(map[SkillID]string, len(idReg.Skills)),
+		battleSkillsByID: make(map[BattleSkillID]string, len(idReg.BattleSkills)),
+		battles:          make(map[string]BattleDef, len(cfg.Battles)),
+	}
+
+	// Build reverse maps for O(1) numeric→string lookups.
+	for s, v := range idReg.Skills {
+		r.skillsByID[SkillID(v)] = s
+	}
+	for s, v := range idReg.BattleSkills {
+		r.battleSkillsByID[BattleSkillID(v)] = s
 	}
 
 	if err := indexItems(r, cfg.Items); err != nil {
@@ -214,6 +228,10 @@ func indexEnemies(r *registry, enemies []EnemyDef) error {
 			return fmt.Errorf("duplicate enemy id %q", e.ID)
 		}
 
+		if nid, ok := r.idReg.Enemies[e.ID]; ok {
+			e.NumericID = nid
+		}
+
 		// Resolve rewards.
 		for j := range e.Rewards {
 			rew := &e.Rewards[j]
@@ -229,6 +247,9 @@ func indexEnemies(r *registry, enemies []EnemyDef) error {
 		}
 
 		r.enemies[e.ID] = *e
+		if e.NumericID != 0 {
+			r.enemiesByID[e.NumericID] = *e
+		}
 	}
 	return nil
 }
@@ -241,6 +262,9 @@ func indexBattles(r *registry, battles []BattleDef) error {
 		}
 		if _, dup := r.battles[b.ID]; dup {
 			return fmt.Errorf("duplicate battle id %q", b.ID)
+		}
+		if nid, ok := r.idReg.Battles[b.ID]; ok {
+			b.NumericID = nid
 		}
 		r.battles[b.ID] = *b
 	}
@@ -455,12 +479,8 @@ func SkillIDToString(id SkillID) (string, bool) {
 	if reg == nil {
 		panic("gameconfig: Load() must be called before SkillIDToString")
 	}
-	for s, v := range reg.idReg.Skills {
-		if v == int64(id) {
-			return s, true
-		}
-	}
-	return "", false
+	s, ok := reg.skillsByID[id]
+	return s, ok
 }
 
 // AllSkillIDs returns all numeric skill ids in ascending order.
@@ -536,12 +556,8 @@ func BattleSkillIDToString(id BattleSkillID) (string, bool) {
 	if reg == nil {
 		panic("gameconfig: Load() must be called before BattleSkillIDToString")
 	}
-	for s, v := range reg.idReg.BattleSkills {
-		if v == int64(id) {
-			return s, true
-		}
-	}
-	return "", false
+	s, ok := reg.battleSkillsByID[id]
+	return s, ok
 }
 
 // BattleSkillCount returns the number of distinct battle skills.
@@ -627,6 +643,36 @@ func EnemyCount() int {
 	return len(reg.enemies)
 }
 
+// StringToEnemyID converts a string enemy id to its numeric id.
+func StringToEnemyID(s string) (int64, bool) {
+	if reg == nil {
+		panic("gameconfig: Load() must be called before StringToEnemyID")
+	}
+	id, ok := reg.idReg.Enemies[s]
+	return id, ok
+}
+
+// GetEnemyByID returns an enemy definition by its numeric id.
+func GetEnemyByID(id int64) (EnemyDef, bool) {
+	if reg == nil {
+		panic("gameconfig: Load() must be called before GetEnemyByID")
+	}
+	e, ok := reg.enemiesByID[id]
+	return e, ok
+}
+
+// EnemyIDToString converts a numeric enemy id back to its string id.
+func EnemyIDToString(id int64) (string, bool) {
+	if reg == nil {
+		panic("gameconfig: Load() must be called before EnemyIDToString")
+	}
+	e, ok := reg.enemiesByID[id]
+	if ok {
+		return e.ID, true
+	}
+	return "", false
+}
+
 // =========================
 // Battle accessors
 // =========================
@@ -638,6 +684,15 @@ func GetBattle(id string) (BattleDef, bool) {
 	}
 	b, ok := reg.battles[id]
 	return b, ok
+}
+
+// BattleNumericID returns the stable numeric id for a battle string id.
+func BattleNumericID(id string) (int64, bool) {
+	if reg == nil {
+		panic("gameconfig: Load() must be called before BattleNumericID")
+	}
+	nid, ok := reg.idReg.Battles[id]
+	return nid, ok
 }
 
 // AllBattles returns every battle definition in deterministic order.

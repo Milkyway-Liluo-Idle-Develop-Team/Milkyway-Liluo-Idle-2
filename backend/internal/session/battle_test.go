@@ -5,25 +5,66 @@ import (
 	"time"
 
 	"github.com/Milkyway-Liluo-Idle-Develop-Team/Milkyway-Liluo-Idle-2/backend/internal/attribute"
+	"github.com/Milkyway-Liluo-Idle-Develop-Team/Milkyway-Liluo-Idle-2/backend/internal/battle"
+	"github.com/Milkyway-Liluo-Idle-Develop-Team/Milkyway-Liluo-Idle-2/backend/internal/gameconfig"
 	"github.com/Milkyway-Liluo-Idle-Develop-Team/Milkyway-Liluo-Idle-2/backend/internal/record"
 	"github.com/Milkyway-Liluo-Idle-Develop-Team/Milkyway-Liluo-Idle-2/backend/internal/session"
 	"github.com/Milkyway-Liluo-Idle-Develop-Team/Milkyway-Liluo-Idle-2/backend/internal/wsx"
 	"github.com/google/uuid"
 )
 
-func TestBattleInstanceAttachDetach(t *testing.T) {
+func makeTestBattlePlayer(userID int64, name string) *battle.PlayerBattleEntity {
+	inst := attribute.NewInstance()
+	p := battle.NewPlayerBattleEntity(userID, name, inst)
+	p.SetHP(p.MaxHP())
+	p.SetSkills(map[gameconfig.BattleSkillID]*battle.BattleSkill{
+		gameconfig.BattleSkillID(1): {
+			ID: gameconfig.BattleSkillID(1),
+			Name: "基础攻击",
+			Damage: &battle.DamageProfile{
+				Type:       "physical",
+				Flat:       0,
+				Multiplier: 1.0,
+			},
+			CastTime: 2.0,
+			IsBasic:  true,
+		},
+	})
+	p.SetBasicSkillID(gameconfig.BattleSkillID(1))
+	p.SetSkillPlan([]battle.SkillPlanEntry{{SkillID: gameconfig.BattleSkillID(1), Priority: 0}})
+	return p
+}
+
+func TestBattleSessionAttachDetach(t *testing.T) {
+	reg := record.NewRegistry()
+	reg.Register(attribute.Provider)
+	mgr := session.NewManagerWithoutTick(reg, nil)
 	s := session.New(uuid.New(), 1, testLogger())
-	if s.Battle() != nil {
+	mgr.Add(s)
+
+	if s.BattleSession() != nil {
 		t.Fatal("expected no battle initially")
 	}
-	b := session.NewBattleInstance(1)
-	s.SetBattle(b)
-	if s.Battle() != b {
-		t.Fatal("battle should be attached")
+	bs := battle.NewBattleSession(battle.BattleConfig{
+		NumericID: 99,
+		ID:        "test",
+		Name:      "Test Battle",
+		Map:       "test_map",
+		Interval:  5.0,
+	}, []*battle.PlayerBattleEntity{makeTestBattlePlayer(1, "Player1")})
+	s.SetBattleSession(bs)
+	mgr.AddBattle(bs)
+	if s.BattleSession() != bs {
+		t.Fatal("battle session should be attached")
 	}
-	s.SetBattle(nil)
-	if s.Battle() != nil {
-		t.Fatal("battle should be detached")
+	retrieved, ok := mgr.GetBattle(99)
+	if !ok || retrieved != bs {
+		t.Fatal("battle should be registered in manager")
+	}
+	s.SetBattleSession(nil)
+	mgr.RemoveBattle(99)
+	if s.BattleSession() != nil {
+		t.Fatal("battle session should be detached")
 	}
 }
 
@@ -52,9 +93,15 @@ func TestGraceExtendedDuringBattle(t *testing.T) {
 	mgr.Add(s)
 
 	// Set active battle
-	b := session.NewBattleInstance(1)
-	b.SetActive(true)
-	s.SetBattle(b)
+	bs := battle.NewBattleSession(battle.BattleConfig{
+		NumericID: 99,
+		ID:        "test",
+		Name:      "Test Battle",
+		Map:       "test_map",
+		Interval:  5.0,
+	}, []*battle.PlayerBattleEntity{makeTestBattlePlayer(1, "Player1")})
+	s.SetBattleSession(bs)
+	mgr.AddBattle(bs)
 
 	// Attach then detach conn to enter grace
 	conn := &wsx.Conn{ID: uuid.New(), UserID: 1}
@@ -69,7 +116,7 @@ func TestGraceExtendedDuringBattle(t *testing.T) {
 	}
 
 	// Deactivate battle and re-start grace
-	b.SetActive(false)
+	bs.Running = false
 	s.StartGraceTimer(100 * time.Millisecond)
 	time.Sleep(200 * time.Millisecond)
 

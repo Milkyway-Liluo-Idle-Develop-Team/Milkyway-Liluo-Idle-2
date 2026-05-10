@@ -6,7 +6,7 @@ option go_package = "github.com/Milkyway-Liluo-Idle-Develop-Team/Milkyway-Liluo-
 
 message Envelope {
   string id = 1;
-  string type = 2;
+  int32 opcode = 2;
   bytes payload = 3;
   Error error = 4;
 }

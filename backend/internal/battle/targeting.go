@@ -1,10 +1,5 @@
 package battle
 
-import (
-	"math/rand"
-	"time"
-)
-
 // chooseEnemyTarget picks a player for the enemy to attack based on accumulated
 // hate plus static hatred attributes. If no hate exists, it falls back to uniform
 // random selection among alive players.
@@ -34,13 +29,11 @@ func (s *BattleSession) chooseEnemyTarget(enemy *EnemyBattleEntity, candidates [
 		total += w.weight
 	}
 	if total <= 0 {
-		rng := rand.New(rand.NewSource(time.Now().UnixNano()))
-		return candidates[rng.Intn(len(candidates))]
+		return candidates[s.rng.Intn(len(candidates))]
 	}
 
 	// Weighted random selection.
-	rng := rand.New(rand.NewSource(time.Now().UnixNano()))
-	r := rng.Float64() * total
+	r := s.rng.Float64() * total
 	for _, w := range weights {
 		r -= w.weight
 		if r <= 0 {
@@ -53,7 +46,7 @@ func (s *BattleSession) chooseEnemyTarget(enemy *EnemyBattleEntity, candidates [
 // computeTargetWeight calculates how attractive a player is as a target.
 // Base weight = accumulated hate from damage dealt to this enemy.
 // Then scaled by the player's hatred attributes (higher hatred = more likely to be targeted).
-func (s *BattleSession) computeTargetWeight(p *PlayerBattleEntity, enemyHate map[string]float64) float64 {
+func (s *BattleSession) computeTargetWeight(p *PlayerBattleEntity, enemyHate map[int64]float64) float64 {
 	hate := enemyHate[p.EntityID()]
 
 	// Static hatred multiplier from player attributes.
