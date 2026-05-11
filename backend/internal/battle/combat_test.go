@@ -1,6 +1,7 @@
 package battle
 
 import (
+	"math/rand"
 	"testing"
 
 	"github.com/Milkyway-Liluo-Idle-Develop-Team/Milkyway-Liluo-Idle-2/backend/internal/attribute"
@@ -13,6 +14,43 @@ const (
 	testSkillBuffSelf   gameconfig.BattleSkillID = -101
 	testSkillBuffMixed  gameconfig.BattleSkillID = -102
 )
+
+func TestCalcDamageEvadeRawDamage(t *testing.T) {
+	// Very low accuracy vs very high evade guarantees evade.
+	attacker := NewEnemyBattleEntity(1, 0, "Attacker", map[string]float64{
+		"physical_power": 100,
+		"accuracy":       1e-6,
+	})
+	defender := NewEnemyBattleEntity(2, 0, "Defender", map[string]float64{
+		"evade":                 1000,
+		"defense":               50,
+		"final_damage_reduce":   0,
+		"magic_instance":        0,
+	})
+
+	skill := &BattleSkill{
+		ID:   gameconfig.BattleSkillID(1),
+		Name: "Basic Attack",
+		Damage: &DamageProfile{
+			Type:       "physical",
+			Flat:       0,
+			Multiplier: 1.0,
+		},
+	}
+
+	rng := rand.New(rand.NewSource(42))
+	result := CalcDamage(attacker, defender, skill, rng)
+
+	if !result.Evaded {
+		t.Fatal("expected attack to be evaded with low accuracy vs high evade")
+	}
+	if result.RawDamage <= 0 {
+		t.Errorf("RawDamage should be > 0 even when evaded, got %v", result.RawDamage)
+	}
+	if result.Damage != 0 {
+		t.Errorf("Damage should be 0 when evaded, got %v", result.Damage)
+	}
+}
 
 func TestSkillWouldApplyEffect(t *testing.T) {
 	ppID, _ := attribute.Get().AttrID("physical_power")

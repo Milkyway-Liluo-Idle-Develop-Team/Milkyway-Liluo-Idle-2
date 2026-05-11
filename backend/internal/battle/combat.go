@@ -57,7 +57,7 @@ func (s *BattleSession) resolveAttack(attacker, defender BattleEntity, skill *Ba
 	}
 
 	// Set attacker timing.
-	castTime := max(0.1, skill.CastTime)
+	castTime := skill.CastTime
 	if castTime <= 0 {
 		castTime = max(0.1, attacker.GetFinal(AttrAttackInterval))
 	}
@@ -384,7 +384,6 @@ func (s *BattleSession) handleEnemyDeath(enemy *EnemyBattleEntity) []BattleLog {
 }
 
 func (s *BattleSession) handlePlayerDown(player *PlayerBattleEntity) []BattleLog {
-	player.SetAlive(false)
 	respawn := s.Time + max(0.1, s.Config.Interval)
 	s.RespawnTimes[player.EntityID()] = &respawn
 	return []BattleLog{{

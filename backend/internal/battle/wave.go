@@ -2,6 +2,7 @@ package battle
 
 import (
 	"math/rand"
+	"sort"
 
 	"github.com/Milkyway-Liluo-Idle-Develop-Team/Milkyway-Liluo-Idle-2/backend/internal/attribute"
 	"github.com/Milkyway-Liluo-Idle-Develop-Team/Milkyway-Liluo-Idle-2/backend/internal/gameconfig"
@@ -145,6 +146,11 @@ func (s *BattleSession) createEnemyFromDef(enemyDefID string, instanceIdx int) *
 		skills[FallbackEnemyBasicAttackID] = fallback
 		basicSkillID = FallbackEnemyBasicAttackID
 	}
+
+	// Sort skill plan by priority (highest first).
+	sort.Slice(skillPlan, func(i, j int) bool {
+		return skillPlan[i].Priority > skillPlan[j].Priority
+	})
 
 	e.SetSkills(skills)
 	e.SetSkillPlan(skillPlan)

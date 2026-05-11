@@ -131,9 +131,6 @@ func (s *BattleSession) NextEventTime() *float64 {
 			return nil
 		}
 	} else {
-		if s.NextWaveTime != nil {
-			candidates = append(candidates, *s.NextWaveTime)
-		}
 		if len(aliveEnemies) > 0 {
 			for _, p := range alivePlayers {
 				candidates = append(candidates, p.NextReadyTime())

@@ -53,9 +53,26 @@ func CalcDamage(attacker, defender BattleEntity, skill *BattleSkill, rng *rand.R
 	}
 
 	if rng.Float64() < evadePossibility {
+		// Compute raw damage for logs / XP (what the hit would have dealt).
+		randRatio := 0.9 + rng.Float64()*0.2
+		var rawDamage float64
+		if damageType == "magic" {
+			magicPower := max(0.0, dmgCfg.Flat+attacker.GetFinal(AttrMagicPower)*dmgCfg.Multiplier)
+			magicInstance := max(0.0, defender.GetFinal(AttrMagicInstance))
+			rawDamage = randRatio * magicPower / (1.0 + magicInstance)
+		} else {
+			attackPower := max(0.0, dmgCfg.Flat+attacker.GetFinal(AttrPhysicalPower)*dmgCfg.Multiplier)
+			defense := max(0.0, defender.GetFinal(AttrDefense))
+			rawDamage = randRatio * (attackPower * attackPower) / (attackPower + defense)
+		}
+		fdm := attacker.GetFinal(AttrFinalDamageMultiplier)
+		fdr := defender.GetFinal(AttrFinalDamageReduce)
+		rawDamage *= (1.0 + fdm) / (1.0 + fdr)
+		rawDamage = max(0.0, rawDamage)
+
 		return DamageResult{
 			Damage:     0,
-			RawDamage:  0,
+			RawDamage:  rawDamage,
 			DamageType: damageType,
 			Evaded:     true,
 		}

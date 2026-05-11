@@ -219,6 +219,27 @@ func TestBuildSnapshotStatuses(t *testing.T) {
 	}
 }
 
+func TestBuildSnapshotUsesLastActionDuration(t *testing.T) {
+	p := makeTestPlayer(1, "Hero")
+	p.SetHP(p.MaxHP())
+
+	// Simulate that the player just used a skill with CastTime = 5.0,
+	// while the base attack interval is 2.0.
+	p.SetNextReadyTime(5.0)
+	p.SetLastActionDuration(5.0)
+
+	snap := battle.BuildEntityState(p, 0)
+
+	// ActionCooldownSeconds should reflect LastActionDuration (5.0), not attack interval.
+	if snap.ActionCooldownSeconds != 5.0 {
+		t.Errorf("ActionCooldownSeconds want 5.0 (from LastActionDuration), got %v", snap.ActionCooldownSeconds)
+	}
+	// At t=0 with ready time at 5.0, progress should be 0.
+	if snap.ActionCooldownProgress != 0 {
+		t.Errorf("ActionCooldownProgress want 0, got %v", snap.ActionCooldownProgress)
+	}
+}
+
 func ptr(v float64) *float64 {
 	return &v
 }

@@ -75,7 +75,7 @@ func (s *BattleSession) deriveStatus() string {
 }
 
 func BuildEntityState(e BattleEntity, now float64) BattleEntityState {
-	cooldownSeconds := e.GetFinal(AttrAttackInterval)
+	cooldownSeconds := e.LastActionDuration()
 	var progress float64
 	if cooldownSeconds > 0 {
 		remaining := e.NextReadyTime() - now
